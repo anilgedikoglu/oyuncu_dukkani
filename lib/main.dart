@@ -342,6 +342,10 @@ class GameState extends ChangeNotifier {
     {'gorsel': 'assets/musteri_2.png', 'isim': 'Hande'},
     {'gorsel': 'assets/musteri_3.png', 'isim': 'Yavuz'},
     {'gorsel': 'assets/musteri_4.png', 'isim': 'Ayşe'},
+    {'gorsel': 'assets/musteri_5.png', 'isim': 'Derin'},
+    {'gorsel': 'assets/musteri_6.png', 'isim': 'Osman'},
+    {'gorsel': 'assets/musteri_7.png', 'isim': 'Lale'},
+    {'gorsel': 'assets/musteri_8.png', 'isim': 'Defne'},
   ];
   List<int> _musteriSira = [];
 
@@ -417,10 +421,15 @@ class GameState extends ChangeNotifier {
     mesaj = 'Bir dahaki sefere!...';
     musteriKabulBekliyor = false;
     notifyListeners();
-    // Müşteri gidecek — ekranda yazı kalsın biraz
-    Future.delayed(const Duration(milliseconds: 1200), () {
-      _musteriGonder();
-    });
+  }
+
+  void musteriAnimasyonBitti() {
+    // Gidiş animasyonu tamamlandığında UI tarafından çağrılır
+    aktifMusteri = null;
+    aktifPazarlik = null;
+    musteriGorunuyor = false;
+    musteriKabulBekliyor = false;
+    notifyListeners();
   }
 
   void teklifVer(int oyuncuTeklif) {
@@ -463,7 +472,8 @@ class GameState extends ChangeNotifier {
   void musteriReddet() {
     if (aktifMusteri == null) return;
     mesaj = '${aktifMusteri!.name} anlaşamadık diyerek ayrıldı.';
-    _musteriGonder();
+    musteriKabulBekliyor = false;
+    notifyListeners();
   }
 
   void yeniGunBaslat() {
@@ -474,6 +484,14 @@ class GameState extends ChangeNotifier {
   }
 
   void _musteriGonder() {
+    // Popup içinden çağrılır — önce mesajı güncelle, UI animasyonu başlatır
+    musteriGorunuyor = false; // bu flag UI'da animasyonu tetikler
+    musteriKabulBekliyor = false;
+    notifyListeners();
+  }
+
+  void musteriTemizle() {
+    // Animasyon bittikten sonra çağrılır
     aktifMusteri = null;
     aktifPazarlik = null;
     musteriGorunuyor = false;
@@ -527,8 +545,9 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
 
   void _musteriHayir() {
     _state.musteriReddetGirisSafhasinda();
-    // Geri git animasyonu
-    _slideController.reverse();
+    _slideController.reverse().then((_) {
+      if (mounted) _state.musteriAnimasyonBitti();
+    });
   }
 
   void _musteriEvet() {
@@ -698,7 +717,6 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
             builder: (context, child) {
               final screenW = MediaQuery.of(context).size.width;
               final screenH = MediaQuery.of(context).size.height;
-              // Başlangıç: ekran sağ dışı (screenW), bitiş: ortada (screenW*0.25)
               final hedef = screenW * 0.25;
               final dx = hedef + (screenW - hedef) * _slideAnim.value;
               return Positioned(
@@ -802,7 +820,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
             children: [
               Expanded(
                 child: ElevatedButton.icon(
-                  onPressed: (_state.aktifMusteri != null || _state.gunBitmeli) ? null : _musteriCagir,
+                  onPressed: (_state.musteriKabulBekliyor || _state.aktifPazarlik != null || _state.gunBitmeli) ? null : _musteriCagir,
                   icon: const Text('🚪', style: TextStyle(fontSize: 16)),
                   label: const Text('Müşteri Çağır',
                     style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
@@ -934,9 +952,10 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       barrierDismissible: false,
       builder: (ctx) => _PazarlikDialog(state: _state, musteri: m),
     ).then((_) {
-      if (_state.aktifMusteri != null) {
-        _state.musteriReddet();
-      }
+      // Dialog kapandı, gidiş animasyonu başlat
+      _slideController.reverse().then((_) {
+        if (mounted) _state.musteriAnimasyonBitti();
+      });
     });
   }
 }
