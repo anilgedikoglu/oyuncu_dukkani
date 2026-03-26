@@ -21,13 +21,4 @@ flutter:
   uses-material-design: true
 
   assets:
-    - assets/dukkan_bg.jpeg
-    - assets/musteri_1.png
-    - assets/musteri_2.png
-    - assets/musteri_3.png
-    - assets/musteri_4.png
-    - assets/musteri_5.png
-    - assets/musteri_6.png
-    - assets/musteri_7.png
-    - assets/musteri_8.png
-    - assets/anamenu.png
+    - assets/
