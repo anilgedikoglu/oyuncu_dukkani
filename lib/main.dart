@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 import 'package:audioplayers/audioplayers.dart';
@@ -351,136 +351,132 @@ class PazarlikSeans {
     _oyuncuGecmisi.add(oyuncuTeklif);
     _musteriGecmisi.add(musteriTeklif);
 
-    final mp  = piyasaFiyati.toDouble();
-    final pat   = ozellik.pat;
-    final intel = ozellik.intel;
-    final met   = ozellik.met;
+    final mp      = piyasaFiyati.toDouble();
+    final pat     = ozellik.pat;
+    final intel   = ozellik.intel;
+    final progress = _clamp(turSayisi / maxTur, 0, 1); // 0..1
 
-    // ── 1. Rezervasyon sınırı aşıldıysa direkt kabul ──
-    if (!musteriSatiyor && oyuncuTeklif <= _reservationPrice) {
-      return _kabul(oyuncuTeklif.toDouble());
-    }
-    if (musteriSatiyor && oyuncuTeklif >= _reservationPrice) {
-      return _kabul(oyuncuTeklif.toDouble());
-    }
+    // ── 1. Oyuncu teklifi mevcut müşteri teklifini geçtiyse → kabul ──
+    if (musteriSatiyor  && oyuncuTeklif >= musteriTeklif) return _kabul(musteriTeklif.toDouble());
+    if (!musteriSatiyor && oyuncuTeklif <= musteriTeklif) return _kabul(musteriTeklif.toDouble());
 
-    // ── 2. Teklif zaten eşit veya geçtiyse kabul ──
-    if (!musteriSatiyor && oyuncuTeklif <= musteriTeklif) return _kabul(oyuncuTeklif.toDouble());
-    if (musteriSatiyor  && oyuncuTeklif >= musteriTeklif) return _kabul(oyuncuTeklif.toDouble());
+    // ── 2. Rezervasyon sınırı aşıldıysa → kabul ──
+    if (musteriSatiyor  && oyuncuTeklif >= _reservationPrice) return _kabul(oyuncuTeklif.toDouble());
+    if (!musteriSatiyor && oyuncuTeklif <= _reservationPrice) return _kabul(oyuncuTeklif.toDouble());
 
-    // ── 3. Goodwill hesapla ──
+    // ── 3. Goodwill: oyuncunun bu turki konsesyonu ──
     double goodwill = 0;
     if (_oyuncuGecmisi.length >= 2) {
       final prev = _oyuncuGecmisi[_oyuncuGecmisi.length - 2];
-      final concession = musteriSatiyor
-          ? (oyuncuTeklif - prev).toDouble()   // arttırma = iyi
-          : (prev - oyuncuTeklif).toDouble();  // düşürme = iyi
-      goodwill = _clamp(concession / (mp * 0.10), 0, 1);
+      final myMove = musteriSatiyor
+          ? (oyuncuTeklif - prev).toDouble()
+          : (prev - oyuncuTeklif).toDouble();
+      goodwill = _clamp(myMove / (mp * 0.08), 0, 1);
     }
 
-    // ── 4. Concession trend analizi (zeka bağımlı) ──
-    double inconsistency = _rnd(0, 0.3) * (1 - intel);
-    bool fakeConcession  = false;
-    if (_oyuncuGecmisi.length >= 3 && intel > 0.4) {
-      final c1 = (_oyuncuGecmisi.last - _oyuncuGecmisi[_oyuncuGecmisi.length - 2]).abs().toDouble();
-      final c2 = (_oyuncuGecmisi[_oyuncuGecmisi.length - 2] - _oyuncuGecmisi[_oyuncuGecmisi.length - 3]).abs().toDouble();
-      fakeConcession = c2 > c1 * 3;
-      inconsistency  = _clamp((c1 - c2).abs() / (mp * 0.05), 0, 1);
-    }
+    // ── 4. Frustration ──
+    final frustrationGrowth = (1 - pat) * 0.18 + (1 - intel) * 0.04;
+    _frustration = _clamp(_frustration + frustrationGrowth, 0, 1);
 
-    // ── 5. Frustration güncelle ──
-    final frustrationGrowth = (1 - pat) * 0.20 + (1 - intel) * 0.05;
-    _frustration = _clamp(
-      _frustration + frustrationGrowth + inconsistency * (1 - pat) * 0.15,
-      0, 1,
-    );
+    // ── 5. Müşteri karşı teklif miktarını hesapla ──
+    // Erken turda büyük konsesyon, geç turda küçük — ama her zaman en az 1
+    final gapToReserv = musteriSatiyor
+        ? (musteriTeklif - _reservationPrice).abs()
+        : (_reservationPrice - musteriTeklif).abs();
+    final concessionRatio = _clamp(0.18 - progress * 0.15, 0.02, 0.18);
+    final move = (gapToReserv * concessionRatio + goodwill * mp * 0.03)
+        .clamp(1, double.infinity)
+        .round();
 
-    // ── 6. Walk away şansı ──
-    final currentGap  = (musteriTeklif - oyuncuTeklif).abs().toDouble();
-    final gapRatio    = currentGap / mp;
-    final roundProgress = turSayisi / maxTur;
-    double walkChance =
-        _frustration * 0.25 +
-        gapRatio * (1 - pat) * 0.30 +
-        (fakeConcession && intel > 0.5 ? 0.15 : 0) +
-        (turSayisi == 1 ? -0.20 : 0);
-    walkChance = _clamp(walkChance, 0, 0.55);
-    if (turSayisi > 1 && Random().nextDouble() < walkChance) {
-      return _git();
-    }
-
-    // ── 7. Kabul eğrisi ──
-    final proxThreshold = _clamp(0.04 + (1 - pat) * 0.12 + (1 - met) * 0.04, 0.02, 0.22);
-    final gapFraction = currentGap / mp;
-    if (gapFraction < proxThreshold) {
-      final acceptChance = _clamp(
-        (1 - gapFraction / proxThreshold) *
-        (0.30 + goodwill * 0.25 + roundProgress * 0.20 + pat * 0.10),
-        0, 0.88,
-      );
-      if (Random().nextDouble() < acceptChance) {
-        final w = _rnd(0.55, 0.85);
-        return _kabul(musteriTeklif * w + oyuncuTeklif * (1 - w));
-      }
-    }
-
-    // ── 8. Tur bitti ──
-    if (turSayisi >= maxTur) {
-      if (gapFraction < 0.08 && Random().nextDouble() < 0.60) {
-        final w = _rnd(0.55, 0.85);
-        return _kabul(musteriTeklif * w + oyuncuTeklif * (1 - w));
-      }
-      return _git();
-    }
-
-    // ── 9. Karşı teklif üret ──
-    final gapFactor  = _clamp(currentGap / (mp * 0.30), 0.3, 1.0);
-    final baseMove   = 0.04 + pat * 0.03 + goodwill * 0.06;
-    final intelBonus = intel * (fakeConcession ? -0.03 : 0.02);
-    final progBonus  = roundProgress * 0.04;
-    final moveRatio  = _clamp((baseMove + intelBonus + progBonus) * gapFactor, 0.01, 0.18);
-    final moveAmount = moveRatio * mp;
-
+    int yeniMusteriTeklif;
     if (musteriSatiyor) {
-      // NPC satıyor: her turda mutlaka düşsün
-      // Sınırlar: _reservationPrice ≤ yeni < musteriTeklif
-      final hedef = (musteriTeklif - moveAmount).round();
-      final alt   = _reservationPrice.round();
-      final ust   = musteriTeklif - 1;
-      if (alt <= ust) {
-        musteriTeklif = hedef.clamp(alt, ust);
-      }
-      // Not: oyuncunun teklifi çok düşükse burada anlaşma yoktur,
-      // walk away veya kabul eğrisi halletmeli
-      _karsiTeklifMesaj();
+      yeniMusteriTeklif = (musteriTeklif - move)
+          .clamp(_reservationPrice.ceil(), musteriTeklif - 1).toInt();
     } else {
-      // NPC alıyor: her turda mutlaka yükselsin
-      // Sınırlar: musteriTeklif < yeni ≤ _reservationPrice
-      final hedef = (musteriTeklif + moveAmount).round();
-      final alt   = musteriTeklif + 1;
-      final ust   = _reservationPrice.round();
-      if (alt <= ust) {
-        musteriTeklif = hedef.clamp(alt, ust);
-      }
-      _karsiTeklifMesaj();
+      yeniMusteriTeklif = (musteriTeklif + move)
+          .clamp(musteriTeklif + 1, _reservationPrice.floor()).toInt();
     }
 
+    // ── 6. Rezervasyon tavanına dayandıysa: kabul/git kararı ──
+    final atFloor = musteriSatiyor
+        ? yeniMusteriTeklif <= _reservationPrice.ceil()
+        : yeniMusteriTeklif >= _reservationPrice.floor();
+
+    if (atFloor) {
+      // gapToMarket: oyuncunun teklifi piyasa fiyatından ne kadar uzak (oransal, + = uzak, - = geçmiş)
+      final gapToMarket = musteriSatiyor
+          ? (mp - oyuncuTeklif) / mp
+          : (oyuncuTeklif - mp) / mp;
+      // Sürekli eğri: gap -0.05'te ~0.85, 0'da ~0.55, 0.30'da ~0.08
+      // acceptChance = 0.55 * exp(-3.5 * gapToMarket) — exponential düşüş
+      final base = _clamp(0.55 * (1 - gapToMarket * 2.8), 0.05, 0.88);
+      final acceptChance = _clamp(base + goodwill * 0.12 + pat * 0.08, 0.04, 0.90);
+      if (Random().nextDouble() < acceptChance) {
+        return _kabul((_reservationPrice + oyuncuTeklif) / 2);
+      } else {
+        return _git();
+      }
+    }
+
+    // ── 7. Tur bitti ──
+    if (turSayisi >= maxTur) {
+      final currentGap = (musteriTeklif - oyuncuTeklif).abs() / mp;
+      // Piyasayı geçip geçmediği ekstra bonus sağlar
+      final beyondMarket = musteriSatiyor
+          ? _clamp((oyuncuTeklif - mp) / mp, 0, 0.3)   // geçtiyse pozitif
+          : _clamp((mp - oyuncuTeklif) / mp, 0, 0.3);
+      // Sürekli eğri: gap 0'da ~0.70, 0.30'da ~0.10; piyasa geçilmişse bonus
+      final base = _clamp(0.70 - currentGap * 2.0 + beyondMarket * 1.2, 0.05, 0.85);
+      final acceptChance = _clamp(base + goodwill * 0.10 + pat * 0.08, 0.04, 0.88);
+      if (Random().nextDouble() < acceptChance) {
+        return _kabul((musteriTeklif + oyuncuTeklif) / 2);
+      }
+      return _git();
+    }
+
+    // ── 8. Erken gitme şansı (sabırsız müşteri) ──
+    final currentGap = (musteriTeklif - oyuncuTeklif).abs() / mp;
+    double walkChance = _frustration * 0.15 +
+        currentGap * (1 - pat) * 0.20 +
+        (turSayisi == 1 ? -0.30 : 0);
+    walkChance = _clamp(walkChance, 0, 0.40);
+    if (turSayisi > 1 && Random().nextDouble() < walkChance) return _git();
+
+    // ── 9. Karşı teklifi uygula ve devam et ──
+    musteriTeklif = yeniMusteriTeklif;
+    _karsiTeklifMesaj();
     durum = PazarlikDurum.devamEdiyor;
     return durum;
   }
 
   void _karsiTeklifMesaj() {
-    if (musteriSatiyor) {
-      mesaj = 'En fazla $musteriTeklif₺ yapabilirim.';
-    } else {
-      mesaj = 'O zaman $musteriTeklif₺ vereyim.';
-    }
+    final rng = Random();
+    final x = musteriTeklif;
+    const sablonlar = [
+      "Maalesef bu fiyata olmaz. X'e ne dersin?",
+      'Verdiğin fiyat benim için uygun değil. X yapalım mı?',
+      'Anlaşabilmemiz için farklı bir fiyatta buluşmamız gerek. X diyelim mi?',
+      "Kabul etmiyorum. X'e ne dersin?",
+      'Bunu kabul edemem. X diyebilirim?',
+    ];
+    mesaj = sablonlar[rng.nextInt(sablonlar.length)].replaceAll('X', '$x');
   }
 
   PazarlikDurum _kabul(double fiyat) {
     musteriTeklif = fiyat.round();
     durum = PazarlikDurum.anlasildi;
-    mesaj = 'Anlaştık! 🤝';
+    final x = musteriTeklif;
+    final sablonlar = [
+      'Teklifini kabul ediyorum, teşekkürler!',
+      'Bu fiyat benim için uygun, çok sağol!',
+      '$x liralık teklifini kabul ettim!',
+      '$x benim için okeydir, kabul!',
+      'Anlaştık o zaman!',
+      'Güzel fiyat, aldım kabul ettim!...',
+      'Neden olmasın, kabul ediyorum.',
+      'Peki, dediğin gibi olsun. Kabul!',
+    ];
+    mesaj = sablonlar[Random().nextInt(sablonlar.length)];
     return durum;
   }
 
@@ -903,6 +899,7 @@ class GameState extends ChangeNotifier {
       mesaj = '${aktifMusteri!.name}: ${aktifPazarlik!.mesaj}';
       _musteriGonder();
     } else {
+      mesaj = aktifPazarlik!.mesaj;
       notifyListeners();
     }
   }
@@ -917,19 +914,19 @@ class GameState extends ChangeNotifier {
         if (!urunEkle(itemMaliyet)) { mesaj = 'Envanter dolu!'; _musteriGonder(); return; }
         para -= anlasilanFiyat;
         SesServisi.paraGirdi();
-        mesaj = '${m.name}\'den "${m.item.name}" $anlasilanFiyat₺\'ye alındı! 📦';
       } else {
         mesaj = 'Yeterli paran yok! 💸';
         _musteriGonder();
         return;
       }
     } else {
-        urunCikar(m.item.id);
+      urunCikar(m.item.id);
       para += anlasilanFiyat;
       SesServisi.paraGirdi();
-      mesaj = '${m.name} "${m.item.name}" ürününü $anlasilanFiyat₺\'ye aldı! 💰';
     }
-    _musteriGonder();
+    // Kabul mesajını göster, göndermeyi UI'daki gecikme yönetir
+    mesaj = p.mesaj;
+    notifyListeners();
   }
 
   void musteriReddet() {
@@ -1001,6 +998,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   late Animation<double> _slideAnim;
   bool _envanterAcik = false;
   bool _gunBitiPopupGosterildi = false;
+  bool _pazarlikBekleniyor = false;
 
   @override
   void initState() {
@@ -1113,17 +1111,17 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('Kasa: $paraOncesi₺', textAlign: TextAlign.center, style: const TextStyle(color: Colors.white70, fontSize: 16)),
+            Text('Kasa: $paraOncesi', textAlign: TextAlign.center, style: const TextStyle(color: Colors.white70, fontSize: 16)),
             const SizedBox(height: 8),
             Row(mainAxisAlignment: MainAxisAlignment.center, children: [
               const Text('🏠 Kira: ', style: TextStyle(color: Colors.white54, fontSize: 14)),
-              Text('-$kira₺', style: const TextStyle(color: Colors.redAccent, fontSize: 16, fontWeight: FontWeight.bold)),
+              Text('-$kira', style: const TextStyle(color: Colors.redAccent, fontSize: 16, fontWeight: FontWeight.bold)),
             ]),
             if (krediKesinti > 0) ...[
               const SizedBox(height: 6),
               Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                 const Text('🏦 Kredi taksiti: ', style: TextStyle(color: Colors.white54, fontSize: 14)),
-                Text('-$krediKesinti₺', style: const TextStyle(color: Colors.orangeAccent, fontSize: 16, fontWeight: FontWeight.bold)),
+                Text('-$krediKesinti', style: const TextStyle(color: Colors.orangeAccent, fontSize: 16, fontWeight: FontWeight.bold)),
               ]),
               const SizedBox(height: 4),
               Text('(${_state.krediKalanTaksit - 1} taksit kaldı)',
@@ -1133,7 +1131,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
             const SizedBox(height: 8),
             const Divider(color: Color(0xFFFFD700), height: 1),
             const SizedBox(height: 8),
-            Text('Kalan: ${paraOncesi - toplamKesinti}₺',
+            Text('Kalan: ${paraOncesi - toplamKesinti}',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: (paraOncesi - toplamKesinti) < 0 ? Colors.redAccent : const Color(0xFF00FF88),
@@ -1283,7 +1281,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
             if (satinAlindi)
               const Text('✅ Alındı', style: TextStyle(fontSize: 10, color: Color(0xFF3fb950), fontWeight: FontWeight.bold))
             else
-              Text('$fiyat₺', style: const TextStyle(fontSize: 11, color: Color(0xFFf78166), fontWeight: FontWeight.bold)),
+              Text('$fiyat', style: const TextStyle(fontSize: 11, color: Color(0xFFf78166), fontWeight: FontWeight.bold)),
           ],
         ),
       ),
@@ -1328,7 +1326,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                 const SizedBox(height: 14),
                 Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                   const Text('Fiyat:', style: TextStyle(color: Colors.white54, fontSize: 14)),
-                  const Text('2000₺', style: TextStyle(color: Color(0xFFf78166), fontSize: 18, fontWeight: FontWeight.bold)),
+                  const Text('2000', style: TextStyle(color: Color(0xFFf78166), fontSize: 18, fontWeight: FontWeight.bold)),
                 ]),
                 if (!yeterliPara) ...[
                   const SizedBox(height: 8),
@@ -1491,7 +1489,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                           ikon: '🏦',
                           baslik: 'Banka Kredisi',
                           altyazi: _state.aktifKrediVar
-                              ? 'Aktif kredi: ${_state.krediTaksitMiktar}₺ × ${_state.krediKalanTaksit} taksit kaldı'
+                              ? 'Aktif kredi: ${_state.krediTaksitMiktar} × ${_state.krediKalanTaksit} taksit kaldı'
                               : 'İhtiyaç kredisi başvurusu yap',
                           renk: const Color(0xFF3fb950),
                           onTap: () { Navigator.pop(ctx); _bankaKrediPopup(); },
@@ -1645,7 +1643,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: const BorderSide(color: Colors.orangeAccent, width: 1.5)),
           title: const Text('🏦 Aktif Kredi Var', textAlign: TextAlign.center, style: TextStyle(color: Colors.orangeAccent, fontSize: 18)),
           content: Text(
-            'Hâlâ aktif bir krediniz var.\n\n${_state.krediTaksitMiktar}₺ × ${_state.krediKalanTaksit} taksit kaldı.\n\nKrediniz bitince yeni başvuru yapabilirsiniz.',
+            'Hâlâ aktif bir krediniz var.\n\n${_state.krediTaksitMiktar} × ${_state.krediKalanTaksit} taksit kaldı.\n\nKrediniz bitince yeni başvuru yapabilirsiniz.',
             textAlign: TextAlign.center,
             style: const TextStyle(color: Colors.white70, fontSize: 14),
           ),
@@ -1688,14 +1686,14 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                 border: Border.all(color: const Color(0xFF3fb950).withValues(alpha: 0.3)),
               ),
               child: Column(children: [
-                Text('$x₺', style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Color(0xFF3fb950))),
+                Text('$x', style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Color(0xFF3fb950))),
                 const SizedBox(height: 4),
                 const Text('Kredi Tutarı', style: TextStyle(fontSize: 12, color: Colors.white38)),
               ]),
             ),
             const SizedBox(height: 14),
             Text(
-              'Banka şu anda sana $x₺ kredi vermeyi uygun buluyor.',
+              'Banka şu anda sana $x kredi vermeyi uygun buluyor.',
               textAlign: TextAlign.center,
               style: const TextStyle(color: Colors.white70, fontSize: 13),
             ),
@@ -1722,7 +1720,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
               ),
               child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                 const Text('Günlük kesinti:', style: TextStyle(color: Colors.white54, fontSize: 13)),
-                Text('-$taksitMiktar₺/gün', style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 14)),
+                Text('-$taksitMiktar/gün', style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 14)),
               ]),
             ),
             const SizedBox(height: 12),
@@ -1816,7 +1814,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                       const SizedBox(height: 2),
                       Row(children: [
                         const Text('Kira: ', style: TextStyle(fontSize: 11, color: Colors.white38)),
-                        Text('${d.kira}₺/gün', style: const TextStyle(fontSize: 12, color: Colors.redAccent, fontWeight: FontWeight.bold)),
+                        Text('${d.kira}/gün', style: const TextStyle(fontSize: 12, color: Colors.redAccent, fontWeight: FontWeight.bold)),
                       ]),
                       const SizedBox(height: 2),
                       Row(children: [
@@ -1918,35 +1916,52 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   }
 
   Widget _buildHeader() {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.6),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFFFD700).withValues(alpha: 0.5)),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(children: [
-            const Text('🕹️', style: TextStyle(fontSize: 18)),
-            const SizedBox(width: 6),
-            Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('OYUNCU DÜKKANI', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFFFFD700), letterSpacing: 1.2)),
-              Text('${_state.gun}. Gün • ${_state.gunlukMusteriSayisi}/${_state.gunlukMusteriLimiti} Müşteri', style: const TextStyle(fontSize: 10, color: Colors.white70)),
-            ]),
-          ]),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: const Color(0xFFFFD700).withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: const Color(0xFFFFD700), width: 1),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+      child: IntrinsicHeight(
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // ── Sol: Gün ──
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Colors.black.withValues(alpha: 0.80), const Color(0xFF1a2a1a).withValues(alpha: 0.85)],
+                  begin: Alignment.topLeft, end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFF4caf50).withValues(alpha: 0.55), width: 1.3),
+                boxShadow: [BoxShadow(color: const Color(0xFF4caf50).withValues(alpha: 0.15), blurRadius: 8, offset: const Offset(0, 2))],
+              ),
+              child: Row(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.center, children: [
+                const Text('🗓️', style: TextStyle(fontSize: 13)),
+                const SizedBox(width: 5),
+                Text('${_state.gun}. GÜN', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Color(0xFFFFD700), height: 1.0)),
+              ]),
             ),
-            child: Text('💰 ${_state.para}₺', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFFFFD700))),
-          ),
-        ],
+            // ── Sağ: Bakiye ──
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [const Color(0xFF3a2800).withValues(alpha: 0.90), const Color(0xFF1a1000).withValues(alpha: 0.90)],
+                  begin: Alignment.topLeft, end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFFFFD700).withValues(alpha: 0.70), width: 1.3),
+                boxShadow: [BoxShadow(color: const Color(0xFFFFD700).withValues(alpha: 0.18), blurRadius: 8, offset: const Offset(0, 2))],
+              ),
+              child: Row(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.center, children: [
+                const Text('💰', style: TextStyle(fontSize: 18)),
+                const SizedBox(width: 7),
+                Text('${_state.para}',
+                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Color(0xFFFFD700), letterSpacing: 0.3)),
+              ]),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1964,7 +1979,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
               final screenH = MediaQuery.of(context).size.height;
               final hedef = (screenW - 171) / 2;
               final dx = hedef + (screenW - hedef) * _slideAnim.value;
-              return Positioned(left: dx, top: screenH * 0.13 + 9, child: child!);
+              return Positioned(left: dx, top: screenH * 0.14 + 4, child: child!);
             },
             child: _state.aktifOzelMusteri != null
               ? _buildOzelMusteriWidget(_state.aktifOzelMusteri!)
@@ -2017,7 +2032,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
             ),
             child: TypewriterText(
               text: _state.mesaj,
-              style: TextStyle(fontSize: 12,
+              style: TextStyle(fontSize: 14,
                 color: _state.aktifOzelMusteri != null
                   ? ((_state.aktifOzelMusteri!.tip == OzelMusteriTip.hirsiz) ? Colors.redAccent : (_state.aktifOzelMusteri!.tip == OzelMusteriTip.polis) ? Colors.blueAccent : Colors.orangeAccent)
                   : const Color(0xFFFFD700)),
@@ -2121,7 +2136,23 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
             ]),
             const SizedBox(height: 8),
           ],
-          Row(children: [
+          if (_pazarlikBekleniyor) ...[
+            Row(children: [
+              Expanded(child: ElevatedButton.icon(
+                onPressed: _pazarlikGoster,
+                icon: const Text('💬', style: TextStyle(fontSize: 20)),
+                label: const Text('Teklif Ver', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFFD700), foregroundColor: Colors.black, padding: const EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+              )),
+              const SizedBox(width: 12),
+              Expanded(child: ElevatedButton.icon(
+                onPressed: _pazarlikVazgec,
+                icon: const Text('🚶', style: TextStyle(fontSize: 20)),
+                label: const Text('Vazgeç', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFAA0000), foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+              )),
+            ]),
+          ] else Row(children: [
             Expanded(child: ElevatedButton.icon(
               onPressed: (_state.musteriKabulBekliyor || _state.aktifPazarlik != null || _state.gunBitmeli) ? null : _musteriCagir,
               icon: const Text('🚪', style: TextStyle(fontSize: 20)),
@@ -2151,6 +2182,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   }
 
   Widget _buildEnvanterOverlay() {
+
     return GestureDetector(
       onTap: () => setState(() => _envanterAcik = false),
       child: Container(
@@ -2247,7 +2279,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
           Expanded(child: Image.asset(item.gorsel, fit: BoxFit.contain)),
           const SizedBox(height: 2),
           Text(item.name, style: const TextStyle(fontSize: 7, fontWeight: FontWeight.bold, color: Colors.white70), textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis),
-          Text('${item.basePrice}₺', style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Color(0xFF00FF88))),
+          Text('${item.basePrice}', style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Color(0xFF00FF88))),
           Text(item.kondisyonYildiz, style: const TextStyle(fontSize: 8, color: Color(0xFFFFD700), letterSpacing: 0.5)),
         ],
       ),
@@ -2366,13 +2398,33 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
 
   void _pazarlikGoster() {
     final m = _state.aktifMusteri!;
+    setState(() => _pazarlikBekleniyor = false);
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (ctx) => _PazarlikDialog(state: _state, musteri: m),
     ).then((_) {
-      _slideController.reverse().then((_) { if (mounted) _state.musteriAnimasyonBitti(); });
+      if (!mounted) return;
+      final p = _state.aktifPazarlik;
+      if (p != null && p.durum == PazarlikDurum.devamEdiyor) {
+        setState(() => _pazarlikBekleniyor = true);
+      } else if (p != null && p.durum == PazarlikDurum.anlasildi) {
+        // Kabul mesajı balonda görünsün, 1.5 sn sonra müşteri gitsin
+        Future.delayed(const Duration(milliseconds: 1500), () {
+          if (!mounted) return;
+          _slideController.reverse().then((_) { if (mounted) _state.musteriAnimasyonBitti(); });
+        });
+      } else {
+        setState(() => _pazarlikBekleniyor = false);
+        _slideController.reverse().then((_) { if (mounted) _state.musteriAnimasyonBitti(); });
+      }
     });
+  }
+
+  void _pazarlikVazgec() {
+    setState(() => _pazarlikBekleniyor = false);
+    _state.musteriReddet();
+    _slideController.reverse().then((_) { if (mounted) _state.musteriAnimasyonBitti(); });
   }
 }
 
@@ -2397,8 +2449,8 @@ class _PazarlikDialogState extends State<_PazarlikDialog> {
     final p = widget.state.aktifPazarlik!;
     _teklifController = TextEditingController(text: p.oyuncuTeklif.toString());
     _dialogMesaj = widget.musteri.musteriSatiyor
-        ? '"${widget.musteri.item.name}" için ${p.musteriTeklif}₺ istiyorum.'
-        : '"${widget.musteri.item.name}" için ${p.musteriTeklif}₺ vereyim.';
+        ? '"${widget.musteri.item.name}" için ${p.musteriTeklif} istiyorum.'
+        : '"${widget.musteri.item.name}" için ${p.musteriTeklif} vereyim.';
   }
 
   @override
@@ -2409,32 +2461,21 @@ class _PazarlikDialogState extends State<_PazarlikDialog> {
     if (teklif == null || teklif <= 0) return;
     final p = widget.state.aktifPazarlik!;
     widget.state.teklifVer(teklif);
-    setState(() {
-      if (p.durum == PazarlikDurum.anlasildi) {
-        _dialogMesaj = '🤝 Anlaştık!';
-        _bitti = true;
-        Future.delayed(const Duration(milliseconds: 800), () { if (mounted) Navigator.of(context).pop(); });
-      } else if (p.durum == PazarlikDurum.gitti) {
-        _dialogMesaj = p.mesaj;
-        _bitti = true;
-        Future.delayed(const Duration(milliseconds: 1400), () { if (mounted) Navigator.of(context).pop(); });
-      } else {
-        _dialogMesaj = p.mesaj;
-      }
-    });
+    // Her durumda popup kapanır, mesaj ana ekranda balondan okunur
+    Navigator.of(context).pop();
   }
 
   Widget _buildMesajWidget(String mesaj, bool anlasildi, bool gitti) {
     final color = anlasildi ? Colors.greenAccent : gitti ? Colors.redAccent : Colors.white70;
-    final regex = RegExp(r'([0-9]+₺)');
+    final regex = RegExp(r'\b([0-9]{2,})\b');
     final spans = <TextSpan>[];
     int last = 0;
     for (final match in regex.allMatches(mesaj)) {
-      if (match.start > last) spans.add(TextSpan(text: mesaj.substring(last, match.start), style: TextStyle(color: color, fontStyle: FontStyle.italic, fontSize: 13)));
-      spans.add(TextSpan(text: match.group(0), style: const TextStyle(color: Color(0xFFFFD700), fontWeight: FontWeight.bold, fontSize: 16)));
+      if (match.start > last) spans.add(TextSpan(text: mesaj.substring(last, match.start), style: TextStyle(color: color, fontStyle: FontStyle.italic, fontSize: 15)));
+      spans.add(TextSpan(text: match.group(0), style: const TextStyle(color: Color(0xFFFFD700), fontWeight: FontWeight.bold, fontSize: 18)));
       last = match.end;
     }
-    if (last < mesaj.length) spans.add(TextSpan(text: mesaj.substring(last), style: TextStyle(color: color, fontStyle: FontStyle.italic, fontSize: 13)));
+    if (last < mesaj.length) spans.add(TextSpan(text: mesaj.substring(last), style: TextStyle(color: color, fontStyle: FontStyle.italic, fontSize: 15)));
     return RichText(textAlign: TextAlign.center, text: TextSpan(children: spans));
   }
 
@@ -2449,42 +2490,31 @@ class _PazarlikDialogState extends State<_PazarlikDialog> {
     return AlertDialog(
       backgroundColor: const Color(0xFF1a1008),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: const BorderSide(color: Color(0xFFFFD700), width: 1.5)),
-      title: Row(children: [
-        Image.asset(m.gorsel, width: 52, height: 52, fit: BoxFit.contain),
-        const SizedBox(width: 10),
-        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(m.name, style: const TextStyle(fontSize: 15, color: Colors.white, fontWeight: FontWeight.bold)),
-          Text(m.musteriSatiyor ? '💼 Satmak istiyor' : '🛒 Almak istiyor', style: const TextStyle(fontSize: 14, color: Colors.white54)),
-        ])),
-      ]),
+      titlePadding: EdgeInsets.zero,
+      contentPadding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
       content: ConstrainedBox(
-        constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.55),
+        constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.70),
         child: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(color: Colors.black38, borderRadius: BorderRadius.circular(10)),
-                child: Row(children: [
-                  Image.asset(m.item.gorsel, width: 80, height: 80, fit: BoxFit.contain),
-                  const SizedBox(width: 4),
-                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(m.item.name, style: const TextStyle(fontSize: 14, color: Colors.white, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 4),
-                    Text('Piyasa: ${m.item.basePrice}₺', style: const TextStyle(fontSize: 14, color: Colors.white60, fontWeight: FontWeight.w600)),
-                    if (!m.musteriSatiyor && m.item.maliyet != null) ...[
-                      const SizedBox(height: 2),
-                      Text('Maliyet: ${m.item.maliyet}₺', style: const TextStyle(fontSize: 12, color: Colors.orangeAccent)),
-                    ],
-                    const SizedBox(height: 2),
-                    Row(children: [
-                      const Text('Kondisyon: ', style: TextStyle(fontSize: 11, color: Colors.white38)),
-                      Text(m.item.kondisyonYildiz, style: const TextStyle(fontSize: 11, color: Color(0xFFFFD700))),
-                    ]),
-                  ])),
-                ]),
-              ),
+              Center(child: Image.asset(m.item.gorsel, width: 160, height: 160, fit: BoxFit.contain)),
+              const SizedBox(height: 10),
+              Text(m.item.name, textAlign: TextAlign.center, style: const TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 4),
+              RichText(textAlign: TextAlign.center, text: TextSpan(children: [
+                const TextSpan(text: 'Piyasa: ', style: TextStyle(fontSize: 14, color: Colors.white60, fontWeight: FontWeight.w600)),
+                TextSpan(text: '${m.item.basePrice}', style: const TextStyle(fontSize: 14, color: Color(0xFF64B5F6), fontWeight: FontWeight.bold)),
+              ])),
+              if (!m.musteriSatiyor && m.item.maliyet != null) ...[
+                const SizedBox(height: 2),
+                Text('Maliyet: ${m.item.maliyet}', textAlign: TextAlign.center, style: const TextStyle(fontSize: 12, color: Colors.orangeAccent)),
+              ],
+              const SizedBox(height: 2),
+              Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                const Text('Kondisyon: ', style: TextStyle(fontSize: 13, color: Colors.white38)),
+                Text(m.item.kondisyonYildiz, style: const TextStyle(fontSize: 13, color: Color(0xFFFFD700))),
+              ]),
               const SizedBox(height: 12),
               if (_dialogMesaj.isNotEmpty)
                 Container(
@@ -2559,22 +2589,27 @@ class _PazarlikDialogState extends State<_PazarlikDialog> {
                     ),
                   ]),
                 ),
+              if (!_bitti) ...[
+                const SizedBox(height: 12),
+                Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                  Expanded(child: ElevatedButton(
+                    onPressed: () { Navigator.of(context).pop(); widget.state.musteriReddet(); },
+                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFAA0000), foregroundColor: Colors.white),
+                    child: const Text('Vazgeç', style: TextStyle(fontWeight: FontWeight.bold)),
+                  )),
+                  const SizedBox(width: 12),
+                  Expanded(child: ElevatedButton(
+                    onPressed: _teklifGonder,
+                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFFD700), foregroundColor: Colors.black),
+                    child: Text(m.musteriSatiyor ? 'Teklif Ver' : 'Fiyat Ver', style: const TextStyle(fontWeight: FontWeight.bold)),
+                  )),
+                ]),
+                const SizedBox(height: 8),
+              ],
             ],
           ),
         ),
       ),
-      actions: _bitti ? [] : [
-        ElevatedButton(
-          onPressed: () { Navigator.of(context).pop(); widget.state.musteriReddet(); },
-          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFAA0000), foregroundColor: Colors.white),
-          child: const Text('Vazgeç', style: TextStyle(fontWeight: FontWeight.bold)),
-        ),
-        ElevatedButton(
-          onPressed: _teklifGonder,
-          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFFD700), foregroundColor: Colors.black),
-          child: Text(m.musteriSatiyor ? 'Teklif Ver' : 'Fiyat Ver', style: const TextStyle(fontWeight: FontWeight.bold)),
-        ),
-      ],
     );
   }
 }
