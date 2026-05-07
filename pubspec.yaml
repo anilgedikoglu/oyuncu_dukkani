@@ -2,7 +2,7 @@ name: oyuncu_dukkani
 description: "A new Flutter project."
 publish_to: 'none'
 
-version: 1.0.1+2
+version: 1.0.0+11
 
 environment:
   sdk: ^3.7.2
@@ -18,6 +18,15 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^5.0.0
+  device_preview: ^1.2.0
+  flutter_launcher_icons: ^0.14.3
+
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: "assets/oyuncu_dukkani_icon.png"
+  adaptive_icon_background: "#000000"
+  adaptive_icon_foreground: "assets/oyuncu_dukkani_icon.png"
 
 flutter:
   uses-material-design: true

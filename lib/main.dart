@@ -2,12 +2,19 @@
 import 'dart:convert';
 import 'dart:math';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:device_preview/device_preview.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const OyuncuDukkaniApp());
+  runApp(
+    DevicePreview(
+      enabled: kDebugMode,
+      builder: (context) => const OyuncuDukkaniApp(),
+    ),
+  );
 }
 
 class OyuncuDukkaniApp extends StatelessWidget {
@@ -17,8 +24,10 @@ class OyuncuDukkaniApp extends StatelessWidget {
     return MaterialApp(
       title: 'Oyuncu Dükkanı',
       debugShowCheckedModeBanner: false,
+      locale: DevicePreview.locale(context),
+      builder: DevicePreview.appBuilder,
       theme: ThemeData.dark().copyWith(scaffoldBackgroundColor: const Color(0xFF1a1008)),
-      home: const AnaMenuEkrani(),
+      home: const SplashScreen(),
     );
   }
 }
@@ -56,6 +65,72 @@ const List<DukkanSeviye> tumDukkanlar = [
   DukkanSeviye(seviye: 4, isim: 'Çarşı Dükkanı',        kira: 1200),
   DukkanSeviye(seviye: 5, isim: 'AVM Dükkanı',          kira: 1500),
 ];
+
+// ─── ANA MENÜ ────────────────────────────────────────────────────────────────
+
+// ─── SPLASH SCREEN ───────────────────────────────────────────────────────────
+
+class SplashScreen extends StatefulWidget {
+  const SplashScreen({super.key});
+  @override
+  State<SplashScreen> createState() => _SplashScreenState();
+}
+
+class _SplashScreenState extends State<SplashScreen> {
+  @override
+  void initState() {
+    super.initState();
+    Future.delayed(const Duration(seconds: 6), () {
+      if (!mounted) return;
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const AnaMenuEkrani()),
+      );
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: SafeArea(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: SizedBox(
+                width: 340,
+                child: Text(
+                  'YASAL BİLGİLENDİRME\n\n'
+                  '© 2026 Futurastic Tech. Tüm hakları saklıdır.\n\n'
+                  'Bu oyun bağımsız bir yapımdır. Oyun içeriğinde yer alan tüm yazılım, tasarım, arayüz, görseller, metinler, sesler, animasyonlar ve oyun içi öğeler (aksine açıkça belirtilmedikçe) geliştiriciye aittir ve telif hakkı ile korunur.\n\n'
+                  'ÜÇÜNCÜ TARAF MARKALARI / İSİMLERİ\n\n'
+                  'Oyunda yer alabilecek veya oyunda anılabilecek üçüncü taraf marka, ürün, oyun adı, logo ve benzeri unsurlar ilgili sahiplerinin mülkiyetinde olabilir. Bu unsurlar yalnızca referans/temsili amaçlarla kullanılabilir ve herhangi bir sponsorluk, onay veya resmi bağlantıyı ifade etmez.\n\n'
+                  'HİZMETİN SUNUMU\n\n'
+                  'Oyun "olduğu gibi" ve "mevcut olduğu ölçüde" sunulur. Geliştirici; oyunun kesintisiz, hatasız, güvenli veya belirli bir amaca uygun olacağına dair açık ya da zımni bir garanti vermez. Performans, uyumluluk, veri kaybı veya üçüncü taraf servis kesintileri dahil olmak üzere doğabilecek sonuçlardan, yürürlükteki mevzuatın izin verdiği ölçüde sorumluluk kabul edilmez.\n\n'
+                  'ÇEVRİMİÇİ ÖZELLİKLER / ÜÇÜNCÜ TARAF SERVİSLER\n\n'
+                  'Oyun, Apple Game Center gibi üçüncü taraf servislerle entegre olabilir. Bu servislerin kullanımı ilgili servis sağlayıcıların şartlarına ve gizlilik politikalarına tabidir. Geliştirici, üçüncü taraf servislerin içerik ve kesintilerinden sorumlu değildir.\n\n'
+                  'OYUN İÇİ DENGE VE SANAL İÇERİK\n\n'
+                  'Oyundaki fiyatlar, ekonomi, puanlama, ödüller, item değerleri ve denge unsurları zaman içinde güncellenebilir. Oyun içi öğeler sanaldır; gerçek dünyada para veya mülk değeri taşımaz ve platform kuralları dışında iade/geri ödeme garantisi verilmez.\n\n'
+                  'GİZLİLİK (ÖZET)\n\n'
+                  'Oyun, performansı iyileştirmek ve hataları gidermek amacıyla cihaz/uygulama sürümü, çökme kayıtları ve benzeri teknik verileri işleyebilir. Kişisel veriler, yalnızca gerekli olduğu ölçüde ve ilgili platform kuralları kapsamında ele alınır.\n\n'
+                  'Devam ederek Kullanım Şartları ve Gizlilik Politikası\'nı kabul etmiş sayılırsınız.',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    height: 1.4,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 // ─── ANA MENÜ ────────────────────────────────────────────────────────────────
 
@@ -731,6 +806,9 @@ class GameState extends ChangeNotifier {
     {'gorsel': 'assets/musteri_6.png', 'cinsiyet': 'E'},
     {'gorsel': 'assets/musteri_7.png', 'cinsiyet': 'K'},
     {'gorsel': 'assets/musteri_8.png', 'cinsiyet': 'K'},
+    {'gorsel': 'assets/musteri_9.png', 'cinsiyet': 'K'},
+    {'gorsel': 'assets/musteri_10.png', 'cinsiyet': 'K'},
+    {'gorsel': 'assets/musteri_11.png', 'cinsiyet': 'E'},
   ];
   List<int> _musteriSira = [];
 
@@ -999,6 +1077,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   bool _envanterAcik = false;
   bool _gunBitiPopupGosterildi = false;
   bool _pazarlikBekleniyor = false;
+  bool _bilgisayarGeldiGosterildi = false;
 
   @override
   void initState() {
@@ -1079,6 +1158,20 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   }
 
   void _gunBitiKontrol() {
+    if (_state.oyunBitti) {
+      Future.delayed(const Duration(milliseconds: 300), () {
+        if (!mounted) return;
+        _gameOverPopup('Para bitti ve envanter boş!\n\n${_state.gun}. günde iflas ettin.', _state.gun);
+      });
+      return;
+    }
+    if (_state.gun >= 3 && !_bilgisayarGeldiGosterildi) {
+      _bilgisayarGeldiGosterildi = true;
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (!mounted) return;
+        _bilgisayarGeldiPopup();
+      });
+    }
     if (_state.gunBitmeli && !_gunBitiPopupGosterildi) {
       _gunBitiPopupGosterildi = true;
       Future.delayed(const Duration(milliseconds: 300), () {
@@ -1086,12 +1179,23 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
         _gunSonuPopupGoster();
       });
     }
-    if (_state.oyunBitti) {
-      Future.delayed(const Duration(milliseconds: 300), () {
-        if (!mounted) return;
-        _gameOverPopup('Para bitti ve envanter boş!\n\n${_state.gun}. günde iflas ettin.', _state.gun);
-      });
-    }
+  }
+
+  void _bilgisayarGeldiPopup() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1a1008),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: const BorderSide(color: Color(0xFFFFD700), width: 2)),
+        title: const Text('🖥️ Bilgisayar Geldi!', textAlign: TextAlign.center, style: TextStyle(color: Color(0xFFFFD700), fontSize: 20)),
+        content: const Text('Tebrikler, ilk bilgisayarın geldi!\nArtık internete bağlanabilirsin.', textAlign: TextAlign.center, style: TextStyle(color: Colors.white70, fontSize: 15)),
+        actions: [Center(child: ElevatedButton(
+          onPressed: () => Navigator.pop(ctx),
+          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFFD700), foregroundColor: Colors.black),
+          child: const Text('Harika!', style: TextStyle(fontWeight: FontWeight.bold)),
+        ))],
+      ),
+    );
   }
 
   void _gunSonuPopupGoster() {
@@ -1376,7 +1480,8 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFf78166),
                     foregroundColor: Colors.black,
-                    disabledBackgroundColor: Colors.grey.withValues(alpha: 0.25),
+                    disabledBackgroundColor: Colors.grey.withValues(alpha: 0.55),
+                    disabledForegroundColor: Colors.white.withValues(alpha: 0.85),
                   ),
                   child: Text(
                     _state.imacSatinAlindi ? 'Alındı ✅' : 'Satın Al',
@@ -1848,45 +1953,59 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
         return Scaffold(
           body: Stack(
             children: [
-              Positioned.fill(child: TweenAnimationBuilder<double>(
-                tween: Tween(begin: 0.0, end: _state.imacSatinAlindi ? 1.0 : 0.0),
-                duration: const Duration(milliseconds: 600),
-                curve: Curves.easeInOut,
-                builder: (_, t, __) {
-                  final musteri = _state.musteriGorunuyor || _state.ozelMusteriGorunuyor;
-                  final align = Alignment.lerp(Alignment.center, const Alignment(0.3, 0), t)!;
-                  return Stack(children: [
-                    // No-customer layer'lar — müşteri gelince AnimatedOpacity ile çıkar
-                    AnimatedOpacity(
-                      opacity: musteri ? 0.0 : (1.0 - t).clamp(0.0, 1.0),
-                      duration: const Duration(milliseconds: 150),
-                      child: Image.asset('assets/dukkan_bg_birivar.png',
-                        fit: BoxFit.cover, width: double.infinity, height: double.infinity,
-                        alignment: align)),
-                    AnimatedOpacity(
-                      opacity: musteri ? 0.0 : t.clamp(0.0, 1.0),
-                      duration: const Duration(milliseconds: 150),
-                      child: Image.asset('assets/dukkan_bg_yenibilg_birivar.png',
-                        fit: BoxFit.cover, width: double.infinity, height: double.infinity,
-                        alignment: align)),
-                    // Customer layer'lar — müşteri gelince AnimatedOpacity ile girer
-                    AnimatedOpacity(
-                      opacity: musteri ? (1.0 - t).clamp(0.0, 1.0) : 0.0,
-                      duration: const Duration(milliseconds: 150),
-                      child: Image.asset('assets/dukkan_bg.png',
-                        fit: BoxFit.cover, width: double.infinity, height: double.infinity,
-                        alignment: align)),
-                    AnimatedOpacity(
-                      opacity: musteri ? t.clamp(0.0, 1.0) : 0.0,
-                      duration: const Duration(milliseconds: 150),
-                      child: Image.asset('assets/dukkan_bg_yenibilg.png',
-                        fit: BoxFit.cover, width: double.infinity, height: double.infinity,
-                        alignment: align)),
-                  ]);
-                },
-              )),
+              // 1. Sabit arka plan
+              Positioned.fill(
+                child: Image.asset('assets/bgbos.png', fit: BoxFit.cover, alignment: Alignment.center),
+              ),
+              // 2. Kapı gölgesi (müşteri yokken görünür)
+              Positioned.fill(
+                child: AnimatedOpacity(
+                  opacity: (_state.musteriGorunuyor || _state.ozelMusteriGorunuyor) ? 0.0 : 1.0,
+                  duration: const Duration(milliseconds: 150),
+                  child: Image.asset('assets/biri.png', fit: BoxFit.cover, alignment: Alignment.center),
+                ),
+              ),
+              // 3. Müşteri karakter görseli (masa layer'ının ALTINDA)
+              if (_state.aktifMusteri != null || _state.aktifOzelMusteri != null)
+                AnimatedBuilder(
+                  animation: _slideAnim,
+                  builder: (context, child) {
+                    final mq = MediaQuery.of(context);
+                    final screenW = mq.size.width;
+                    final screenH = mq.size.height;
+                    final statusBar = mq.padding.top;
+                    final hedef = (screenW - 171) / 2;
+                    final dx = hedef + (screenW - hedef) * _slideAnim.value;
+                    final musteriTop = statusBar + 48.0 + 0.19 * screenH + 4;
+                    return Positioned(left: dx, top: musteriTop, child: child!);
+                  },
+                  child: SizedBox(
+                    width: 171, height: 171,
+                    child: Transform.scale(
+                      scale: 1.2,
+                      child: Image.asset(
+                        _state.aktifOzelMusteri != null
+                          ? _state.aktifOzelMusteri!.gorsel
+                          : _state.aktifMusteri!.gorsel,
+                        fit: BoxFit.contain, isAntiAlias: true, filterQuality: FilterQuality.high,
+                      ),
+                    ),
+                  ),
+                ),
+              // 4. Masa layer'ı (müşterinin üzerinde, SafeArea'nın altında)
+              Positioned.fill(
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 600),
+                  child: _state.imacSatinAlindi
+                    ? Align(key: const ValueKey('bg2'), alignment: Alignment.bottomCenter, child: Transform.translate(offset: const Offset(0, 6), child: Transform.scale(scale: 1.4, alignment: Alignment.bottomCenter, child: Image.asset('assets/bg2.png', fit: BoxFit.fitWidth))))
+                    : (_state.gun >= 3
+                      ? Align(key: const ValueKey('bg1'), alignment: Alignment.bottomCenter, child: Transform.translate(offset: const Offset(0, 6), child: Transform.scale(scale: 1.4, alignment: Alignment.bottomCenter, child: Image.asset('assets/bg1.png', fit: BoxFit.fitWidth))))
+                      : Align(key: const ValueKey('bgbosmasa'), alignment: Alignment.bottomCenter, child: Transform.translate(offset: const Offset(0, 6), child: Transform.scale(scale: 1.4, alignment: Alignment.bottomCenter, child: Image.asset('assets/bgbosmasa.png', fit: BoxFit.fitWidth))))),
+                ),
+              ),
               SafeArea(child: Column(children: [_buildHeader(), Expanded(child: _buildSahne()), _buildAltBar()])),
-              // Dükkan kiralama butonu — ana Stack'te sabit
+              // Dükkan kiralama butonu — 3. günde bilgisayar gelince görünür
+              if (_state.gun >= 3)
               Positioned(
                 left: 16,
                 bottom: 300,
@@ -1975,11 +2094,13 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
           AnimatedBuilder(
             animation: _slideAnim,
             builder: (context, child) {
-              final screenW = MediaQuery.of(context).size.width;
-              final screenH = MediaQuery.of(context).size.height;
+              final mq = MediaQuery.of(context);
+              final screenW = mq.size.width;
+              final screenH = mq.size.height;
               final hedef = (screenW - 171) / 2;
               final dx = hedef + (screenW - hedef) * _slideAnim.value;
-              return Positioned(left: dx, top: screenH * 0.14 + 4, child: child!);
+              final musteriTop = 0.19 * screenH + 4;
+              return Positioned(left: dx, top: musteriTop, child: child!);
             },
             child: _state.aktifOzelMusteri != null
               ? _buildOzelMusteriWidget(_state.aktifOzelMusteri!)
@@ -1989,10 +2110,8 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                 Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Container(
-                      width: 171, height: 171, color: Colors.transparent,
-                      child: Image.asset(_state.aktifMusteri!.gorsel, width: 171, height: 171, fit: BoxFit.contain, isAntiAlias: true, filterQuality: FilterQuality.high),
-                    ),
+                    // Karakter görseli dış Stack'te (masa layer'ının altında) — burası boş placeholder
+                    const SizedBox(width: 171, height: 171),
                     const SizedBox(height: 4),
                     GestureDetector(
                       onTap: () => _ozellikKartiGoster(_state.aktifMusteri!),
@@ -2012,7 +2131,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                 if (_state.aktifMusteri!.musteriSatiyor)
                   Positioned(
                     right: -94,
-                    bottom: _state.aktifMusteri!.item.category == ItemCategory.cd ? -50 : -93,
+                    bottom: _state.aktifMusteri!.item.category == ItemCategory.cd ? -50 : -82,
                     child: Image.asset(_state.aktifMusteri!.item.gorsel, width: 144, height: 144, fit: BoxFit.contain),
                   ),
               ],
@@ -2054,10 +2173,8 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Container(
-          width: 171, height: 171, color: Colors.transparent,
-          child: Image.asset(om.gorsel, width: 171, height: 171, fit: BoxFit.contain, isAntiAlias: true, filterQuality: FilterQuality.high),
-        ),
+        // Karakter görseli dış Stack'te (masa layer'ının altında) — burası boş placeholder
+        const SizedBox(width: 171, height: 171),
         const SizedBox(height: 4),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -2159,7 +2276,8 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
               label: const Text('Müşteri Çağır', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF00AA55), foregroundColor: Colors.white,
-                disabledBackgroundColor: Colors.grey.withValues(alpha: 0.35),
+                disabledBackgroundColor: Colors.grey.withValues(alpha: 0.55),
+                disabledForegroundColor: Colors.white.withValues(alpha: 0.85),
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               ),
