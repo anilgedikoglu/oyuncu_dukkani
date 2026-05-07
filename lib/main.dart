@@ -144,12 +144,14 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
   bool _sesAcik = true;
   bool _ayarlarAcik = false;
   bool _yukleniyor = false;
+  bool _kayitVar = false;
   int? _enYuksekGun;
 
   @override
   void initState() {
     super.initState();
     KayitServisi.enYuksekGunYukle().then((v) { if (mounted) setState(() => _enYuksekGun = v); });
+    KayitServisi.kayitVarMi().then((v) { if (mounted) setState(() => _kayitVar = v); });
   }
 
   void _yeniOyun() {
@@ -200,7 +202,7 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
                 const Spacer(flex: 3),
                 Center(child: _menuButon('Yeni Oyun', _yeniOyun)),
                 const SizedBox(height: 12),
-                Center(child: _menuButon('Devam Et', _yukleniyor ? null : () => _devamEt())),
+                Center(child: _menuButon('Devam Et', (_kayitVar && !_yukleniyor) ? () => _devamEt() : null)),
                 const SizedBox(height: 12),
                 Center(child: _menuButon('Ayarlar', () => setState(() => _ayarlarAcik = true))),
                 if (_enYuksekGun != null) ...[
@@ -1977,8 +1979,8 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
               // MÜŞTERİ BOYUTU VE KONUMU (dış Stack — katman 3):
               //   width: 513, height: 513  ← DOKUNMA! Ekranı dolduruyor, alt kısmı masanın arkasına gizleniyor
               //   hedef = (screenW - 513) / 2  ← ortalanmış (ekrandan taşabilir, intentional)
-              //   musteriTop = statusBar + 48.0 + screenH * 0.14 + 34
-              //     48.0 = header yüksekliği, 0.14 = ekranın %14'ü, 34 = ince ayar
+              //   musteriTop = statusBar + 48.0 + screenH * 0.14 + 44
+              //     48.0 = header yüksekliği, 0.14 = ekranın %14'ü, 44 = ince ayar
               // ═══════════════════════════════════════════════════════════════
               if (_state.aktifMusteri != null || _state.aktifOzelMusteri != null)
                 AnimatedBuilder(
@@ -1988,13 +1990,13 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                     final screenW = mq.size.width;
                     final screenH = mq.size.height;
                     final statusBar = mq.padding.top;
-                    final hedef = (screenW - 513) / 2;
+                    final hedef = (screenW - 564) / 2;
                     final dx = hedef + (screenW - hedef) * _slideAnim.value;
-                    final musteriTop = statusBar + 48.0 + screenH * 0.14 + 34;
+                    final musteriTop = statusBar + 48.0 + screenH * 0.14 + 44;
                     return Positioned(left: dx, top: musteriTop, child: child!);
                   },
                   child: SizedBox(
-                    width: 513, height: 513,
+                    width: 564, height: 564,
                     child: Image.asset(
                       _state.aktifOzelMusteri != null
                         ? _state.aktifOzelMusteri!.gorsel
@@ -2108,9 +2110,9 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
               final mq = MediaQuery.of(context);
               final screenW = mq.size.width;
               final screenH = mq.size.height;
-              final hedef = (screenW - 513) / 2;
+              final hedef = (screenW - 564) / 2;
               final dx = hedef + (screenW - hedef) * _slideAnim.value;
-              final musteriTop = screenH * 0.14 + 34;
+              final musteriTop = screenH * 0.14 + 44;
               return Positioned(left: dx, top: musteriTop, child: child!);
             },
             child: _state.aktifOzelMusteri != null
@@ -2118,13 +2120,14 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
               : Stack(
               clipBehavior: Clip.none,
               children: [
-                Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Karakter görseli dış Stack'te (masa layer'ının altında) — burası boş placeholder
-                    const SizedBox(width: 513, height: 513),
-                    const SizedBox(height: 4),
-                    GestureDetector(
+                // Karakter görseli dış Stack'te (masa layer'ının altında) — burası boş placeholder
+                const SizedBox(width: 564, height: 564),
+                // İsim etiketi: placeholder içinde, alttan 206px yukarıda
+                Positioned(
+                  bottom: 306,
+                  left: 0, right: 0,
+                  child: Center(
+                    child: GestureDetector(
                       onTap: () => _ozellikKartiGoster(_state.aktifMusteri!),
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -2136,9 +2139,8 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                         child: Text(_state.aktifMusteri!.name, style: const TextStyle(fontSize: 12, color: Color(0xFFFFD700), fontWeight: FontWeight.bold)),
                       ),
                     ),
-                  ],
+                  ),
                 ),
-
               ],
             ),
           ),
@@ -2158,28 +2160,32 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
         if (_state.aktifMusteri != null && _state.aktifMusteri!.musteriSatiyor)
           AnimatedBuilder(
             animation: _slideAnim,
-            builder: (context, child) {
+            builder: (context, _) {
               final screenW = MediaQuery.of(context).size.width;
               final screenH = MediaQuery.of(context).size.height;
               final st = MediaQuery.of(context).viewPadding.top;
               const hh = 48.0;
-              final hedef = (screenW - 513) / 2;
+              final hedef = (screenW - 564) / 2;
               final dx = hedef + (screenW - hedef) * _slideAnim.value;
-              const productSize = 144.0;
-              final productLeft = dx + 306; // müşteri sol kenarından +306px
-              final productTop = screenH * 0.57 - productSize - st - hh + 22; // masa yüzeyi hizası
-              return Positioned(left: productLeft, top: productTop, child: child!);
+              final gorsel = _state.aktifMusteri!.item.gorsel;
+              final kucukUrun = gorsel == 'assets/konsol_3.png' || gorsel == 'assets/oyuncudireksiyonu.png';
+              final productSize = kucukUrun ? 151.0 * 0.85 : 151.0;
+              final productLeft = dx + 306 + (gorsel == 'assets/oyuncudireksiyonu.png' ? 7 : 0); // müşteri sol kenarından +306px
+              final productTop = screenH * 0.57 - productSize - st - hh + 32; // masa yüzeyi hizası
+              return Positioned(
+                left: productLeft, top: productTop,
+                child: Image.asset(
+                  gorsel,
+                  width: productSize, height: productSize, fit: BoxFit.contain,
+                ),
+              );
             },
-            child: Image.asset(
-              _state.aktifMusteri!.item.gorsel,
-              width: 144, height: 144, fit: BoxFit.contain,
-            ),
           ),
         // Mesaj kutusu
         Positioned(
-          top: 12, left: 12, right: 12,
+          top: 6, left: 6, right: 6,
           child: Container(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
               color: Colors.black.withValues(alpha: 0.72),
               borderRadius: BorderRadius.circular(10),
@@ -2187,14 +2193,32 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                 ? ((_state.aktifOzelMusteri!.tip == OzelMusteriTip.hirsiz) ? Colors.redAccent : (_state.aktifOzelMusteri!.tip == OzelMusteriTip.polis) ? Colors.blueAccent : Colors.orangeAccent).withValues(alpha: 0.7)
                 : const Color(0xFFFFD700).withValues(alpha: 0.4)),
             ),
-            child: TypewriterText(
-              text: _state.mesaj,
-              style: TextStyle(fontSize: 14,
-                color: _state.aktifOzelMusteri != null
-                  ? ((_state.aktifOzelMusteri!.tip == OzelMusteriTip.hirsiz) ? Colors.redAccent : (_state.aktifOzelMusteri!.tip == OzelMusteriTip.polis) ? Colors.blueAccent : Colors.orangeAccent)
-                  : const Color(0xFFFFD700)),
-              textAlign: TextAlign.center,
-            ),
+            child: _state.aktifMusteri != null && !_state.aktifMusteri!.musteriSatiyor
+              ? Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Image.asset(
+                      _state.aktifMusteri!.item.gorsel,
+                      width: 200, height: 200, fit: BoxFit.contain,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: TypewriterText(
+                        text: _state.mesaj,
+                        style: TextStyle(fontSize: 14, color: const Color(0xFFFFD700)),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ],
+                )
+              : TypewriterText(
+                  text: _state.mesaj,
+                  style: TextStyle(fontSize: 14,
+                    color: _state.aktifOzelMusteri != null
+                      ? ((_state.aktifOzelMusteri!.tip == OzelMusteriTip.hirsiz) ? Colors.redAccent : (_state.aktifOzelMusteri!.tip == OzelMusteriTip.polis) ? Colors.blueAccent : Colors.orangeAccent)
+                      : const Color(0xFFFFD700)),
+                  textAlign: TextAlign.center,
+                ),
           ),
         ),
       ],
@@ -2208,20 +2232,25 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       case OzelMusteriTip.polis: renk = Colors.blueAccent; break;
       case OzelMusteriTip.vergici: renk = Colors.orangeAccent; break;
     }
-    return Column(
-      mainAxisSize: MainAxisSize.min,
+    // placeholder 513px — normal müşteriyle aynı (dx negatif olduğunda yazı ekran dışına çıkmasın)
+    return Stack(
+      clipBehavior: Clip.none,
       children: [
-        // Karakter görseli dış Stack'te (masa layer'ının altında) — burası boş placeholder
-        const SizedBox(width: 171, height: 171),
-        const SizedBox(height: 4),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-          decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha: 0.75),
-            borderRadius: BorderRadius.circular(6),
-            border: Border.all(color: renk.withValues(alpha: 0.8)),
+        const SizedBox(width: 564, height: 564),
+        Positioned(
+          bottom: 306,
+          left: 0, right: 0,
+          child: Center(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.75),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: renk.withValues(alpha: 0.8)),
+              ),
+              child: Text(om.ad, style: TextStyle(fontSize: 13, color: renk, fontWeight: FontWeight.bold)),
+            ),
           ),
-          child: Text(om.ad, style: TextStyle(fontSize: 12, color: renk, fontWeight: FontWeight.bold)),
         ),
       ],
     );

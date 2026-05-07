@@ -55,28 +55,48 @@ SplashScreen (6 sn yasal metin)
 
 #### ⚠️ MÜŞTERİ BOYUTU VE KONUMU (Outer Stack — katman 3):
 ```
-width:  513px  ← DOKUNMA! Ekranı dolduruyor, alt kısmı masanın arkasına gizleniyor
-height: 513px  ← DOKUNMA!
-hedef = (screenW - 513) / 2   ← ortalanmış, ekrandan taşması intentional
+width:  564px  ← DOKUNMA! Ekranı dolduruyor, alt kısmı masanın arkasına gizleniyor
+height: 564px  ← DOKUNMA!
+hedef = (screenW - 564) / 2   ← ortalanmış, ekrandan taşması intentional
 dx    = hedef + (screenW - hedef) * slideAnim   ← sağdan kayarak giriş animasyonu
-musteriTop = statusBar + 48.0 + screenH * 0.14 + 34
+musteriTop = statusBar + 48.0 + screenH * 0.14 + 44
              ↑ status bar    ↑ header   ↑ %14   ↑ ince ayar
 ```
-- `_buildSahne()` içindeki placeholder da **513×513 SizedBox** olmalı (Z-order korunur)
-- `musteriTop` (_buildSahne içi) = `screenH * 0.14 + 34` (status bar yok, SafeArea içinde)
+- `_buildSahne()` içindeki placeholder da **564×564 SizedBox** olmalı (Z-order korunur)
+- `musteriTop` (_buildSahne içi) = `screenH * 0.14 + 44` (status bar yok, SafeArea içinde)
 
-#### ⚠️ ÜRÜN KONUMU (_buildSahne() içinde — masa katmanının ÜSTÜNDEKİ katmanda):
+#### ⚠️ İSİM ETİKETİ KONUMU (_buildSahne içi müşteri Stack'i):
 ```
-width:  144px, height: 144px
-productLeft = dx + 306
-              ↑ müşteri animasyonunu takip eder  ↑ müşteri sol kenarından +306px sağa
-productTop  = screenH * 0.57 - productSize - st - hh + 22
-              ↑ ekranın %57'si  ↑ 144px   ↑ statusBar  ↑ 48 header  ↑ ince ayar
+Positioned(bottom: 306, left: 0, right: 0, child: Center(...))
+```
+- Normal müşteri ve özel müşteri (polis/hırsız/vergici) **aynı bottom: 306** değerini kullanır
+- `_buildOzelMusteriWidget` da aynı Stack yapısını kullanır — DOKUNMA!
+
+#### ⚠️ ÜRÜN KONUMU (_buildSahne() içinde — AnimatedBuilder, masa katmanının üstünde):
+```
+productSize = 151px  (normal ürünler)
+productSize = 151 * 0.85 ≈ 128px  (konsol_3.png ve oyuncudireksiyonu.png — %15 küçük)
+
+productLeft = dx + 306                (tüm ürünler)
+productLeft = dx + 306 + 7 = dx+313  (oyuncudireksiyonu.png — 7px sağa özel)
+
+productTop  = screenH * 0.57 - productSize - st - hh + 32
+              ↑ ekranın %57'si  ↑ boyut   ↑ statusBar  ↑ 48 header  ↑ ince ayar
               → ürün ALT kenarı ekranın %57'sinde (masa yüzeyi hizası)
 st = viewPadding.top (status bar), hh = 48.0 (header height)
 ```
 - Ürün `_buildSahne()` Stack'inde **ayrı AnimatedBuilder** olarak render edilir
 - İç müşteri Stack'ine (Positioned right/bottom) KOYMA — absolute koordinat kullan
+
+#### ⚠️ KONUŞMA BALONU (mesaj kutusu):
+```
+Positioned(top: 6, left: 6, right: 6)
+Container padding: EdgeInsets.all(6)
+```
+- Müşteri **satıcıysa** (`musteriSatiyor == true`): sadece TypewriterText gösterilir
+- Müşteri **alıcıysa** (`musteriSatiyor == false`): Row layout:
+  - Sol: `Image.asset(item.gorsel, width: 200, height: 200)` — alınmak istenen ürün
+  - Sağ: `Expanded(TypewriterText(...))` — müşteri konuşması
 
 ### Önemli Oyun Mekanikleri
 - **Gün sistemi**: Her gün N müşteri, gün sonunda kira düşülür
@@ -87,6 +107,7 @@ st = viewPadding.top (status bar), hh = 48.0 (header height)
 - **iMac satın alma**: 3. günden sonra görünür buton, alındıktan sonra masa değişir
 - **Bilgisayar Geldi popup**: 3. günde tetiklenir (tek seferlik, `_bilgisayarGeldiGosterildi` flag'i)
 - **Oyun sonu**: Para bitti + envanter boş → iflas popup
+- **Devam Et butonu**: `_kayitVar` flag'i ile kontrol edilir — kayıt yoksa pasif
 
 ### Kayıt Sistemi
 SharedPreferences ile JSON serialize edilen `GameState`. `AnaMenuEkrani`'nda "Devam Et" butonu varsa kayıt mevcut demektir.
@@ -102,6 +123,8 @@ SharedPreferences ile JSON serialize edilen `GameState`. `AnaMenuEkrani`'nda "De
 ## Versiyon Geçmişi (son)
 | Commit | Açıklama |
 |--------|----------|
+| v68 | Konum/boyut ince ayarları: müşteri 564px, isim bottom:306, ürün dx+306, konuşma balonu layout |
+| v67 | Özel müşteri isim konumu düzeltildi, Devam Et butonu kayıt kontrolü |
 | v66 | Yeni arka plan sistemi, splash screen, uygulama ikonu, paket adı değişikliği, 3 yeni müşteri |
 | v65 | Pazarlık popup yenilendi, kabul mesajları, sürüm 1.0.1+2 |
 | v64 | Kayıt sistemi, ses, browser, market, iMac, background animasyonları |
@@ -112,3 +135,4 @@ SharedPreferences ile JSON serialize edilen `GameState`. `AnaMenuEkrani`'nda "De
 - Müşteri görseli **masa layer'ının altında** olmalı (Z-order kritik)
 - `_bilgisayarGeldiGosterildi` flag'i state'de değil widget'ta — her oyun başında sıfırlanır, bu intentional
 - Eski arka plan dosyaları (`dukkan_bg*.png`) silindi, referans kalmadığını doğrula
+- `konsol_3.png` ve `oyuncudireksiyonu.png` ürünleri %15 küçük gösterilir — intentional
