@@ -39,16 +39,44 @@ SplashScreen (6 sn yasal metin)
 - `Musteri` / `OzelMusteri` — müşteri modeli
 - `DukkanSeviye` — dükkan seviyeleri (1-5, farklı kira ve müşteri sayısı)
 
-### Arka Plan Katman Sistemi (Stack sırası)
-1. `bgbos.png` — sabit arka plan (her zaman görünür)
-2. `biri.png` — kapı gölgesi (müşteri yokken, AnimatedOpacity)
-3. Müşteri karakter görseli (masa layer'ının ALTINDA, AnimatedBuilder ile kayarak girer)
-4. Masa layer (`AnimatedSwitcher`):
+### ⚠️ KRİTİK: Görsel Katman Sistemi ve Konumlar — DOKUNMA!
+
+#### Outer Stack Z-order (arkadan öne):
+1. `bgbos.png` — sabit dükkan arkaplanı (Positioned.fill)
+2. `biri.png` — kapı gölgesi (müşteri yokken AnimatedOpacity ile görünür)
+3. **MÜŞTERİ görseli** — masanın ALTINDA (bu katmanda olmalı!)
+4. **Masa layer** (`AnimatedSwitcher`) — müşterinin ÜZERİNDE:
    - Gün < 3: `bgbosmasa.png`
    - Gün >= 3 ve iMac yok: `bg1.png`
    - iMac alındı: `bg2.png`
-5. SafeArea → header + sahne + alt bar
-6. Dükkan kiralama butonu (sadece gün >= 3'te görünür)
+   - Tüm masalar: `scale: 1.4, alignment: Alignment.bottomCenter`
+5. **SafeArea** → header + `_buildSahne()` + altbar
+6. Dükkan kiralama butonu (gün >= 3'te görünür)
+
+#### ⚠️ MÜŞTERİ BOYUTU VE KONUMU (Outer Stack — katman 3):
+```
+width:  513px  ← DOKUNMA! Ekranı dolduruyor, alt kısmı masanın arkasına gizleniyor
+height: 513px  ← DOKUNMA!
+hedef = (screenW - 513) / 2   ← ortalanmış, ekrandan taşması intentional
+dx    = hedef + (screenW - hedef) * slideAnim   ← sağdan kayarak giriş animasyonu
+musteriTop = statusBar + 48.0 + screenH * 0.14 + 34
+             ↑ status bar    ↑ header   ↑ %14   ↑ ince ayar
+```
+- `_buildSahne()` içindeki placeholder da **513×513 SizedBox** olmalı (Z-order korunur)
+- `musteriTop` (_buildSahne içi) = `screenH * 0.14 + 34` (status bar yok, SafeArea içinde)
+
+#### ⚠️ ÜRÜN KONUMU (_buildSahne() içinde — masa katmanının ÜSTÜNDEKİ katmanda):
+```
+width:  144px, height: 144px
+productLeft = dx + 306
+              ↑ müşteri animasyonunu takip eder  ↑ müşteri sol kenarından +306px sağa
+productTop  = screenH * 0.57 - productSize - st - hh + 22
+              ↑ ekranın %57'si  ↑ 144px   ↑ statusBar  ↑ 48 header  ↑ ince ayar
+              → ürün ALT kenarı ekranın %57'sinde (masa yüzeyi hizası)
+st = viewPadding.top (status bar), hh = 48.0 (header height)
+```
+- Ürün `_buildSahne()` Stack'inde **ayrı AnimatedBuilder** olarak render edilir
+- İç müşteri Stack'ine (Positioned right/bottom) KOYMA — absolute koordinat kullan
 
 ### Önemli Oyun Mekanikleri
 - **Gün sistemi**: Her gün N müşteri, gün sonunda kira düşülür
@@ -69,7 +97,7 @@ SharedPreferences ile JSON serialize edilen `GameState`. `AnaMenuEkrani`'nda "De
 - **Splash**: Android native splash kaldırıldı, Flutter tarafında `SplashScreen` widget'ı kullanılıyor
 
 ## DevicePreview
-`device_preview` paketi `kDebugMode`'da aktif. Release build'de otomatik devre dışı kalır.
+`device_preview` paketi şu an **disabled** (`enabled: false`). Test sırasında ekranı küçülttüğü için kapatıldı. Açmak için `enabled: kDebugMode` yap.
 
 ## Versiyon Geçmişi (son)
 | Commit | Açıklama |

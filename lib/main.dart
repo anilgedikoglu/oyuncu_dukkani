@@ -11,7 +11,7 @@ void main() {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(
     DevicePreview(
-      enabled: kDebugMode,
+      enabled: false,
       builder: (context) => const OyuncuDukkaniApp(),
     ),
   );
@@ -1965,7 +1965,21 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                   child: Image.asset('assets/biri.png', fit: BoxFit.cover, alignment: Alignment.center),
                 ),
               ),
-              // 3. Müşteri karakter görseli (masa layer'ının ALTINDA)
+              // ═══════════════════════════════════════════════════════════════
+              // KATMAN SİSTEMİ (Stack Z-order: arkadan öne)
+              //   1. bgbos.png       — sabit dükkan arkaplanı
+              //   2. biri.png        — kapı gölgesi (müşteri yokken)
+              //   3. MÜŞTERİ görseli — masanın ALTINDA (bu katman)
+              //   4. Masa (bg1/bg2/bgbosmasa) — müşterinin ÜZERİNDE
+              //   5. SafeArea UI     — header + _buildSahne() + altbar
+              //      └─ _buildSahne() içinde: müşteri placeholder + ÜRÜN
+              //
+              // MÜŞTERİ BOYUTU VE KONUMU (dış Stack — katman 3):
+              //   width: 513, height: 513  ← DOKUNMA! Ekranı dolduruyor, alt kısmı masanın arkasına gizleniyor
+              //   hedef = (screenW - 513) / 2  ← ortalanmış (ekrandan taşabilir, intentional)
+              //   musteriTop = statusBar + 48.0 + screenH * 0.14 + 34
+              //     48.0 = header yüksekliği, 0.14 = ekranın %14'ü, 34 = ince ayar
+              // ═══════════════════════════════════════════════════════════════
               if (_state.aktifMusteri != null || _state.aktifOzelMusteri != null)
                 AnimatedBuilder(
                   animation: _slideAnim,
@@ -1974,21 +1988,18 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                     final screenW = mq.size.width;
                     final screenH = mq.size.height;
                     final statusBar = mq.padding.top;
-                    final hedef = (screenW - 171) / 2;
+                    final hedef = (screenW - 513) / 2;
                     final dx = hedef + (screenW - hedef) * _slideAnim.value;
-                    final musteriTop = statusBar + 48.0 + 0.19 * screenH + 4;
+                    final musteriTop = statusBar + 48.0 + screenH * 0.14 + 34;
                     return Positioned(left: dx, top: musteriTop, child: child!);
                   },
                   child: SizedBox(
-                    width: 171, height: 171,
-                    child: Transform.scale(
-                      scale: 1.2,
-                      child: Image.asset(
-                        _state.aktifOzelMusteri != null
-                          ? _state.aktifOzelMusteri!.gorsel
-                          : _state.aktifMusteri!.gorsel,
-                        fit: BoxFit.contain, isAntiAlias: true, filterQuality: FilterQuality.high,
-                      ),
+                    width: 513, height: 513,
+                    child: Image.asset(
+                      _state.aktifOzelMusteri != null
+                        ? _state.aktifOzelMusteri!.gorsel
+                        : _state.aktifMusteri!.gorsel,
+                      fit: BoxFit.contain, isAntiAlias: true, filterQuality: FilterQuality.high,
                     ),
                   ),
                 ),
@@ -2097,9 +2108,9 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
               final mq = MediaQuery.of(context);
               final screenW = mq.size.width;
               final screenH = mq.size.height;
-              final hedef = (screenW - 171) / 2;
+              final hedef = (screenW - 513) / 2;
               final dx = hedef + (screenW - hedef) * _slideAnim.value;
-              final musteriTop = 0.19 * screenH + 4;
+              final musteriTop = screenH * 0.14 + 34;
               return Positioned(left: dx, top: musteriTop, child: child!);
             },
             child: _state.aktifOzelMusteri != null
@@ -2111,7 +2122,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     // Karakter görseli dış Stack'te (masa layer'ının altında) — burası boş placeholder
-                    const SizedBox(width: 171, height: 171),
+                    const SizedBox(width: 513, height: 513),
                     const SizedBox(height: 4),
                     GestureDetector(
                       onTap: () => _ozellikKartiGoster(_state.aktifMusteri!),
@@ -2128,13 +2139,40 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                   ],
                 ),
 
-                if (_state.aktifMusteri!.musteriSatiyor)
-                  Positioned(
-                    right: -94,
-                    bottom: _state.aktifMusteri!.item.category == ItemCategory.cd ? -50 : -82,
-                    child: Image.asset(_state.aktifMusteri!.item.gorsel, width: 144, height: 144, fit: BoxFit.contain),
-                  ),
               ],
+            ),
+          ),
+        // ═══════════════════════════════════════════════════════════════
+        // ÜRÜN KONUMU (_buildSahne içinde, masa katmanının ÜSTÜNDEKİ katmanda):
+        //   width: 144, height: 144
+        //   productLeft = dx + 306
+        //     dx = (screenW - 513) / 2 müşteri slide animasyonunu takip eder
+        //     +306 = müşterinin sol kenarından 306px sağda
+        //   productTop = screenH * 0.57 - productSize - st - hh + 22
+        //     0.57 = ürün alt kenarı ekranın %57'sinde (masa yüzeyi)
+        //     st = status bar yüksekliği, hh = 48 (header)
+        //     +22 = ince ayar (archived session +12, sonra +10 daha aşağı)
+        //   NOT: Bu koordinatlar _buildSahne() Stack'ine göreli
+        //        (SafeArea içinde, header altında başlar)
+        // ═══════════════════════════════════════════════════════════════
+        if (_state.aktifMusteri != null && _state.aktifMusteri!.musteriSatiyor)
+          AnimatedBuilder(
+            animation: _slideAnim,
+            builder: (context, child) {
+              final screenW = MediaQuery.of(context).size.width;
+              final screenH = MediaQuery.of(context).size.height;
+              final st = MediaQuery.of(context).viewPadding.top;
+              const hh = 48.0;
+              final hedef = (screenW - 513) / 2;
+              final dx = hedef + (screenW - hedef) * _slideAnim.value;
+              const productSize = 144.0;
+              final productLeft = dx + 306; // müşteri sol kenarından +306px
+              final productTop = screenH * 0.57 - productSize - st - hh + 22; // masa yüzeyi hizası
+              return Positioned(left: productLeft, top: productTop, child: child!);
+            },
+            child: Image.asset(
+              _state.aktifMusteri!.item.gorsel,
+              width: 144, height: 144, fit: BoxFit.contain,
             ),
           ),
         // Mesaj kutusu
