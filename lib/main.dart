@@ -2754,18 +2754,33 @@ class _PazarlikDialogState extends State<_PazarlikDialog> {
                 Text(m.item.kondisyonYildiz, style: const TextStyle(fontSize: 13, color: Color(0xFFFFD700))),
               ]),
               const SizedBox(height: 12),
-              if (_dialogMesaj.isNotEmpty)
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                  margin: const EdgeInsets.only(bottom: 10),
-                  decoration: BoxDecoration(
-                    color: anlasildi ? Colors.green.withValues(alpha: 0.15) : gitti ? Colors.red.withValues(alpha: 0.15) : Colors.white.withValues(alpha: 0.07),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: anlasildi ? Colors.green.withValues(alpha: 0.5) : gitti ? Colors.red.withValues(alpha: 0.5) : Colors.white12),
-                  ),
-                  child: _buildMesajWidget(_dialogMesaj, anlasildi, gitti),
-                ),
+              if (_dialogMesaj.isNotEmpty) ...[
+                // Müşteri alıcıysa ve pazarlık sürüyorsa yeşil oval border, tıklanabilir
+                Builder(builder: (_) {
+                  final musteriAlici = !m.musteriSatiyor && !anlasildi && !gitti && !_bitti;
+                  return GestureDetector(
+                    onTap: musteriAlici ? () {
+                      widget.state.teklifVer(musteriTeklif);
+                      Navigator.of(context).pop();
+                    } : null,
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                      margin: const EdgeInsets.only(bottom: 10),
+                      decoration: BoxDecoration(
+                        color: anlasildi ? Colors.green.withValues(alpha: 0.15) : gitti ? Colors.red.withValues(alpha: 0.15) : Colors.white.withValues(alpha: 0.07),
+                        borderRadius: BorderRadius.circular(musteriAlici ? 24 : 8),
+                        border: Border.all(
+                          color: musteriAlici ? const Color(0xFF4caf50) : anlasildi ? Colors.green.withValues(alpha: 0.5) : gitti ? Colors.red.withValues(alpha: 0.5) : Colors.white12,
+                          width: musteriAlici ? 1.8 : 1.0,
+                        ),
+                        boxShadow: musteriAlici ? [BoxShadow(color: Colors.green.withValues(alpha: 0.25), blurRadius: 8, spreadRadius: 1)] : null,
+                      ),
+                      child: _buildMesajWidget(_dialogMesaj, anlasildi, gitti),
+                    ),
+                  );
+                }),
+              ],
               if (p != null && !_bitti && widget.state.imacSatinAlindi)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 10),
