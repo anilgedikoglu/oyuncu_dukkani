@@ -2867,9 +2867,9 @@ class _PazarlikDialogState extends State<_PazarlikDialog> {
               const SizedBox(height: 12),
               if (_dialogMesaj.isNotEmpty)
                 Builder(builder: (context) {
-                  final musteriAlici = !m.musteriSatiyor && !anlasildi && !gitti && !_bitti;
+                  final tiklayabilir = !anlasildi && !gitti && !_bitti;
                   return GestureDetector(
-                    onTap: musteriAlici ? () {
+                    onTap: tiklayabilir ? () {
                       widget.state.teklifVer(musteriTeklif);
                       Navigator.of(context).pop();
                     } : null,
@@ -2878,21 +2878,21 @@ class _PazarlikDialogState extends State<_PazarlikDialog> {
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                       margin: const EdgeInsets.only(bottom: 10),
                       decoration: BoxDecoration(
-                        color: musteriAlici
+                        color: tiklayabilir
                             ? Colors.green.withValues(alpha: 0.12)
                             : anlasildi ? Colors.green.withValues(alpha: 0.15)
                             : gitti ? Colors.red.withValues(alpha: 0.15)
                             : Colors.white.withValues(alpha: 0.07),
-                        borderRadius: BorderRadius.circular(musteriAlici ? 24 : 8),
+                        borderRadius: BorderRadius.circular(tiklayabilir ? 24 : 8),
                         border: Border.all(
-                          color: musteriAlici
+                          color: tiklayabilir
                               ? const Color(0xFF4caf50)
                               : anlasildi ? Colors.green.withValues(alpha: 0.5)
                               : gitti ? Colors.red.withValues(alpha: 0.5)
                               : Colors.white12,
-                          width: musteriAlici ? 1.8 : 1.0,
+                          width: tiklayabilir ? 1.8 : 1.0,
                         ),
-                        boxShadow: musteriAlici ? [
+                        boxShadow: tiklayabilir ? [
                           BoxShadow(color: Colors.green.withValues(alpha: 0.25), blurRadius: 8, spreadRadius: 1),
                         ] : null,
                       ),
