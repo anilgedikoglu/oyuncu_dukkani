@@ -1221,7 +1221,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       });
       return;
     }
-    if (_state.gun >= 3 && !_bilgisayarGeldiGosterildi) {
+    if (_state.gun >= 2 && !_bilgisayarGeldiGosterildi) {
       _bilgisayarGeldiGosterildi = true;
       Future.delayed(const Duration(milliseconds: 500), () {
         if (!mounted) return;
@@ -2072,14 +2072,14 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                   duration: const Duration(milliseconds: 600),
                   child: _state.imacSatinAlindi
                     ? Align(key: const ValueKey('bg2'), alignment: Alignment.bottomCenter, child: Transform.translate(offset: const Offset(0, 6), child: Transform.scale(scale: 1.4, alignment: Alignment.bottomCenter, child: Image.asset('assets/bg2.png', fit: BoxFit.fitWidth))))
-                    : (_state.gun >= 3
+                    : (_state.gun >= 2
                       ? Align(key: const ValueKey('bg1'), alignment: Alignment.bottomCenter, child: Transform.translate(offset: const Offset(0, 6), child: Transform.scale(scale: 1.4, alignment: Alignment.bottomCenter, child: Image.asset('assets/bg1.png', fit: BoxFit.fitWidth))))
                       : Align(key: const ValueKey('bgbosmasa'), alignment: Alignment.bottomCenter, child: Transform.translate(offset: const Offset(0, 6), child: Transform.scale(scale: 1.4, alignment: Alignment.bottomCenter, child: Image.asset('assets/bgbosmasa.png', fit: BoxFit.fitWidth))))),
                 ),
               ),
               SafeArea(child: Column(children: [_buildHeader(), Expanded(child: _buildSahne()), _buildAltBar()])),
               // Dükkan kiralama butonu — 3. günde bilgisayar gelince görünür
-              if (_state.gun >= 3)
+              if (_state.gun >= 2)
               Positioned(
                 left: 16,
                 bottom: 300,
