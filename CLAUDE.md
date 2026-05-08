@@ -185,9 +185,61 @@ Container(padding: EdgeInsets.all(6))    // ← iç dolgu (SON DEĞER)
 ## DevicePreview
 `device_preview` paketi şu an **disabled** (`enabled: false`). Test sırasında ekranı küçülttüğü için kapatıldı. Açmak için `enabled: kDebugMode` yap.
 
+## Header — Daire Sayaç Animasyonu
+
+Gün/para kutuları eşit genişlik. Aralarında sarı daire (Ticker tabanlı sürekli animasyon):
+
+```dart
+// _GameScreenState alanları:
+late Ticker _daireTicker;
+Duration _dairePrevTick = Duration.zero;
+double _daireGosterilen = 0.0;  // 0.0..1.0 ekranda görünen
+double _daireHedef     = 0.0;   // müşteri sayısına göre hedef
+double _daireHiz       = 0.3;   // rassal hız (bazen hızlanır/yavaşlar)
+final _daireRng = Random();
+```
+
+`_DairePainter` → sarı dolmuş dilim (clockwise), siyah ince çerçeve, beyaz yarı şeffaf arka plan.
+
+---
+
+## Butonlar — Pixel Art Çerçeve
+
+`_PixelButonPainter` (CustomPainter): metalik siyah gradient çerçeve, renkli gradient iç, L-şekli köşe süsleri (7 piksel/köşe), üst parlama şeridi.  
+`_oyunButon()` → `GestureDetector` + `CustomPaint(painter: _PixelButonPainter(...))`.  
+Yükseklik: 50px. Yazılar `FittedBox(fit: BoxFit.scaleDown)` ile taşmaz.
+
+---
+
+## Pazarlık Popup — Tıklanabilir Teklif Balonu
+
+Müşteri ALICIYSA (`!musteriSatiyor && !anlasildi && !gitti && !_bitti`):
+```
+_dialogMesaj Container → GestureDetector
+  borderRadius: 24 (oval)
+  border: Color(0xFF4caf50), width: 1.8  ← yeşil
+  boxShadow: yeşil parlama
+  onTap: widget.state.teklifVer(musteriTeklif) → Navigator.pop()
+```
+Tıklanınca oyuncu müşterinin teklifini kabul etmiş olur.  
+Butonlar: sadece "Vazgeç" (kırmızı) + "Fiyat Ver" (altın) — "Kabul Et" yok.
+
+---
+
+## Envanter Kompaksiyon
+
+`urunCikar()` → ürün çıktıktan sonra dolu slotlar öne çekilir, boşluklar sona itilir:
+```dart
+final dolu = slotlar.sublist(0, acikSlotSayisi).whereType<GameItem>().toList();
+for (int j = 0; j < acikSlotSayisi; j++) slotlar[j] = j < dolu.length ? dolu[j] : null;
+```
+
+---
+
 ## Versiyon Geçmişi (son)
 | Commit | Açıklama |
 |--------|----------|
+| v70 | Envanter kompaksiyon, daire sayaç, pixel butonlar, balon görseli, yeşil tıklanabilir balon |
 | v69 | Kapsamlı kod açıklamaları, CLAUDE.md tam güncelleme |
 | v68 | Konum/boyut ince ayarları, konuşma balonu ürün görseli layout |
 | v67 | Özel müşteri isim konumu düzeltildi, Devam Et butonu kayıt kontrolü |
@@ -200,3 +252,4 @@ Container(padding: EdgeInsets.all(6))    // ← iç dolgu (SON DEĞER)
 - `_bilgisayarGeldiGosterildi` flag'i state'de değil widget'ta — her oyun başında sıfırlanır, intentional
 - `konsol_3.png` ve `oyuncudireksiyonu.png` ürünleri %15 küçük gösterilir — intentional
 - Tüm "SON DEĞER — DOKUNMA!" yorumları uzun iterasyonlar sonucu bulunmuştur, değiştirmeden önce mutlaka test et
+- Worktree'den değil her zaman **main repo'dan** (`C:\src\oyuncu_dukkani`) derle — worktree dalı eski commit'ten başlayabilir
