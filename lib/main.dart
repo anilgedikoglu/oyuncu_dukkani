@@ -4,6 +4,7 @@ import 'dart:math';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:device_preview/device_preview.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/scheduler.dart' show Ticker;
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -761,11 +762,16 @@ class GameState extends ChangeNotifier {
     return false; // doldu
   }
 
-  // Ürün çıkar (ilk eşleşen slottan)
+  // Ürün çıkar (ilk eşleşen slottan) ve boşluk bırakmadan dolu slotları öne çek
   bool urunCikar(String itemId) {
     for (int i = 0; i < acikSlotSayisi; i++) {
       if (slotlar[i]?.id == itemId) {
         slotlar[i] = null;
+        // Boşlukları sona it, dolu slotları öne çek
+        final dolu = slotlar.sublist(0, acikSlotSayisi).whereType<GameItem>().toList();
+        for (int j = 0; j < acikSlotSayisi; j++) {
+          slotlar[j] = j < dolu.length ? dolu[j] : null;
+        }
         notifyListeners();
         return true;
       }
@@ -1081,16 +1087,64 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   bool _pazarlikBekleniyor = false;
   bool _bilgisayarGeldiGosterildi = false;
 
+  // ── Daire geri sayım animasyonu ──
+  late Ticker _daireTicker;
+  Duration _dairePrevTick = Duration.zero;
+  double _daireGosterilen = 0.0; // 0.0..1.0 — ekranda görünen değer
+  double _daireHedef     = 0.0; // müşteri sayısına göre gerçek hedef
+  double _daireHiz       = 0.3; // birim/saniye — her müşteride rassal değişir
+  final _daireRng        = Random();
+
   @override
   void initState() {
     super.initState();
     _state = widget.yuklenenState ?? GameState();
     _slideController = AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
     _slideAnim = Tween<double>(begin: 1.0, end: 0.0).animate(CurvedAnimation(parent: _slideController, curve: Curves.easeOutCubic));
+    _state.addListener(_daireHedefGuncelle);
+    _daireTicker = createTicker(_daireTick)..start();
+  }
+
+  void _daireHedefGuncelle() {
+    final limit = _state.gunlukMusteriLimiti;
+    final hedef = limit > 0 ? _state.gunlukMusteriSayisi / limit.toDouble() : 0.0;
+    if (hedef > _daireHedef) {
+      _daireHedef = hedef;
+      // Rassal hız: 0.18–0.55 birim/sn — her müşteride farklı tempo
+      _daireHiz = 0.18 + _daireRng.nextDouble() * 0.37;
+    } else if (hedef < _daireHedef - 0.001) {
+      // Yeni gün: sıfırla
+      _daireGosterilen = 0.0;
+      _daireHedef = 0.0;
+      _dairePrevTick = Duration.zero;
+    }
+  }
+
+  void _daireTick(Duration now) {
+    if (_dairePrevTick == Duration.zero) { _dairePrevTick = now; return; }
+    final dt = (now - _dairePrevTick).inMilliseconds / 1000.0;
+    _dairePrevTick = now;
+    final gap = _daireHedef - _daireGosterilen;
+    if (gap > 0.0001) {
+      // Ana ilerleme: hedefe doğru mevcut hızda git
+      final adim = (_daireHiz * dt).clamp(0.0, gap);
+      setState(() { _daireGosterilen += adim; });
+      // Hedefe yaklaşınca yavaşla (doğal hissettir)
+      if (gap < 0.04) _daireHiz = (_daireHiz * 0.92).clamp(0.04, 1.0);
+    } else {
+      // Hedefte: çok yavaş sürüklenme (sürekli hareket hissi)
+      final surukleme = 0.008 * dt;
+      setState(() { _daireGosterilen = (_daireGosterilen + surukleme).clamp(0.0, _daireHedef + 0.005); });
+    }
   }
 
   @override
-  void dispose() { _slideController.dispose(); super.dispose(); }
+  void dispose() {
+    _daireTicker.dispose();
+    _state.removeListener(_daireHedefGuncelle);
+    _slideController.dispose();
+    super.dispose();
+  }
 
   void _musteriCagir() {
     _state.yeniMusteriGonder();
@@ -2055,52 +2109,69 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   }
 
   Widget _buildHeader() {
+    final gunDecor = BoxDecoration(
+      gradient: LinearGradient(
+        colors: [Colors.black.withValues(alpha: 0.80), const Color(0xFF1a2a1a).withValues(alpha: 0.85)],
+        begin: Alignment.topLeft, end: Alignment.bottomRight,
+      ),
+      borderRadius: BorderRadius.circular(14),
+      border: Border.all(color: const Color(0xFF4caf50).withValues(alpha: 0.55), width: 1.3),
+      boxShadow: [BoxShadow(color: const Color(0xFF4caf50).withValues(alpha: 0.15), blurRadius: 8, offset: const Offset(0, 2))],
+    );
+    final paraDecor = BoxDecoration(
+      gradient: LinearGradient(
+        colors: [const Color(0xFF3a2800).withValues(alpha: 0.90), const Color(0xFF1a1000).withValues(alpha: 0.90)],
+        begin: Alignment.topLeft, end: Alignment.bottomRight,
+      ),
+      borderRadius: BorderRadius.circular(14),
+      border: Border.all(color: const Color(0xFFFFD700).withValues(alpha: 0.70), width: 1.3),
+      boxShadow: [BoxShadow(color: const Color(0xFFFFD700).withValues(alpha: 0.18), blurRadius: 8, offset: const Offset(0, 2))],
+    );
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-      child: IntrinsicHeight(
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // ── Sol: Gün ──
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Colors.black.withValues(alpha: 0.80), const Color(0xFF1a2a1a).withValues(alpha: 0.85)],
-                  begin: Alignment.topLeft, end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: const Color(0xFF4caf50).withValues(alpha: 0.55), width: 1.3),
-                boxShadow: [BoxShadow(color: const Color(0xFF4caf50).withValues(alpha: 0.15), blurRadius: 8, offset: const Offset(0, 2))],
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          // ── Sol: Gün ──
+          Expanded(
+            child: Container(
+              height: 48,
+              decoration: gunDecor,
+              child: Center(
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  const Text('🗓️', style: TextStyle(fontSize: 13)),
+                  const SizedBox(width: 5),
+                  Text('${_state.gun}. GÜN',
+                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Color(0xFFFFD700), height: 1.0)),
+                ]),
               ),
-              child: Row(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.center, children: [
-                const Text('🗓️', style: TextStyle(fontSize: 13)),
-                const SizedBox(width: 5),
-                Text('${_state.gun}. GÜN', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Color(0xFFFFD700), height: 1.0)),
-              ]),
             ),
-            // ── Sağ: Bakiye ──
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [const Color(0xFF3a2800).withValues(alpha: 0.90), const Color(0xFF1a1000).withValues(alpha: 0.90)],
-                  begin: Alignment.topLeft, end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: const Color(0xFFFFD700).withValues(alpha: 0.70), width: 1.3),
-                boxShadow: [BoxShadow(color: const Color(0xFFFFD700).withValues(alpha: 0.18), blurRadius: 8, offset: const Offset(0, 2))],
+          ),
+          // ── Orta: Daire geri sayım (CustomPaint) ──
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            child: CustomPaint(
+              size: const Size(40, 40),
+              painter: _DairePainter(_daireGosterilen.clamp(0.0, 1.0)),
+            ),
+          ),
+          // ── Sağ: Bakiye ──
+          Expanded(
+            child: Container(
+              height: 48,
+              decoration: paraDecor,
+              child: Center(
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  const Text('💰', style: TextStyle(fontSize: 16)),
+                  const SizedBox(width: 6),
+                  Text('${_state.para}',
+                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Color(0xFFFFD700), letterSpacing: 0.3)),
+                ]),
               ),
-              child: Row(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.center, children: [
-                const Text('💰', style: TextStyle(fontSize: 18)),
-                const SizedBox(width: 7),
-                Text('${_state.para}',
-                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Color(0xFFFFD700), letterSpacing: 0.3)),
-              ]),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -2201,7 +2272,10 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
               final gorsel = _state.aktifMusteri!.item.gorsel;
               final kucukUrun = gorsel == 'assets/konsol_3.png' || gorsel == 'assets/oyuncudireksiyonu.png';
               final productSize = kucukUrun ? 151.0 * 0.85 : 151.0;
-              final productLeft = dx + 306 + (gorsel == 'assets/oyuncudireksiyonu.png' ? 7 : 0); // müşteri sol kenarından +306px
+              final productLeft = dx + 306
+                + (gorsel == 'assets/oyuncudireksiyonu.png' ? 7 : 0)  // direksiyon +7
+                + (gorsel == 'assets/konsol_2.png'          ? 5 : 0)  // konsol_2 +5
+                + (gorsel == 'assets/konsol_3.png'          ? 5 : 0); // konsol_3 +5
               final productTop = screenH * 0.57 - productSize - st - hh + 32; // masa yüzeyi hizası
               return Positioned(
                 left: productLeft, top: productTop,
@@ -2239,7 +2313,8 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                 ? ((_state.aktifOzelMusteri!.tip == OzelMusteriTip.hirsiz) ? Colors.redAccent : (_state.aktifOzelMusteri!.tip == OzelMusteriTip.polis) ? Colors.blueAccent : Colors.orangeAccent).withValues(alpha: 0.7)
                 : const Color(0xFFFFD700).withValues(alpha: 0.4)),
             ),
-            child: _state.aktifMusteri != null && !_state.aktifMusteri!.musteriSatiyor
+            child: _state.aktifMusteri != null && !_state.aktifMusteri!.musteriSatiyor &&
+                   (_state.musteriKabulBekliyor || (_state.aktifPazarlik != null && _state.aktifPazarlik!.turSayisi == 0))
               ? Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
@@ -2350,68 +2425,104 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     );
   }
 
+  // ── Oyun stili özel buton ──────────────────────────────────────────────────
+  // ── Pixel art buton ────────────────────────────────────────────────────────
+  Widget _oyunButon({
+    required String label,
+    String emoji = '',
+    required VoidCallback? onTap,
+    required List<Color> gradyan,
+    required Color kenar,
+    Color yaziRenk = Colors.white,
+  }) {
+    final aktif = onTap != null;
+    return GestureDetector(
+      onTap: onTap,
+      child: CustomPaint(
+        painter: _PixelButonPainter(renk: gradyan[0], aktif: aktif),
+        child: SizedBox(
+          height: 50,
+          child: Center(
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              if (emoji.isNotEmpty) ...[
+                Text(emoji, style: const TextStyle(fontSize: 18)),
+                const SizedBox(width: 7),
+              ],
+              Text(label, style: TextStyle(
+                fontWeight: FontWeight.w900,
+                fontSize: 15,
+                color: aktif ? yaziRenk : Colors.white38,
+                letterSpacing: 0.5,
+                shadows: aktif ? [const Shadow(color: Colors.black87, blurRadius: 3, offset: Offset(0, 1))] : null,
+              )),
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildAltBar() {
+    final musteriCagirAktif = !_state.musteriKabulBekliyor && _state.aktifPazarlik == null && !_state.gunBitmeli;
     return Container(
-      padding: const EdgeInsets.fromLTRB(12, 6, 12, 12),
-      color: Colors.black.withValues(alpha: 0.55),
+      padding: const EdgeInsets.fromLTRB(12, 6, 12, 10),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Colors.black.withValues(alpha: 0.0), Colors.black.withValues(alpha: 0.70)],
+          begin: Alignment.topCenter, end: Alignment.bottomCenter,
+        ),
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           if (_state.musteriKabulBekliyor) ...[
             Row(children: [
-              Expanded(child: ElevatedButton(
-                onPressed: _musteriEvet,
-                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF00AA55), foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-                child: const Text('✅ EVET', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              Expanded(child: _oyunButon(
+                emoji: '✅', label: 'EVET',
+                onTap: _musteriEvet,
+                gradyan: const [Color(0xFF43c468), Color(0xFF1a6b32)],
+                kenar: const Color(0xFF81c784),
               )),
               const SizedBox(width: 12),
-              Expanded(child: ElevatedButton(
-                onPressed: _musteriHayir,
-                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFAA0000), foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-                child: const Text('❌ HAYIR', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              Expanded(child: _oyunButon(
+                emoji: '❌', label: 'HAYIR',
+                onTap: _musteriHayir,
+                gradyan: const [Color(0xFFe53935), Color(0xFF7f0000)],
+                kenar: const Color(0xFFef9a9a),
               )),
             ]),
             const SizedBox(height: 8),
           ],
           if (_pazarlikBekleniyor) ...[
             Row(children: [
-              Expanded(child: ElevatedButton.icon(
-                onPressed: _pazarlikGoster,
-                icon: const Text('💬', style: TextStyle(fontSize: 20)),
-                label: const Text('Teklif Ver', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFFD700), foregroundColor: Colors.black, padding: const EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+              Expanded(child: _oyunButon(
+                emoji: '💬', label: 'Teklif Ver',
+                onTap: _pazarlikGoster,
+                gradyan: const [Color(0xFFffd740), Color(0xFF9a6f00)],
+                kenar: const Color(0xFFFFD700),
+                yaziRenk: Colors.black,
               )),
               const SizedBox(width: 12),
-              Expanded(child: ElevatedButton.icon(
-                onPressed: _pazarlikVazgec,
-                icon: const Text('🚶', style: TextStyle(fontSize: 20)),
-                label: const Text('Vazgeç', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFAA0000), foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+              Expanded(child: _oyunButon(
+                emoji: '🚶', label: 'Vazgeç',
+                onTap: _pazarlikVazgec,
+                gradyan: const [Color(0xFFe53935), Color(0xFF7f0000)],
+                kenar: const Color(0xFFef9a9a),
               )),
             ]),
           ] else Row(children: [
-            Expanded(child: ElevatedButton.icon(
-              onPressed: (_state.musteriKabulBekliyor || _state.aktifPazarlik != null || _state.gunBitmeli) ? null : _musteriCagir,
-              icon: const Text('🚪', style: TextStyle(fontSize: 20)),
-              label: const Text('Müşteri Çağır', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF00AA55), foregroundColor: Colors.white,
-                disabledBackgroundColor: Colors.grey.withValues(alpha: 0.55),
-                disabledForegroundColor: Colors.white.withValues(alpha: 0.85),
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              ),
+            Expanded(child: _oyunButon(
+              emoji: '🚪', label: 'Müşteri Çağır',
+              onTap: musteriCagirAktif ? _musteriCagir : null,
+              gradyan: const [Color(0xFF43c468), Color(0xFF1a6b32)],
+              kenar: const Color(0xFF81c784),
             )),
             const SizedBox(width: 12),
-            Expanded(child: ElevatedButton.icon(
-              onPressed: () => setState(() => _envanterAcik = true),
-              icon: const Text('📦', style: TextStyle(fontSize: 20)),
-              label: const Text('Envanter', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF5533AA), foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              ),
+            Expanded(child: _oyunButon(
+              emoji: '📦', label: 'Envanter',
+              onTap: () => setState(() => _envanterAcik = true),
+              gradyan: const [Color(0xFF8c6aff), Color(0xFF311b92)],
+              kenar: const Color(0xFFb39ddb),
             )),
           ]),
         ],
@@ -2755,17 +2866,40 @@ class _PazarlikDialogState extends State<_PazarlikDialog> {
               ]),
               const SizedBox(height: 12),
               if (_dialogMesaj.isNotEmpty)
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                  margin: const EdgeInsets.only(bottom: 10),
-                  decoration: BoxDecoration(
-                    color: anlasildi ? Colors.green.withValues(alpha: 0.15) : gitti ? Colors.red.withValues(alpha: 0.15) : Colors.white.withValues(alpha: 0.07),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: anlasildi ? Colors.green.withValues(alpha: 0.5) : gitti ? Colors.red.withValues(alpha: 0.5) : Colors.white12),
-                  ),
-                  child: _buildMesajWidget(_dialogMesaj, anlasildi, gitti),
-                ),
+                Builder(builder: (context) {
+                  final musteriAlici = !m.musteriSatiyor && !anlasildi && !gitti && !_bitti;
+                  return GestureDetector(
+                    onTap: musteriAlici ? () {
+                      widget.state.teklifVer(musteriTeklif);
+                      Navigator.of(context).pop();
+                    } : null,
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      margin: const EdgeInsets.only(bottom: 10),
+                      decoration: BoxDecoration(
+                        color: musteriAlici
+                            ? Colors.green.withValues(alpha: 0.12)
+                            : anlasildi ? Colors.green.withValues(alpha: 0.15)
+                            : gitti ? Colors.red.withValues(alpha: 0.15)
+                            : Colors.white.withValues(alpha: 0.07),
+                        borderRadius: BorderRadius.circular(musteriAlici ? 24 : 8),
+                        border: Border.all(
+                          color: musteriAlici
+                              ? const Color(0xFF4caf50)
+                              : anlasildi ? Colors.green.withValues(alpha: 0.5)
+                              : gitti ? Colors.red.withValues(alpha: 0.5)
+                              : Colors.white12,
+                          width: musteriAlici ? 1.8 : 1.0,
+                        ),
+                        boxShadow: musteriAlici ? [
+                          BoxShadow(color: Colors.green.withValues(alpha: 0.25), blurRadius: 8, spreadRadius: 1),
+                        ] : null,
+                      ),
+                      child: _buildMesajWidget(_dialogMesaj, anlasildi, gitti),
+                    ),
+                  );
+                }),
               if (p != null && !_bitti && widget.state.imacSatinAlindi)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 10),
@@ -2832,14 +2966,14 @@ class _PazarlikDialogState extends State<_PazarlikDialog> {
                 Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                   Expanded(child: ElevatedButton(
                     onPressed: () { Navigator.of(context).pop(); widget.state.musteriReddet(); },
-                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFAA0000), foregroundColor: Colors.white),
-                    child: const Text('Vazgeç', style: TextStyle(fontWeight: FontWeight.bold)),
+                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFAA0000), foregroundColor: Colors.white, padding: EdgeInsets.zero),
+                    child: const FittedBox(fit: BoxFit.scaleDown, child: Text('Vazgeç', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14))),
                   )),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 8),
                   Expanded(child: ElevatedButton(
                     onPressed: _teklifGonder,
-                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFFD700), foregroundColor: Colors.black),
-                    child: Text(m.musteriSatiyor ? 'Teklif Ver' : 'Fiyat Ver', style: const TextStyle(fontWeight: FontWeight.bold)),
+                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFFD700), foregroundColor: Colors.black, padding: EdgeInsets.zero),
+                    child: FittedBox(fit: BoxFit.scaleDown, child: Text(m.musteriSatiyor ? 'Teklif Ver' : 'Fiyat Ver', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14))),
                   )),
                 ]),
                 const SizedBox(height: 8),
@@ -2850,6 +2984,124 @@ class _PazarlikDialogState extends State<_PazarlikDialog> {
       ),
     );
   }
+}
+
+// ─── PIXEL ART BUTON PAINTER ─────────────────────────────────────────────────
+
+class _PixelButonPainter extends CustomPainter {
+  final Color renk;
+  final bool aktif;
+  static const _p = 4.0; // pixel kare boyutu
+
+  _PixelButonPainter({required this.renk, required this.aktif});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width;
+    final h = size.height;
+
+    // ── Metalik dış çerçeve ──
+    final frameRect = RRect.fromRectAndRadius(Rect.fromLTWH(0, 0, w, h), const Radius.circular(9));
+    canvas.drawRRect(frameRect, Paint()
+      ..shader = LinearGradient(
+        colors: aktif
+            ? [const Color(0xFF3a3a3a), const Color(0xFF0a0a0a)]
+            : [const Color(0xFF2a2a2a), const Color(0xFF080808)],
+        begin: Alignment.topLeft, end: Alignment.bottomRight,
+      ).createShader(Rect.fromLTWH(0, 0, w, h)));
+
+    // Çerçeve iç kenar (üst-sol parlak, alt-sağ karanlık)
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(Rect.fromLTWH(1.5, 1.5, w - 3, h - 3), const Radius.circular(7.5)),
+      Paint()
+        ..color = Colors.white.withValues(alpha: aktif ? 0.30 : 0.12)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.0,
+    );
+
+    // ── İç buton alanı ──
+    final inner = Rect.fromLTWH(3.5, 3, w - 7, h - 6);
+    final darkRenk = aktif ? Color.lerp(renk, Colors.black, 0.52)! : const Color(0xFF2a2a2a);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(inner, const Radius.circular(5)),
+      Paint()..shader = LinearGradient(
+        colors: aktif ? [renk, darkRenk] : [const Color(0xFF555555), const Color(0xFF1a1a1a)],
+        begin: Alignment.topCenter, end: Alignment.bottomCenter,
+      ).createShader(inner),
+    );
+
+    if (!aktif) return;
+
+    // ── Pixel köşe dekorasyonları ──
+    final pixRenk = Color.lerp(renk, Colors.black, 0.62)!;
+    final pp = Paint()..color = pixRenk;
+
+    // Pattern: L-şekli (köşeden içe doğru basamaklı)
+    const pattern = [
+      [5.0, 5.0], [9.0, 5.0], [13.0, 5.0],
+      [5.0, 9.0], [9.0, 9.0],
+      [5.0, 13.0],
+      [13.0, 9.0],
+    ];
+
+    void kose(double cx, double cy, bool mx, bool my) {
+      for (final pos in pattern) {
+        final dx = mx ? -pos[0] - _p : pos[0];
+        final dy = my ? -pos[1] - _p : pos[1];
+        canvas.drawRect(Rect.fromLTWH(cx + dx, cy + dy, _p, _p), pp);
+      }
+    }
+
+    kose(0, 0, false, false); // sol üst
+    kose(w, 0, true, false);  // sağ üst
+    kose(0, h, false, true);  // sol alt
+    kose(w, h, true, true);   // sağ alt
+
+    // ── Üst glossy şerit ──
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(Rect.fromLTWH(5, 4, w - 10, (h - 6) * 0.32), const Radius.circular(4)),
+      Paint()..color = Colors.white.withValues(alpha: 0.16),
+    );
+  }
+
+  @override
+  bool shouldRepaint(_PixelButonPainter old) => old.renk != renk || old.aktif != aktif;
+}
+
+// ─── DAİRE GERİ SAYIM ────────────────────────────────────────────────────────
+
+class _DairePainter extends CustomPainter {
+  final double progress; // 0.0 (boş) → 1.0 (tam dolu)
+  _DairePainter(this.progress);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final c = Offset(size.width / 2, size.height / 2);
+    final r = size.width / 2;
+
+    // Arka plan dairesi
+    canvas.drawCircle(c, r, Paint()..color = Colors.white.withValues(alpha: 0.10));
+
+    // Sarı dilim — saat yönünde, 12'den başlar
+    if (progress > 0) {
+      canvas.drawArc(
+        Rect.fromCircle(center: c, radius: r),
+        -pi / 2,                  // başlangıç: yukarı (12)
+        2 * pi * progress,        // saat yönü (+)
+        true,                     // merkeze bağlı dilim
+        Paint()..color = const Color(0xFFFFD700),
+      );
+    }
+
+    // İnce siyah çerçeve
+    canvas.drawCircle(c, r, Paint()
+      ..color = Colors.black.withValues(alpha: 0.35)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.2);
+  }
+
+  @override
+  bool shouldRepaint(_DairePainter old) => old.progress != progress;
 }
 
 // ─── TYPEWRITER TEXT ──────────────────────────────────────────────────────────
