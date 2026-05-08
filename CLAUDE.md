@@ -39,66 +39,134 @@ SplashScreen (6 sn yasal metin)
 - `Musteri` / `OzelMusteri` — müşteri modeli
 - `DukkanSeviye` — dükkan seviyeleri (1-5, farklı kira ve müşteri sayısı)
 
-### ⚠️ KRİTİK: Görsel Katman Sistemi ve Konumlar — DOKUNMA!
+---
 
-#### Outer Stack Z-order (arkadan öne):
-1. `bgbos.png` — sabit dükkan arkaplanı (Positioned.fill)
-2. `biri.png` — kapı gölgesi (müşteri yokken AnimatedOpacity ile görünür)
-3. **MÜŞTERİ görseli** — masanın ALTINDA (bu katmanda olmalı!)
-4. **Masa layer** (`AnimatedSwitcher`) — müşterinin ÜZERİNDE:
-   - Gün < 3: `bgbosmasa.png`
-   - Gün >= 3 ve iMac yok: `bg1.png`
-   - iMac alındı: `bg2.png`
-   - Tüm masalar: `scale: 1.4, alignment: Alignment.bottomCenter`
-5. **SafeArea** → header + `_buildSahne()` + altbar
-6. Dükkan kiralama butonu (gün >= 3'te görünür)
+## ⚠️ KRİTİK: Görsel Katman Sistemi ve Tüm Konumlar — DOKUNMA!
 
-#### ⚠️ MÜŞTERİ BOYUTU VE KONUMU (Outer Stack — katman 3):
+### Stack Z-order (arkadan öne) — GameScreen build()
+
+| # | Widget | Açıklama |
+|---|--------|----------|
+| 1 | `bgbos.png` | Sabit dükkan arkaplanı (Positioned.fill) |
+| 2 | `biri.png` | Kapı gölgesi — müşteri yokken AnimatedOpacity ile görünür |
+| 3 | **MÜŞTERİ görseli** | Masanın ALTINDA — bu katmanda olmalı! |
+| 4 | **Masa layer** | AnimatedSwitcher: bgbosmasa/bg1/bg2, scale:1.4 bottomCenter |
+| 5 | **SafeArea** | header + `_buildSahne()` + altbar |
+| 6 | Dükkan butonu | gun >= 3'te sol altta görünür |
+
+---
+
+### MÜŞTERİ BOYUTU VE KONUMU (Outer Stack — katman 3)
+
 ```
-width:  564px  ← DOKUNMA! Ekranı dolduruyor, alt kısmı masanın arkasına gizleniyor
-height: 564px  ← DOKUNMA!
-hedef = (screenW - 564) / 2   ← ortalanmış, ekrandan taşması intentional
-dx    = hedef + (screenW - hedef) * slideAnim   ← sağdan kayarak giriş animasyonu
+width:  564 px  ← DOKUNMA!
+height: 564 px  ← DOKUNMA!
+
+hedef     = (screenW - 564) / 2
+dx        = hedef + (screenW - hedef) * slideAnim.value   ← sağdan giriş
 musteriTop = statusBar + 48.0 + screenH * 0.14 + 44
-             ↑ status bar    ↑ header   ↑ %14   ↑ ince ayar
+              └─ statusBar = mq.padding.top
+              └─ 48.0      = header yüksekliği
+              └─ 0.14      = ekranın %14'ü
+              └─ 44        = ince ayar ← DOKUNMA! (SON DEĞER)
 ```
-- `_buildSahne()` içindeki placeholder da **564×564 SizedBox** olmalı (Z-order korunur)
-- `musteriTop` (_buildSahne içi) = `screenH * 0.14 + 44` (status bar yok, SafeArea içinde)
 
-#### ⚠️ İSİM ETİKETİ KONUMU (_buildSahne içi müşteri Stack'i):
-```
-Positioned(bottom: 306, left: 0, right: 0, child: Center(...))
-```
-- Normal müşteri ve özel müşteri (polis/hırsız/vergici) **aynı bottom: 306** değerini kullanır
-- `_buildOzelMusteriWidget` da aynı Stack yapısını kullanır — DOKUNMA!
+---
 
-#### ⚠️ ÜRÜN KONUMU (_buildSahne() içinde — AnimatedBuilder, masa katmanının üstünde):
-```
-productSize = 151px  (normal ürünler)
-productSize = 151 * 0.85 ≈ 128px  (konsol_3.png ve oyuncudireksiyonu.png — %15 küçük)
+### _buildSahne() — MÜŞTERİ PLACEHOLDER
 
-productLeft = dx + 306                (tüm ürünler)
-productLeft = dx + 306 + 7 = dx+313  (oyuncudireksiyonu.png — 7px sağa özel)
+`_buildSahne()` Stack'indeki müşteri widget'ı gerçek görseli değil, Z-order'ı korumak için **boş 564×564 SizedBox** içerir. Gerçek görsel dış Stack katman 3'tedir.
 
-productTop  = screenH * 0.57 - productSize - st - hh + 32
-              ↑ ekranın %57'si  ↑ boyut   ↑ statusBar  ↑ 48 header  ↑ ince ayar
-              → ürün ALT kenarı ekranın %57'sinde (masa yüzeyi hizası)
-st = viewPadding.top (status bar), hh = 48.0 (header height)
 ```
-- Ürün `_buildSahne()` Stack'inde **ayrı AnimatedBuilder** olarak render edilir
-- İç müşteri Stack'ine (Positioned right/bottom) KOYMA — absolute koordinat kullan
+hedef     = (screenW - 564) / 2
+dx        = hedef + (screenW - hedef) * slideAnim.value
+musteriTop = screenH * 0.14 + 44   ← SafeArea içi (statusBar yok)
+              └─ 44 = ince ayar ← DOKUNMA! (SON DEĞER)
+```
 
-#### ⚠️ KONUŞMA BALONU (mesaj kutusu):
-```
-Positioned(top: 6, left: 6, right: 6)
-Container padding: EdgeInsets.all(6)
-```
-- Müşteri **satıcıysa** (`musteriSatiyor == true`): sadece TypewriterText gösterilir
-- Müşteri **alıcıysa** (`musteriSatiyor == false`): Row layout:
-  - Sol: `Image.asset(item.gorsel, width: 200, height: 200)` — alınmak istenen ürün
-  - Sağ: `Expanded(TypewriterText(...))` — müşteri konuşması
+---
 
-### Önemli Oyun Mekanikleri
+### İSİM ETİKETİ KONUMU
+
+Normal müşteri (Stack içi Positioned):
+```dart
+Positioned(
+  bottom: 306,   // ← DOKUNMA! (SON DEĞER)
+  left: 0, right: 0,
+  child: Center(child: ...isim container...),
+)
+```
+
+Özel müşteri — `_buildOzelMusteriWidget()` içinde **AYNI** yapı:
+```dart
+Positioned(
+  bottom: 306,   // ← DOKUNMA! Normal müşteriyle eşleşmeli
+  left: 0, right: 0,
+  child: Center(child: ...isim container...),
+)
+```
+
+> **Neden left:0/right:0 + Center?** dx negatif değer alabilir (geniş müşteri görseli ekrandan taşar). Eğer Stack içinde dx'e göre Positioned konulsaydı isim ekran dışına çıkardı.
+
+---
+
+### ÜRÜN KONUMU (_buildSahne içi AnimatedBuilder)
+
+Sadece `musteriSatiyor == true` durumunda gösterilir.
+
+**Boyut:**
+```
+Standart ürünler      : productSize = 151.0 px
+konsol_3.png          : productSize = 151.0 * 0.85 ≈ 128px  (%15 küçük)
+oyuncudireksiyonu.png : productSize = 151.0 * 0.85 ≈ 128px  (%15 küçük)
+```
+
+**Yatay (productLeft):**
+```
+Tüm ürünler           : dx + 306
+oyuncudireksiyonu.png : dx + 306 + 7 = dx + 313   (özel +7px sağa)
+```
+
+**Dikey (productTop):**
+```
+screenH * 0.57 - productSize - st - hh + 32
+  └─ 0.57       = ürün ALT kenarı ekranın %57'sinde (masa yüzeyi hizası)
+  └─ productSize = 151 veya 128 (ürüne göre)
+  └─ st         = viewPadding.top (status bar)
+  └─ hh         = 48.0 (header yüksekliği)
+  └─ +32        = ince ayar ← DOKUNMA! (SON DEĞER)
+```
+
+> Koordinatlar `_buildSahne()` Stack'ine göreli — SafeArea içinde, header altında başlar.
+
+---
+
+### KONUŞMA BALONU (mesaj kutusu)
+
+```dart
+Positioned(top: 6, left: 6, right: 6)   // ← dış kenar boşlukları (SON DEĞER)
+Container(padding: EdgeInsets.all(6))    // ← iç dolgu (SON DEĞER)
+```
+
+**Müşteri SATICI ise** (`musteriSatiyor == true`):
+```
+→ Sadece TypewriterText (metin, renkli border)
+```
+
+**Müşteri ALICI ise** (`musteriSatiyor == false`):
+```
+→ Row layout:
+   Sol : Image.asset(item.gorsel, width:100, height:100)  ← ürün görseli
+   Ara : SizedBox(width: 8)
+   Sağ : Expanded
+           └─ Transform.translate(offset: Offset(-15, 0))  ← -15px sola ← DOKUNMA!
+                └─ Center
+                     └─ TypewriterText(textAlign: center)
+```
+
+---
+
+## Önemli Oyun Mekanikleri
 - **Gün sistemi**: Her gün N müşteri, gün sonunda kira düşülür
 - **Pazarlık**: Müşteri teklif verir, oyuncu kabul/reddeder
 - **Envanter slot sistemi**: Ürün alım/satım
@@ -108,9 +176,6 @@ Container padding: EdgeInsets.all(6)
 - **Bilgisayar Geldi popup**: 3. günde tetiklenir (tek seferlik, `_bilgisayarGeldiGosterildi` flag'i)
 - **Oyun sonu**: Para bitti + envanter boş → iflas popup
 - **Devam Et butonu**: `_kayitVar` flag'i ile kontrol edilir — kayıt yoksa pasif
-
-### Kayıt Sistemi
-SharedPreferences ile JSON serialize edilen `GameState`. `AnaMenuEkrani`'nda "Devam Et" butonu varsa kayıt mevcut demektir.
 
 ## Android Yapılandırması
 - **Paket adı**: `com.oyuncudukkani.app` (eski: `com.example.oyuncu_dukkani`)
@@ -123,16 +188,15 @@ SharedPreferences ile JSON serialize edilen `GameState`. `AnaMenuEkrani`'nda "De
 ## Versiyon Geçmişi (son)
 | Commit | Açıklama |
 |--------|----------|
-| v68 | Konum/boyut ince ayarları: müşteri 564px, isim bottom:306, ürün dx+306, konuşma balonu layout |
+| v69 | Kapsamlı kod açıklamaları, CLAUDE.md tam güncelleme |
+| v68 | Konum/boyut ince ayarları, konuşma balonu ürün görseli layout |
 | v67 | Özel müşteri isim konumu düzeltildi, Devam Et butonu kayıt kontrolü |
-| v66 | Yeni arka plan sistemi, splash screen, uygulama ikonu, paket adı değişikliği, 3 yeni müşteri |
+| v66 | Yeni arka plan sistemi, splash screen, uygulama ikonu, paket adı |
 | v65 | Pazarlık popup yenilendi, kabul mesajları, sürüm 1.0.1+2 |
-| v64 | Kayıt sistemi, ses, browser, market, iMac, background animasyonları |
-| v63 | Özel müşteriler, envanter slot sistemi, dükkan seviyeleri |
 
 ## Dikkat Edilecekler
 - `main.dart` tek ve büyük bir dosya — refactor önerilmez, performans yeterli
 - Müşteri görseli **masa layer'ının altında** olmalı (Z-order kritik)
-- `_bilgisayarGeldiGosterildi` flag'i state'de değil widget'ta — her oyun başında sıfırlanır, bu intentional
-- Eski arka plan dosyaları (`dukkan_bg*.png`) silindi, referans kalmadığını doğrula
+- `_bilgisayarGeldiGosterildi` flag'i state'de değil widget'ta — her oyun başında sıfırlanır, intentional
 - `konsol_3.png` ve `oyuncudireksiyonu.png` ürünleri %15 küçük gösterilir — intentional
+- Tüm "SON DEĞER — DOKUNMA!" yorumları uzun iterasyonlar sonucu bulunmuştur, değiştirmeden önce mutlaka test et

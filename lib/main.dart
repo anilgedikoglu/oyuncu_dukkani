@@ -1967,21 +1967,28 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                   child: Image.asset('assets/biri.png', fit: BoxFit.cover, alignment: Alignment.center),
                 ),
               ),
-              // ═══════════════════════════════════════════════════════════════
-              // KATMAN SİSTEMİ (Stack Z-order: arkadan öne)
-              //   1. bgbos.png       — sabit dükkan arkaplanı
-              //   2. biri.png        — kapı gölgesi (müşteri yokken)
-              //   3. MÜŞTERİ görseli — masanın ALTINDA (bu katman)
-              //   4. Masa (bg1/bg2/bgbosmasa) — müşterinin ÜZERİNDE
-              //   5. SafeArea UI     — header + _buildSahne() + altbar
-              //      └─ _buildSahne() içinde: müşteri placeholder + ÜRÜN
-              //
-              // MÜŞTERİ BOYUTU VE KONUMU (dış Stack — katman 3):
-              //   width: 513, height: 513  ← DOKUNMA! Ekranı dolduruyor, alt kısmı masanın arkasına gizleniyor
-              //   hedef = (screenW - 513) / 2  ← ortalanmış (ekrandan taşabilir, intentional)
-              //   musteriTop = statusBar + 48.0 + screenH * 0.14 + 44
-              //     48.0 = header yüksekliği, 0.14 = ekranın %14'ü, 44 = ince ayar
-              // ═══════════════════════════════════════════════════════════════
+              // ╔═══════════════════════════════════════════════════════════════╗
+              // ║  KATMAN SİSTEMİ — Stack Z-order (arkadan öne)               ║
+              // ║  1. bgbos.png        — sabit dükkan arkaplanı                ║
+              // ║  2. biri.png         — kapı gölgesi (müşteri yokken)         ║
+              // ║  3. MÜŞTERİ görseli  — masanın ALTINDA ← BU KATMAN          ║
+              // ║  4. Masa (AnimatedSwitcher: bg1/bg2/bgbosmasa)               ║
+              // ║  5. SafeArea UI      — header + _buildSahne() + altbar       ║
+              // ║     └─ _buildSahne() içinde: placeholder (564×564) + ÜRÜN   ║
+              // ╠═══════════════════════════════════════════════════════════════╣
+              // ║  MÜŞTERİ BOYUTU VE KONUMU (dış Stack — katman 3):            ║
+              // ║    width: 564, height: 564  ← DOKUNMA!                       ║
+              // ║      Alt kısmı masa layer'ının arkasına gizleniyor            ║
+              // ║      Ekrandan taşması intentional                             ║
+              // ║    hedef = (screenW - 564) / 2  ← yatayda ortalı             ║
+              // ║    dx = hedef + (screenW - hedef) * slideAnim.value           ║
+              // ║         ← sağdan kayarak giriş animasyonu                     ║
+              // ║    musteriTop = statusBar + 48.0 + screenH * 0.14 + 44        ║
+              // ║      statusBar = mq.padding.top                               ║
+              // ║      48.0      = header yüksekliği (hh)                       ║
+              // ║      0.14      = ekranın %14'ü                                ║
+              // ║      44        = ince ayar (SON DEĞER — DOKUNMA!)             ║
+              // ╚═══════════════════════════════════════════════════════════════╝
               if (_state.aktifMusteri != null || _state.aktifOzelMusteri != null)
                 AnimatedBuilder(
                   animation: _slideAnim,
@@ -2102,7 +2109,22 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     return Stack(
       children: [
 
-        // Müşteri
+        // ╔═══════════════════════════════════════════════════════════════╗
+        // ║  _buildSahne() MÜŞTERİ PLACEHOLDER (SafeArea içi)            ║
+        // ║  Gerçek müşteri görseli dış Stack katman 3'te render edilir.  ║
+        // ║  Burası sadece Z-order'ı korumak için 564×564 boş yer tutar. ║
+        // ║  KONUM (SafeArea içi — status bar YOK, header altında başlar):║
+        // ║    hedef     = (screenW - 564) / 2                            ║
+        // ║    dx        = hedef + (screenW - hedef) * slideAnim.value    ║
+        // ║    musteriTop = screenH * 0.14 + 44  ← DOKUNMA!               ║
+        // ║      0.14 = ekranın %14'ü, 44 = ince ayar (SON DEĞER)        ║
+        // ╠═══════════════════════════════════════════════════════════════╣
+        // ║  İSİM ETİKETİ (normal müşteri):                               ║
+        // ║    Positioned(bottom: 306, left: 0, right: 0)                 ║
+        // ║    → 564px placeholder'ın altından 306px yukarıda, ortalı    ║
+        // ║    → Özel müşteri (polis/hırsız/vergici) da AYNI bottom:306  ║
+        // ║      _buildOzelMusteriWidget() içinde aynı değer kullanılır   ║
+        // ╚═══════════════════════════════════════════════════════════════╝
         if (_state.aktifMusteri != null || _state.aktifOzelMusteri != null)
           AnimatedBuilder(
             animation: _slideAnim,
@@ -2120,11 +2142,9 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
               : Stack(
               clipBehavior: Clip.none,
               children: [
-                // Karakter görseli dış Stack'te (masa layer'ının altında) — burası boş placeholder
-                const SizedBox(width: 564, height: 564),
-                // İsim etiketi: placeholder içinde, alttan 206px yukarıda
+                const SizedBox(width: 564, height: 564), // Z-order placeholder — DOKUNMA!
                 Positioned(
-                  bottom: 306,
+                  bottom: 306, // ← DOKUNMA! İsim etiketi yüksekliği (SON DEĞER)
                   left: 0, right: 0,
                   child: Center(
                     child: GestureDetector(
@@ -2144,19 +2164,30 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
               ],
             ),
           ),
-        // ═══════════════════════════════════════════════════════════════
-        // ÜRÜN KONUMU (_buildSahne içinde, masa katmanının ÜSTÜNDEKİ katmanda):
-        //   width: 144, height: 144
-        //   productLeft = dx + 306
-        //     dx = (screenW - 513) / 2 müşteri slide animasyonunu takip eder
-        //     +306 = müşterinin sol kenarından 306px sağda
-        //   productTop = screenH * 0.57 - productSize - st - hh + 22
-        //     0.57 = ürün alt kenarı ekranın %57'sinde (masa yüzeyi)
-        //     st = status bar yüksekliği, hh = 48 (header)
-        //     +22 = ince ayar (archived session +12, sonra +10 daha aşağı)
-        //   NOT: Bu koordinatlar _buildSahne() Stack'ine göreli
-        //        (SafeArea içinde, header altında başlar)
-        // ═══════════════════════════════════════════════════════════════
+        // ╔═══════════════════════════════════════════════════════════════╗
+        // ║  ÜRÜN KONUMU — _buildSahne() içi, masa layer'ının ÜSTÜNDEKİ ║
+        // ║  Sadece müşteri satıcıyken (musteriSatiyor==true) gösterilir  ║
+        // ║                                                               ║
+        // ║  BOYUT:                                                       ║
+        // ║    Standart ürünler      : 151 × 151 px                       ║
+        // ║    konsol_3.png          : 151 * 0.85 ≈ 128px  (%15 küçük)   ║
+        // ║    oyuncudireksiyonu.png : 151 * 0.85 ≈ 128px  (%15 küçük)   ║
+        // ║                                                               ║
+        // ║  YATAY (productLeft):                                         ║
+        // ║    dx + 306              — tüm ürünler                        ║
+        // ║    dx + 306 + 7 = dx+313 — sadece oyuncudireksiyonu.png       ║
+        // ║    dx = hedef + (screenW-hedef)*slideAnim (müşteriyi takip)   ║
+        // ║                                                               ║
+        // ║  DİKEY (productTop):                                          ║
+        // ║    screenH * 0.57 - productSize - st - hh + 32               ║
+        // ║      0.57 = ürün ALT kenarı ekranın %57'sinde (masa yüzeyi)  ║
+        // ║      st   = viewPadding.top (status bar)                      ║
+        // ║      hh   = 48.0 (header yüksekliği)                          ║
+        // ║      +32  = ince ayar (SON DEĞER — DOKUNMA!)                  ║
+        // ║                                                               ║
+        // ║  NOT: Koordinatlar _buildSahne() Stack'ine göreli             ║
+        // ║       (SafeArea içinde, header altında başlar)                ║
+        // ╚═══════════════════════════════════════════════════════════════╝
         if (_state.aktifMusteri != null && _state.aktifMusteri!.musteriSatiyor)
           AnimatedBuilder(
             animation: _slideAnim,
@@ -2181,7 +2212,22 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
               );
             },
           ),
-        // Mesaj kutusu
+        // ╔═══════════════════════════════════════════════════════════════╗
+        // ║  KONUŞMA BALONU (mesaj kutusu)                                ║
+        // ║  Positioned(top:6, left:6, right:6) — kenar boşlukları       ║
+        // ║  Container padding: EdgeInsets.all(6)                         ║
+        // ║                                                               ║
+        // ║  Müşteri SATICI ise (musteriSatiyor==true):                   ║
+        // ║    → Sadece TypewriterText (metin ortalı)                     ║
+        // ║                                                               ║
+        // ║  Müşteri ALICI ise (musteriSatiyor==false):                   ║
+        // ║    → Row layout:                                              ║
+        // ║       Sol : Image.asset(item.gorsel, 100×100px)               ║
+        // ║       Ara : SizedBox(width:8)                                 ║
+        // ║       Sağ : Expanded > Transform.translate(Offset(-15,0))     ║
+        // ║                      > Center > TypewriterText                ║
+        // ║         -15 = metni 15px sola kaydır (SON DEĞER — DOKUNMA!)  ║
+        // ╚═══════════════════════════════════════════════════════════════╝
         Positioned(
           top: 6, left: 6, right: 6,
           child: Container(
@@ -2199,14 +2245,19 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                   children: [
                     Image.asset(
                       _state.aktifMusteri!.item.gorsel,
-                      width: 200, height: 200, fit: BoxFit.contain,
+                      width: 100, height: 100, fit: BoxFit.contain,
                     ),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: TypewriterText(
-                        text: _state.mesaj,
-                        style: TextStyle(fontSize: 14, color: const Color(0xFFFFD700)),
-                        textAlign: TextAlign.center,
+                      child: Transform.translate(
+                        offset: const Offset(-15, 0),
+                        child: Center(
+                          child: TypewriterText(
+                            text: _state.mesaj,
+                            style: TextStyle(fontSize: 14, color: const Color(0xFFFFD700)),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
                       ),
                     ),
                   ],
@@ -2232,13 +2283,15 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       case OzelMusteriTip.polis: renk = Colors.blueAccent; break;
       case OzelMusteriTip.vergici: renk = Colors.orangeAccent; break;
     }
-    // placeholder 513px — normal müşteriyle aynı (dx negatif olduğunda yazı ekran dışına çıkmasın)
+    // Özel müşteri placeholder: 564×564 — normal müşteriyle AYNI boyut ve bottom değeri
+    // dx negatif olduğunda isim etiketi ekran dışına çıkmasın diye left:0/right:0 + Center kullanılır
+    // bottom: 306 ← DOKUNMA! Normal müşteriyle aynı değer (her ikisi de bu değeri kullanır)
     return Stack(
       clipBehavior: Clip.none,
       children: [
-        const SizedBox(width: 564, height: 564),
+        const SizedBox(width: 564, height: 564), // Z-order placeholder
         Positioned(
-          bottom: 306,
+          bottom: 306, // ← DOKUNMA! (SON DEĞER — normal müşteriyle eşleşmeli)
           left: 0, right: 0,
           child: Center(
             child: Container(
