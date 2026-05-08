@@ -727,10 +727,15 @@ class GameState extends ChangeNotifier {
     GameItem(id: 'cd4',      name: 'ZOOMDAY',            gorsel: 'assets/CD_4.png',                category: ItemCategory.cd,      basePrice: 150,  kondisyon: 2),
     GameItem(id: 'cd5',      name: 'GTR 7',              gorsel: 'assets/CD_5.png',                category: ItemCategory.cd,      basePrice: 200,  kondisyon: 5),
     GameItem(id: 'cd6',      name: 'BOKUS 4D',           gorsel: 'assets/CD_6.png',                category: ItemCategory.cd,      basePrice: 250,  kondisyon: 1),
-    GameItem(id: 'konsol1',  name: 'PlayStatyon',        gorsel: 'assets/konsol_1.png',            category: ItemCategory.konsol,  basePrice: 900,  kondisyon: 4),
-    GameItem(id: 'konsol2',  name: 'Ninetendo',          gorsel: 'assets/konsol_2.png',            category: ItemCategory.konsol,  basePrice: 750,  kondisyon: 3),
-    GameItem(id: 'konsol3',  name: 'Ateri',              gorsel: 'assets/konsol_3.png',            category: ItemCategory.konsol,  basePrice: 500,  kondisyon: 2),
-    GameItem(id: 'aksesuar1',name: 'Oyuncu Direksiyonu', gorsel: 'assets/oyuncudireksiyonu.png',   category: ItemCategory.aksesuar,basePrice: 600,  kondisyon: 3),
+    GameItem(id: 'konsol1',  name: 'PlayStatyon',          gorsel: 'assets/konsol_1.png',          category: ItemCategory.konsol,  basePrice: 900,  kondisyon: 4),
+    GameItem(id: 'konsol2',  name: 'Ninetendo',            gorsel: 'assets/konsol_2.png',          category: ItemCategory.konsol,  basePrice: 750,  kondisyon: 3),
+    GameItem(id: 'konsol3',  name: 'Ateri',                gorsel: 'assets/konsol_3.png',          category: ItemCategory.konsol,  basePrice: 500,  kondisyon: 2),
+    GameItem(id: 'konsol4',  name: 'el konsolu',           gorsel: 'assets/konsol_4.png',          category: ItemCategory.konsol,  basePrice: 420,  kondisyon: 4),
+    GameItem(id: 'konsol5',  name: 'el konsolu',           gorsel: 'assets/konsol_5.png',          category: ItemCategory.konsol,  basePrice: 380,  kondisyon: 2),
+    GameItem(id: 'konsol6',  name: 'el konsolu',           gorsel: 'assets/konsol_6.png',          category: ItemCategory.konsol,  basePrice: 560,  kondisyon: 5),
+    GameItem(id: 'konsol7',  name: 'son sistem oyun konsolu', gorsel: 'assets/konsol_7.png',       category: ItemCategory.konsol,  basePrice: 3200, kondisyon: 4),
+    GameItem(id: 'aksesuar1',name: 'Oyuncu Direksiyonu',   gorsel: 'assets/oyuncudireksiyonu.png', category: ItemCategory.aksesuar,basePrice: 600,  kondisyon: 3),
+    GameItem(id: 'aksesuar2',name: 'Joypad',               gorsel: 'assets/joypad.png',            category: ItemCategory.aksesuar,basePrice: 280,  kondisyon: 3),
   ];
 
   // 25 slot: index 0-24. Slot bazlı envanter.
@@ -2270,7 +2275,8 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
               final hedef = (screenW - 564) / 2;
               final dx = hedef + (screenW - hedef) * _slideAnim.value;
               final gorsel = _state.aktifMusteri!.item.gorsel;
-              final kucukUrun = gorsel == 'assets/konsol_3.png' || gorsel == 'assets/oyuncudireksiyonu.png';
+              final kucukUrun = gorsel == 'assets/konsol_3.png' || gorsel == 'assets/oyuncudireksiyonu.png'
+                  || gorsel == 'assets/konsol_4.png' || gorsel == 'assets/konsol_5.png' || gorsel == 'assets/konsol_6.png';
               final productSize = kucukUrun ? 151.0 * 0.85 : 151.0;
               final productLeft = dx + 306
                 + (gorsel == 'assets/oyuncudireksiyonu.png' ? 7 : 0)  // direksiyon +7
