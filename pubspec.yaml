@@ -32,5 +32,56 @@ flutter:
   uses-material-design: true
 
   assets:
-    - assets/
     - assets/sounds/
+    - assets/anamenu.png
+    - assets/bg1.png
+    - assets/bg2.png
+    - assets/bgbos.png
+    - assets/bgbosmasa.png
+    - assets/biri.png
+    - assets/browser.png
+    - assets/durum.png
+    - assets/hirsiz.png
+    - assets/joypad.png
+    - assets/kolonya.png
+    - assets/kurye.png
+    - assets/oyuncudireksiyonu.png
+    - assets/oyuncu_dukkani_icon.png
+    - assets/polis.png
+    - assets/vergici.png
+    - assets/3dgozluk.png
+    - assets/gamepad.png
+    - assets/lokum.png
+    - assets/zarf.png
+    - assets/konsol_1.png
+    - assets/konsol_2.png
+    - assets/konsol_3.png
+    - assets/konsol_4.png
+    - assets/konsol_5.png
+    - assets/konsol_6.png
+    - assets/konsol_7.png
+    - assets/musteri_1.png
+    - assets/musteri_2.png
+    - assets/musteri_3.png
+    - assets/musteri_4.png
+    - assets/musteri_5.png
+    - assets/musteri_6.png
+    - assets/musteri_7.png
+    - assets/musteri_8.png
+    - assets/musteri_9.png
+    - assets/musteri_10.png
+    - assets/musteri_11.png
+    - assets/CD_1.png
+    - assets/CD_2.png
+    - assets/CD_3.png
+    - assets/CD_4.png
+    - assets/CD_5.png
+    - assets/CD_6.png
+    - assets/CD_7.png
+    - assets/CD_8.png
+    - assets/CD_9.png
+    - assets/CD_10.png
+    - assets/CD_11.png
+    - assets/CD_12.png
+    - assets/CD_13.png
+    - assets/CD_14.png

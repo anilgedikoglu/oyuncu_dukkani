@@ -187,8 +187,28 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
     final json = await KayitServisi.yukle();
     if (!mounted) return;
     setState(() => _yukleniyor = false);
-    final state = GameState.fromJson(json!);
-    Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => GameScreen(yeniOyun: false, yuklenenState: state)));
+    try {
+      final state = GameState.fromJson(json!);
+      Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => GameScreen(yeniOyun: false, yuklenenState: state)));
+    } catch (e) {
+      // Kayıt bozuksa sil ve kullanıcıya bildir
+      await KayitServisi.sil();
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: const Color(0xFF1a1008),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: const BorderSide(color: Color(0xFF8B5E3C), width: 2)),
+          title: const Text('Kayıt Okunamadı', textAlign: TextAlign.center, style: TextStyle(color: Color(0xFFF5E6C8), fontSize: 18)),
+          content: const Text('Kayıt dosyası bu sürümle uyumsuz.\nYeni oyun başlatın!', textAlign: TextAlign.center, style: TextStyle(color: Colors.white70)),
+          actions: [Center(child: ElevatedButton(
+            onPressed: () => Navigator.pop(ctx),
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF8B5E3C), foregroundColor: Colors.white),
+            child: const Text('Tamam', style: TextStyle(fontWeight: FontWeight.bold)),
+          ))],
+        ),
+      );
+    }
   }
 
   @override
@@ -735,7 +755,7 @@ class Customer {
 // ─── OYUN DURUMU ─────────────────────────────────────────────────────────────
 
 class GameState extends ChangeNotifier {
-  int para = 500;
+  int para = 1000;
   int gun = 1;
   int musteriSayisi = 0;
   int gunlukMusteriSayisi = 0;
@@ -760,6 +780,7 @@ class GameState extends ChangeNotifier {
   bool kolonyaIkramEdildi = false; // bu müşteriye ikram edildi mi
   double _kolonyaPendingBonus = 0.0; // pazarlık başlamadan ikram edildiyse bekleyen bonus
   bool kuryeBonusuAktif = false;    // bir sonraki müşteri çok avantajlı olacak
+  String? _sonUrunId;               // ardışık aynı ürün engeli
   String mesaj = 'Dükkan açıldı! İlk müşteri bekleniyor...';
   Customer? aktifMusteri;
   PazarlikSeans? aktifPazarlik;
@@ -777,12 +798,20 @@ class GameState extends ChangeNotifier {
     GameItem(id: 'cd4',      name: 'ZOOMDAY',            gorsel: 'assets/CD_4.png',                category: ItemCategory.cd,      basePrice: 150,  kondisyon: 2),
     GameItem(id: 'cd5',      name: 'GTR 7',              gorsel: 'assets/CD_5.png',                category: ItemCategory.cd,      basePrice: 200,  kondisyon: 5),
     GameItem(id: 'cd6',      name: 'BOKUS 4D',           gorsel: 'assets/CD_6.png',                category: ItemCategory.cd,      basePrice: 250,  kondisyon: 1),
+    GameItem(id: 'cd7',      name: 'TENİS OYUNU',        gorsel: 'assets/CD_7.png',                category: ItemCategory.cd,      basePrice: 110,  kondisyon: 4),
+    GameItem(id: 'cd8',      name: 'DALAKKÜREK',         gorsel: 'assets/CD_8.png',                category: ItemCategory.cd,      basePrice: 95,   kondisyon: 3),
+    GameItem(id: 'cd9',      name: 'ŞAHMAT',             gorsel: 'assets/CD_9.png',                category: ItemCategory.cd,      basePrice: 130,  kondisyon: 5),
+    GameItem(id: 'cd10',     name: 'TOTORACER',          gorsel: 'assets/CD_10.png',               category: ItemCategory.cd,      basePrice: 160,  kondisyon: 4),
+    GameItem(id: 'cd11',     name: 'GAMLIBAYKUŞ',        gorsel: 'assets/CD_11.png',               category: ItemCategory.cd,      basePrice: 140,  kondisyon: 2),
+    GameItem(id: 'cd12',     name: 'KISPET',             gorsel: 'assets/CD_12.png',               category: ItemCategory.cd,      basePrice: 175,  kondisyon: 3),
+    GameItem(id: 'cd13',     name: 'UÇARSOKAR',          gorsel: 'assets/CD_13.png',               category: ItemCategory.cd,      basePrice: 120,  kondisyon: 5),
+    GameItem(id: 'cd14',     name: 'DÜTTÜRÜ',            gorsel: 'assets/CD_14.png',               category: ItemCategory.cd,      basePrice: 85,   kondisyon: 4),
     GameItem(id: 'konsol1',  name: 'PlayStatyon',          gorsel: 'assets/konsol_1.png',          category: ItemCategory.konsol,  basePrice: 900,  kondisyon: 4),
     GameItem(id: 'konsol2',  name: 'Ninetendo',            gorsel: 'assets/konsol_2.png',          category: ItemCategory.konsol,  basePrice: 750,  kondisyon: 3),
     GameItem(id: 'konsol3',  name: 'Ateri',                gorsel: 'assets/konsol_3.png',          category: ItemCategory.konsol,  basePrice: 500,  kondisyon: 2),
-    GameItem(id: 'konsol4',  name: 'el konsolu',           gorsel: 'assets/konsol_4.png',          category: ItemCategory.konsol,  basePrice: 420,  kondisyon: 4),
-    GameItem(id: 'konsol5',  name: 'el konsolu',           gorsel: 'assets/konsol_5.png',          category: ItemCategory.konsol,  basePrice: 380,  kondisyon: 2),
-    GameItem(id: 'konsol6',  name: 'el konsolu',           gorsel: 'assets/konsol_6.png',          category: ItemCategory.konsol,  basePrice: 560,  kondisyon: 5),
+    GameItem(id: 'konsol4',  name: 'El Konsolu',           gorsel: 'assets/konsol_4.png',          category: ItemCategory.konsol,  basePrice: 420,  kondisyon: 4),
+    GameItem(id: 'konsol5',  name: 'El Konsolu',           gorsel: 'assets/konsol_5.png',          category: ItemCategory.konsol,  basePrice: 380,  kondisyon: 2),
+    GameItem(id: 'konsol6',  name: 'El Konsolu',           gorsel: 'assets/konsol_6.png',          category: ItemCategory.konsol,  basePrice: 560,  kondisyon: 5),
     GameItem(id: 'konsol7',  name: 'son sistem oyun konsolu', gorsel: 'assets/konsol_7.png',       category: ItemCategory.konsol,  basePrice: 3200, kondisyon: 4),
     GameItem(id: 'aksesuar1',name: 'Oyuncu Direksiyonu',   gorsel: 'assets/oyuncudireksiyonu.png', category: ItemCategory.aksesuar,basePrice: 600,  kondisyon: 3),
     GameItem(id: 'aksesuar2',name: 'Joypad',               gorsel: 'assets/joypad.png',            category: ItemCategory.aksesuar,basePrice: 280,  kondisyon: 3),
@@ -893,9 +922,14 @@ class GameState extends ChangeNotifier {
     slotlar = List.generate(25, (i) => raw[i] != null ? GameItem.fromJson(raw[i] as Map<String, dynamic>) : null);
     _sonrakiOzelMusteriSayisi = j['sonrakiOzelMusteri'] as int;
     _ozelMusteriSayaci = j['ozelSayac'] as int;
-    _ozelTipSirasi = (j['ozelTipSirasi'] as List).map((s) => OzelMusteriTip.values.firstWhere((e) => e.name == s as String)).toList();
-    // Eski kayıt migrasyonu: kurye yoksa sıraya ekle
-    if (!_ozelTipSirasi.contains(OzelMusteriTip.kurye)) _ozelTipSirasi.add(OzelMusteriTip.kurye);
+    final rawSira = j['ozelTipSirasi'] as List?;
+    if (rawSira != null) {
+      _ozelTipSirasi = rawSira.map((s) => OzelMusteriTip.values.firstWhere((e) => e.name == s as String, orElse: () => OzelMusteriTip.hirsiz)).toList();
+    }
+    // Eski kayıt migrasyonu: eksik tipler varsa sıraya ekle
+    for (final tip in OzelMusteriTip.values) {
+      if (!_ozelTipSirasi.contains(tip)) _ozelTipSirasi.add(tip);
+    }
     _ozelTipIndex = j['ozelTipIndex'] as int;
     toplamTeklifSayisi = j['toplamTeklif'] as int;
     krediKalanTaksit = (j['krediKalanTaksit'] as int?) ?? 0;
@@ -988,14 +1022,19 @@ class GameState extends ChangeNotifier {
         notifyListeners();
         return;
       }
-      secilenUrun = mevcut[rng.nextInt(mevcut.length)];
+      // Ardışık aynı ürün engeli: bir önceki ürün havuzdan çıkar (birden fazla varsa)
+      final adaylar = mevcut.length > 1 ? mevcut.where((u) => u.id != _sonUrunId).toList() : mevcut;
+      secilenUrun = adaylar[rng.nextInt(adaylar.length)];
     } else {
       // Kolonya zaten varsa tekrar kolonya satan müşteri gelmesin
-      final satisHavuzu = kolonyaKullanim > 0
+      final tumHavuz = kolonyaKullanim > 0
           ? _baslangicUrunler.where((u) => u.id != 'kolonya').toList()
-          : _baslangicUrunler;
+          : _baslangicUrunler.toList();
+      // Ardışık aynı ürün engeli: bir önceki ürün havuzdan çıkar (birden fazla varsa)
+      final satisHavuzu = tumHavuz.length > 1 ? tumHavuz.where((u) => u.id != _sonUrunId).toList() : tumHavuz;
       secilenUrun = satisHavuzu[rng.nextInt(satisHavuzu.length)];
     }
+    _sonUrunId = secilenUrun.id; // bir sonraki seçimde bu ürün hariç tutulur
 
     // Yeni model: perceivedValue → reservationPrice → openingOffer
     final pv     = ozellik.perceivedValue(secilenUrun.kondisyon, secilenUrun.basePrice);
@@ -1219,6 +1258,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   String? _kolonyaGeciciMesaj; // 3 saniyeliğine gösterilecek özel mesaj
   Timer? _kolonyaMesajTimer;
   Timer? _kuryeTimer;
+  int _kolonyaSonrasiSonIdx = -1; // alıcı + kolonya sonrası tekrarlamasın diye son seçilen mesaj indeksi
 
   // ── Daire geri sayım animasyonu ──
   late Ticker _daireTicker;
@@ -2423,45 +2463,6 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                   ),
                 ),
               ),
-              // Kolonya widget — sağ 1/5; normal veya özel müşteri varsa görünür
-              if (_state.kolonyaKullanim > 0 &&
-                  (_state.aktifMusteri != null || _state.aktifOzelMusteri != null))
-                Builder(builder: (ctx) {
-                  final screenW = MediaQuery.of(ctx).size.width;
-                  final screenH = MediaQuery.of(ctx).size.height;
-                  // 2x * 0.85 = öncekinin ~1.7 katı
-                  final imgSize = (screenW / 5 - 12).clamp(40.0, 72.0) * 2 * 0.85;
-                  // Dikey merkez + 1.0 kolonya boyu yukarı (önceki 1.5'ten yarım aşağı)
-                  final topOffset = screenH / 2 - imgSize / 2 - imgSize * 1.0;
-                  return Positioned(
-                    right: 6,
-                    top: topOffset,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        GestureDetector(
-                          onTap: _state.kolonyaIkramEdildi ? null : _kolonyaIkramEt,
-                          child: Opacity(
-                            opacity: _state.kolonyaIkramEdildi ? 0.45 : 1.0,
-                            child: Image.asset(
-                              'assets/kolonya.png',
-                              width: imgSize, height: imgSize, fit: BoxFit.contain,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          '${_state.kolonyaKullanim}/10',
-                          style: const TextStyle(
-                            fontSize: 10, color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            shadows: [Shadow(color: Colors.black, blurRadius: 3)],
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }),
               if (_envanterAcik) _buildEnvanterOverlay(),
             ],
           ),
@@ -2621,7 +2622,8 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
         // ║  NOT: Koordinatlar _buildSahne() Stack'ine göreli             ║
         // ║       (SafeArea içinde, header altında başlar)                ║
         // ╚═══════════════════════════════════════════════════════════════╝
-        if (_state.aktifMusteri != null && _state.aktifMusteri!.musteriSatiyor)
+        if (_state.aktifMusteri != null && _state.aktifMusteri!.musteriSatiyor ||
+            _state.aktifOzelMusteri?.tip == OzelMusteriTip.kurye)
           AnimatedBuilder(
             animation: _slideAnim,
             builder: (context, _) {
@@ -2631,16 +2633,21 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
               const hh = 48.0;
               final hedef = (screenW - 564) / 2;
               final dx = hedef + (screenW - hedef) * _slideAnim.value;
-              final gorsel = _state.aktifMusteri!.item.gorsel;
+              // Kurye ise durum.png, normal müşteri ise kendi ürün görseli
+              final gorsel = _state.aktifOzelMusteri?.tip == OzelMusteriTip.kurye
+                  ? 'assets/durum.png'
+                  : _state.aktifMusteri!.item.gorsel;
               final kucukUrun = gorsel == 'assets/konsol_3.png' || gorsel == 'assets/oyuncudireksiyonu.png'
                   || gorsel == 'assets/konsol_4.png' || gorsel == 'assets/konsol_5.png' || gorsel == 'assets/konsol_6.png'
                   || gorsel == 'assets/joypad.png';
-              final productSize = kucukUrun ? 151.0 * 0.85 : 151.0;
+              final productSize = gorsel == 'assets/durum.png'
+                  ? 151.0 * 0.80   // dürüm %20 küçük
+                  : kucukUrun ? 151.0 * 0.85 : 151.0;
               final productLeft = dx + 306
-                + (gorsel == 'assets/oyuncudireksiyonu.png' ? 7 : 0)  // direksiyon +7
-                + (gorsel == 'assets/konsol_2.png'          ? 5 : 0)  // konsol_2 +5
-                + (gorsel == 'assets/konsol_3.png'          ? 5 : 0); // konsol_3 +5
-              final productTop = screenH * 0.57 - productSize - st - hh + 32; // masa yüzeyi hizası
+                + (gorsel == 'assets/oyuncudireksiyonu.png' ? 7 : 0)
+                + (gorsel == 'assets/konsol_2.png'          ? 5 : 0)
+                + (gorsel == 'assets/konsol_3.png'          ? 5 : 0);
+              final productTop = screenH * 0.57 - productSize - st - hh + 32;
               return Positioned(
                 left: productLeft, top: productTop,
                 child: Image.asset(
@@ -2881,7 +2888,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
               )),
               const SizedBox(width: 12),
               Expanded(child: _oyunButon(
-                emoji: '🚶', label: 'Vazgeç',
+                emoji: '🚶', label: 'Reddet',
                 onTap: _pazarlikVazgec,
                 gradyan: const [Color(0xFFe53935), Color(0xFF7f0000)],
                 kenar: const Color(0xFFef9a9a),
@@ -2902,6 +2909,57 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
               kenar: const Color(0xFFb39ddb),
             )),
           ]),
+          // Kolonya Tut butonu — kolonya envanterde varsa görünür
+          if (_state.kolonyaKullanim > 0) ...[
+            const SizedBox(height: 8),
+            Builder(builder: (_) {
+              final hasMusteri = _state.aktifMusteri != null || _state.aktifOzelMusteri != null;
+              final aktif = hasMusteri && !_state.kolonyaIkramEdildi;
+              return GestureDetector(
+                onTap: aktif ? _kolonyaIkramEt : null,
+                child: CustomPaint(
+                  painter: _PixelButonPainter(renk: const Color(0xFFE6A800), aktif: aktif),
+                  child: SizedBox(
+                    height: 50,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                      child: Center(
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Opacity(
+                              opacity: aktif ? 1.0 : 0.35,
+                              child: Image.asset('assets/kolonya.png', width: 22, height: 22, fit: BoxFit.contain),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Kolonya Tut',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w900,
+                                fontSize: 15,
+                                color: aktif ? Colors.white : Colors.white38,
+                                letterSpacing: 0.5,
+                                shadows: aktif ? [const Shadow(color: Colors.black54, blurRadius: 2, offset: Offset(0, 1))] : null,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              '${_state.kolonyaKullanim}/10',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13,
+                                color: aktif ? Colors.white70 : Colors.white24,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }),
+          ],
         ],
       ),
     );
@@ -3243,10 +3301,29 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
         _ozelMusteriGonder();
       });
     } else {
-      // Normal müşteriye ikram
+      // Normal müşteriye ikram — 3 sn teşekkür, sonra alıcıysa 6 random'dan biri ile devam
       setState(() => _kolonyaGeciciMesaj = 'Kolonya ikramın için teşekkürler! :)');
       _kolonyaMesajTimer = Timer(const Duration(seconds: 3), () {
-        if (mounted) setState(() => _kolonyaGeciciMesaj = null);
+        if (!mounted) return;
+        // Alıcı (alıcı) için kolonya sonrası random mesaj: önceki ürünü hatırla, tekrar etmesin
+        if (_state.aktifMusteri != null && !_state.aktifMusteri!.musteriSatiyor) {
+          final urunAd = _state.aktifMusteri!.item.name;
+          final mesajlar = <String>[
+            'Ne diyorduk? Elinde $urunAd olduğunu duydum, bana satar mısın?',
+            'En son $urunAd cd\'sini bana satmanı rica ediyordum. Mümkün mü?',
+            'Nerede kalmıştık... Evet. $urunAd cd\'ni bana satar mısın?',
+            'Hah ne diyordum; $urunAd cd\'ni alabilir miyim mümkünse?',
+            '$urunAd cd\'n hala duruyorsa ben alabilir miyim?',
+            'Ferahladığıma göre tekrar sorayım, $urunAd satılık mı halen?',
+          ];
+          final adaylar = List<int>.generate(mesajlar.length, (i) => i)
+              .where((i) => i != _kolonyaSonrasiSonIdx).toList();
+          final idx = adaylar[Random().nextInt(adaylar.length)];
+          _kolonyaSonrasiSonIdx = idx;
+          _state.mesaj = mesajlar[idx];
+          _state.notifyListeners();
+        }
+        setState(() => _kolonyaGeciciMesaj = null);
       });
     }
   }
@@ -3350,7 +3427,10 @@ class _PazarlikDialogState extends State<_PazarlikDialog> {
               ])),
               if (!m.musteriSatiyor && m.item.maliyet != null) ...[
                 const SizedBox(height: 2),
-                Text('Maliyet: ${m.item.maliyet}', textAlign: TextAlign.center, style: const TextStyle(fontSize: 12, color: Colors.orangeAccent)),
+                RichText(textAlign: TextAlign.center, text: TextSpan(children: [
+                  const TextSpan(text: 'Maliyet: ', style: TextStyle(fontSize: 14, color: Colors.white60, fontWeight: FontWeight.w600)),
+                  TextSpan(text: '${m.item.maliyet}', style: const TextStyle(fontSize: 14, color: Colors.orangeAccent, fontWeight: FontWeight.bold)),
+                ])),
               ],
               const SizedBox(height: 2),
               Row(mainAxisAlignment: MainAxisAlignment.center, children: [
@@ -3460,7 +3540,7 @@ class _PazarlikDialogState extends State<_PazarlikDialog> {
                   Expanded(child: ElevatedButton(
                     onPressed: () { Navigator.of(context).pop(); widget.state.musteriReddet(); },
                     style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFAA0000), foregroundColor: Colors.white, padding: EdgeInsets.zero),
-                    child: const FittedBox(fit: BoxFit.scaleDown, child: Text('Vazgeç', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14))),
+                    child: const FittedBox(fit: BoxFit.scaleDown, child: Text('Reddet', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14))),
                   )),
                   const SizedBox(width: 8),
                   Expanded(child: ElevatedButton(
