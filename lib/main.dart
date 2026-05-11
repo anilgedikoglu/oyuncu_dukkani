@@ -2276,7 +2276,8 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
               final dx = hedef + (screenW - hedef) * _slideAnim.value;
               final gorsel = _state.aktifMusteri!.item.gorsel;
               final kucukUrun = gorsel == 'assets/konsol_3.png' || gorsel == 'assets/oyuncudireksiyonu.png'
-                  || gorsel == 'assets/konsol_4.png' || gorsel == 'assets/konsol_5.png' || gorsel == 'assets/konsol_6.png';
+                  || gorsel == 'assets/konsol_4.png' || gorsel == 'assets/konsol_5.png' || gorsel == 'assets/konsol_6.png'
+                  || gorsel == 'assets/joypad.png';
               final productSize = kucukUrun ? 151.0 * 0.85 : 151.0;
               final productLeft = dx + 306
                 + (gorsel == 'assets/oyuncudireksiyonu.png' ? 7 : 0)  // direksiyon +7
