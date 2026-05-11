@@ -1115,6 +1115,19 @@ class GameState extends ChangeNotifier {
     return (kira, krediKesinti, para < 0);
   }
 
+  /// Game over kesintisi — gun artırmadan sadece kira/kredi keser.
+  /// Bilgisayar popup'ı ve yeni gün geçişi tetiklenmez.
+  void gameOverGecis() {
+    para -= aktifDukkan.kira;
+    SesServisi.paraGirdi();
+    if (krediKalanTaksit > 0) {
+      para -= krediTaksitMiktar;
+      krediKalanTaksit--;
+      SesServisi.paraGirdi();
+    }
+    notifyListeners();
+  }
+
   void _musteriGonder() {
     musteriGorunuyor = false;
     ozelMusteriGorunuyor = false;
@@ -1142,6 +1155,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   bool _gunBitiPopupGosterildi = false;
   bool _pazarlikBekleniyor = false;
   bool _bilgisayarGeldiGosterildi = false;
+  bool _gameOverGosterildi = false; // game over popup gösterildiyse diğer popup'ları engelle
   String? _kolonyaGeciciMesaj; // 3 saniyeliğine gösterilecek özel mesaj
   Timer? _kolonyaMesajTimer;
 
@@ -1273,7 +1287,9 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   }
 
   void _gunBitiKontrol() {
+    if (_gameOverGosterildi) return; // game over zaten işlendi, başka popup tetikleme
     if (_state.oyunBitti) {
+      _gameOverGosterildi = true;
       Future.delayed(const Duration(milliseconds: 300), () {
         if (!mounted) return;
         _gameOverPopup('Para bitti ve envanter boş!\n\n${_state.gun}. günde iflas ettin.', _state.gun);
@@ -1376,12 +1392,20 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
         actions: [Center(child: ElevatedButton(
           onPressed: () {
             Navigator.pop(ctx);
-            final (_, _, gameOver) = _state.gunuBitir();
-            setState(() => _gunBitiPopupGosterildi = false);
-            if (gameOver) {
-              Future.delayed(const Duration(milliseconds: 200), () {
-                if (mounted) _gameOverPopup('Kira ödenemedi!\n\n${_state.gun - 1}. günde iflas ettin.', _state.gun - 1);
+            if (paraOncesi - toplamKesinti < 0) {
+              // Kira ödenemez → gun artırmadan sadece kes, game over popup göster
+              _state.gameOverGecis();
+              setState(() {
+                _gunBitiPopupGosterildi = true;
+                _gameOverGosterildi = true; // bilgisayar popup + bg geçişi engelle
               });
+              Future.delayed(const Duration(milliseconds: 200), () {
+                if (mounted) _gameOverPopup('Kira ödenemedi!\n\n${_state.gun}. günde iflas ettin.', _state.gun);
+              });
+            } else {
+              // Normal geçiş — yeni güne başla
+              _state.gunuBitir();
+              setState(() => _gunBitiPopupGosterildi = false);
             }
           },
           style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFFD700), foregroundColor: Colors.black),
