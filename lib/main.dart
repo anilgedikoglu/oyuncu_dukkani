@@ -726,6 +726,7 @@ class GameState extends ChangeNotifier {
   int toplamTeklifSayisi = 0;
   int krediKalanTaksit = 0;
   int krediTaksitMiktar = 0;
+  int tamamlananKrediSayisi = 0; // kaç kredi tamamen ödendi (taksit limiti için)
   bool get aktifKrediVar => krediKalanTaksit > 0;
   bool imacSatinAlindi = false;
   int kolonyaKullanim = 0;      // mevcut kolonya kullanım hakkı (0 = yok)
@@ -869,6 +870,7 @@ class GameState extends ChangeNotifier {
     toplamTeklifSayisi = j['toplamTeklif'] as int;
     krediKalanTaksit = (j['krediKalanTaksit'] as int?) ?? 0;
     krediTaksitMiktar = (j['krediTaksitMiktar'] as int?) ?? 0;
+    tamamlananKrediSayisi = (j['tamamlananKrediSayisi'] as int?) ?? 0;
     imacSatinAlindi = (j['imacSatinAlindi'] as bool?) ?? false;
     kolonyaKullanim = (j['kolonyaKullanim'] as int?) ?? 0;
     // Eski kayıt migrasyonu: kolonya slotta idiyse çıkar, kullanım hakkını koru
@@ -900,6 +902,7 @@ class GameState extends ChangeNotifier {
     'toplamTeklif': toplamTeklifSayisi,
     'krediKalanTaksit': krediKalanTaksit,
     'krediTaksitMiktar': krediTaksitMiktar,
+    'tamamlananKrediSayisi': tamamlananKrediSayisi,
     'imacSatinAlindi': imacSatinAlindi,
     'kolonyaKullanim': kolonyaKullanim,
   };
@@ -1107,10 +1110,11 @@ class GameState extends ChangeNotifier {
     notifyListeners();
   }
 
-  void krediAl(int toplam, int taksitSayisi) {
-    krediTaksitMiktar = toplam ~/ taksitSayisi;
+  /// alinanTutar: oyuncuya eklenen para, geriOdeme: faizli toplam geri ödeme
+  void krediAl(int alinanTutar, int geriOdeme, int taksitSayisi) {
+    krediTaksitMiktar = (geriOdeme / taksitSayisi).ceil();
     krediKalanTaksit = taksitSayisi;
-    para += toplam;
+    para += alinanTutar;
     SesServisi.paraGirdi();
     notifyListeners();
   }
@@ -1128,6 +1132,7 @@ class GameState extends ChangeNotifier {
       krediKesinti = krediTaksitMiktar;
       para -= krediKesinti;
       krediKalanTaksit--;
+      if (krediKalanTaksit == 0) tamamlananKrediSayisi++; // kredi tamamen ödendi
       SesServisi.paraGirdi();
     }
     mesaj = '$gun. gün başlıyor!';
@@ -1937,94 +1942,179 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       return;
     }
 
+    // Gün çarpanı: kaç. gün olduğuna göre banka daha fazla kredi verir
+    final gun = _state.gun;
+    final multiplier = gun <= 5 ? 1 : gun <= 10 ? 2 : gun <= 20 ? 3 : 4;
+
+    // Taksit limitleri: önceki kredi geçmişine göre
+    final tamamlanan = _state.tamamlananKrediSayisi;
+    const minTaksit = 2;
+    final maxTaksit = tamamlanan == 0 ? 3 : tamamlanan == 1 ? 6 : 9;
+
+    // Başlangıç kredi tutarı: 1000–3000 × çarpan, 100'e yuvarlanmış
     final rng = Random();
-    final y = 3 + rng.nextInt(6); // 3–8
-    final minMult = (1000 / y).ceil();
-    final maxMult = (3000 / y).floor();
-    final mult = minMult + rng.nextInt(maxMult - minMult + 1);
-    final x = mult * y;
-    final taksitMiktar = x ~/ y;
+    final baseSteps = 10 + rng.nextInt(21); // 10..30 → 1000..3000
+    final baseAmount = (baseSteps * 100 * multiplier).clamp(500, 3000 * multiplier);
+    final minAmount = 500;
+    final maxAmount = 3000 * multiplier;
+
+    // Faiz formülü: her taksit %5 ek (2 taksit=%5, 3=%10, ..., 9=%40)
+    int hesaplaGeriOdeme(int tutar, int taksit) =>
+        (tutar * (1.0 + 0.05 * (taksit - 1))).round();
+
+    int alinanTutar = baseAmount;
+    int taksitSayisi = minTaksit;
 
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1a1008),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: const BorderSide(color: Color(0xFF3fb950), width: 1.5)),
-        title: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-          Text('🏦 ', style: TextStyle(fontSize: 22)),
-          Text('Banka Kredisi', style: TextStyle(color: Color(0xFF3fb950), fontSize: 19, fontWeight: FontWeight.bold)),
-        ]),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: const Color(0xFF161b22),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: const Color(0xFF3fb950).withValues(alpha: 0.3)),
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx2, setD) {
+          final geriOdeme = hesaplaGeriOdeme(alinanTutar, taksitSayisi);
+          final gunlukKesinti = (geriOdeme / taksitSayisi).ceil();
+          final faizPct = 5 * (taksitSayisi - 1);
+
+          // Ok butonu yardımcısı
+          Widget okBtn(IconData icon, Color color, VoidCallback? onTap) {
+            return GestureDetector(
+              onTap: onTap,
+              child: Container(
+                width: 30, height: 30,
+                decoration: BoxDecoration(
+                  color: onTap != null ? color.withValues(alpha: 0.15) : Colors.transparent,
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: onTap != null ? color.withValues(alpha: 0.5) : Colors.white12),
+                ),
+                child: Icon(icon, color: onTap != null ? color : Colors.white24, size: 22),
               ),
-              child: Column(children: [
-                Text('$x', style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Color(0xFF3fb950))),
-                const SizedBox(height: 4),
-                const Text('Kredi Tutarı', style: TextStyle(fontSize: 12, color: Colors.white38)),
-              ]),
-            ),
-            const SizedBox(height: 14),
-            Text(
-              'Banka şu anda sana $x kredi vermeyi uygun buluyor.',
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.white70, fontSize: 13),
-            ),
-            const SizedBox(height: 10),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: Colors.orangeAccent.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.orangeAccent.withValues(alpha: 0.3)),
+            );
+          }
+
+          // Etiket + ▼ değer ▲ satırı
+          Widget ayarSatiri({
+            required String label,
+            required String value,
+            required Color color,
+            required VoidCallback? onDown,
+            required VoidCallback? onUp,
+          }) {
+            return Row(children: [
+              Expanded(child: Text(label, style: const TextStyle(color: Colors.white54, fontSize: 12))),
+              okBtn(Icons.arrow_drop_down, color, onDown),
+              const SizedBox(width: 4),
+              SizedBox(
+                width: 80,
+                child: Text(value, textAlign: TextAlign.center,
+                    style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 13)),
               ),
-              child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                const Text('Taksit sayısı:', style: TextStyle(color: Colors.white54, fontSize: 13)),
-                Text('$y gün', style: const TextStyle(color: Colors.orangeAccent, fontWeight: FontWeight.bold, fontSize: 14)),
-              ]),
+              const SizedBox(width: 4),
+              okBtn(Icons.arrow_drop_up, color, onUp),
+            ]);
+          }
+
+          return AlertDialog(
+            backgroundColor: const Color(0xFF1a1008),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: const BorderSide(color: Color(0xFF3fb950), width: 1.5)),
+            title: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+              Text('🏦 ', style: TextStyle(fontSize: 22)),
+              Text('Banka Kredisi',
+                  style: TextStyle(color: Color(0xFF3fb950), fontSize: 19, fontWeight: FontWeight.bold)),
+            ]),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Çarpan rozeti
+                if (multiplier > 1)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.amber.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.amber.withValues(alpha: 0.4)),
+                      ),
+                      child: Text(
+                        '${multiplier}x kredi limiti aktif · $gun. gün',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(color: Colors.amber, fontSize: 12, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                // Kredi tutarı satırı
+                ayarSatiri(
+                  label: 'Kredi tutarı:',
+                  value: '$alinanTutar ₺',
+                  color: const Color(0xFF3fb950),
+                  onDown: alinanTutar > minAmount ? () => setD(() => alinanTutar -= 100) : null,
+                  onUp: alinanTutar < maxAmount ? () => setD(() => alinanTutar += 100) : null,
+                ),
+                const SizedBox(height: 8),
+                // Taksit sayısı satırı
+                ayarSatiri(
+                  label: 'Taksit:',
+                  value: '$taksitSayisi gün',
+                  color: Colors.orangeAccent,
+                  onDown: taksitSayisi > minTaksit ? () => setD(() => taksitSayisi--) : null,
+                  onUp: taksitSayisi < maxTaksit ? () => setD(() => taksitSayisi++) : null,
+                ),
+                const SizedBox(height: 14),
+                // Özet kutusu
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF161b22),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFF3fb950).withValues(alpha: 0.3)),
+                  ),
+                  child: Column(children: [
+                    Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                      const Text('Alacaksınız:', style: TextStyle(color: Colors.white54, fontSize: 12)),
+                      Text('+$alinanTutar ₺',
+                          style: const TextStyle(color: Color(0xFF3fb950), fontWeight: FontWeight.bold, fontSize: 14)),
+                    ]),
+                    const SizedBox(height: 4),
+                    Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                      Text('Toplam ödeme (%$faizPct faiz):',
+                          style: const TextStyle(color: Colors.white38, fontSize: 11)),
+                      Text('$geriOdeme ₺', style: const TextStyle(color: Colors.white60, fontSize: 12)),
+                    ]),
+                    const Divider(color: Colors.white12, height: 14),
+                    Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                      const Text('Günlük kesinti:', style: TextStyle(color: Colors.white54, fontSize: 12)),
+                      Text('-$gunlukKesinti ₺/gün',
+                          style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 14)),
+                    ]),
+                  ]),
+                ),
+              ],
             ),
-            const SizedBox(height: 6),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: Colors.redAccent.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.redAccent.withValues(alpha: 0.25)),
-              ),
-              child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                const Text('Günlük kesinti:', style: TextStyle(color: Colors.white54, fontSize: 13)),
-                Text('-$taksitMiktar/gün', style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 14)),
+            actions: [
+              Row(children: [
+                Expanded(child: ElevatedButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF3a2000), foregroundColor: Colors.white),
+                  child: const Text('Hayır', style: TextStyle(fontWeight: FontWeight.bold)),
+                )),
+                const SizedBox(width: 10),
+                Expanded(child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    _state.krediAl(alinanTutar, geriOdeme, taksitSayisi);
+                  },
+                  style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF3fb950), foregroundColor: Colors.black),
+                  child: const Text('Krediyi Al', style: TextStyle(fontWeight: FontWeight.bold)),
+                )),
               ]),
-            ),
-            const SizedBox(height: 12),
-            const Text('Onaylıyor musun?', textAlign: TextAlign.center, style: TextStyle(color: Colors.white70, fontSize: 13)),
-          ],
-        ),
-        actions: [
-          Row(children: [
-            Expanded(child: ElevatedButton(
-              onPressed: () => Navigator.pop(ctx),
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF3a2000), foregroundColor: Colors.white),
-              child: const Text('Hayır', style: TextStyle(fontWeight: FontWeight.bold)),
-            )),
-            const SizedBox(width: 10),
-            Expanded(child: ElevatedButton(
-              onPressed: () {
-                Navigator.pop(ctx);
-                _state.krediAl(x, y);
-              },
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF3fb950), foregroundColor: Colors.black),
-              child: const Text('Evet', style: TextStyle(fontWeight: FontWeight.bold)),
-            )),
-          ]),
-        ],
+            ],
+          );
+        },
       ),
     );
   }

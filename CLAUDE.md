@@ -239,12 +239,17 @@ for (int j = 0; j < acikSlotSayisi; j++) slotlar[j] = j < dolu.length ? dolu[j] 
 ## Versiyon Geçmişi (son)
 | Commit | Açıklama |
 |--------|----------|
+| v85 | Banka kredisi popup yeniden yazıldı: gün çarpanı, ok butonları, faiz hesabı, kredi geçmişi taksit limiti |
+| v84 | Kabul Et butonu alıcı müşteriler için de çalışır hale getirildi |
+| v83 | Dükkan kiralama gün koşulları, kilitli dükkan %50 opaklık + 🔒, otomatik kapanan popup |
+| v82 | Kolonya widget %15 küçültüldü, yarım kolonya boyu aşağı |
+| v81 | Kolonya envanter slotu kullanmaz, +1 özel kart olarak gösterilir |
+| v80 | Kolonya 2x büyük 1.5x yukarı; özel müşterilere kolonya ikramı özel mesaj+gönder |
+| v79 | 1. günde iflas: bilgisayar popup gelmez, arka plan değişmez |
+| v78 | Kolonya ürünü: satıcı müşteri, 10 kullanım, sağ widget, pazarlık bonusu |
+| v77 | Bilgisayar Geldi popup: emoji üste, 6 rastgele mesaj |
+| v76 | Kabul Et butonu pazarlık popup dışına taşındı |
 | v70 | Envanter kompaksiyon, daire sayaç, pixel butonlar, balon görseli, yeşil tıklanabilir balon |
-| v69 | Kapsamlı kod açıklamaları, CLAUDE.md tam güncelleme |
-| v68 | Konum/boyut ince ayarları, konuşma balonu ürün görseli layout |
-| v67 | Özel müşteri isim konumu düzeltildi, Devam Et butonu kayıt kontrolü |
-| v66 | Yeni arka plan sistemi, splash screen, uygulama ikonu, paket adı |
-| v65 | Pazarlık popup yenilendi, kabul mesajları, sürüm 1.0.1+2 |
 
 ## Dikkat Edilecekler
 - `main.dart` tek ve büyük bir dosya — refactor önerilmez, performans yeterli
