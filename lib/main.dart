@@ -39,8 +39,9 @@ class DukkanSeviye {
   final int seviye;
   final String isim;
   final int kira;
+  final int minGun; // bu dükkana geçmek için gereken minimum gün
 
-  const DukkanSeviye({required this.seviye, required this.isim, required this.kira});
+  const DukkanSeviye({required this.seviye, required this.isim, required this.kira, required this.minGun});
 
   /// Günlük müşteri sayısını ağırlıklı random ile belirle
   /// Alt sınır daha yüksek olasılıklı, üst sınır daha düşük
@@ -60,11 +61,11 @@ class DukkanSeviye {
 }
 
 const List<DukkanSeviye> tumDukkanlar = [
-  DukkanSeviye(seviye: 1, isim: 'Bodrum Kat Dükkan',    kira: 300),
-  DukkanSeviye(seviye: 2, isim: 'Mahalle Köşe Dükkanı', kira: 600),
-  DukkanSeviye(seviye: 3, isim: 'Cadde Dükkanı',        kira: 900),
-  DukkanSeviye(seviye: 4, isim: 'Çarşı Dükkanı',        kira: 1200),
-  DukkanSeviye(seviye: 5, isim: 'AVM Dükkanı',          kira: 1500),
+  DukkanSeviye(seviye: 1, isim: 'Bodrum Kat Dükkan',    kira: 300,  minGun: 1),
+  DukkanSeviye(seviye: 2, isim: 'Mahalle Köşe Dükkanı', kira: 600,  minGun: 3),
+  DukkanSeviye(seviye: 3, isim: 'Cadde Dükkanı',        kira: 900,  minGun: 5),
+  DukkanSeviye(seviye: 4, isim: 'Çarşı Dükkanı',        kira: 1200, minGun: 8),
+  DukkanSeviye(seviye: 5, isim: 'AVM Dükkanı',          kira: 1500, minGun: 10),
 ];
 
 // ─── ANA MENÜ ────────────────────────────────────────────────────────────────
@@ -2028,6 +2029,39 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     );
   }
 
+  void _yeniDukkanPopup(String dukkanIsim) {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (ctx) {
+        Future.delayed(const Duration(seconds: 3), () {
+          if (ctx.mounted) Navigator.of(ctx).pop();
+        });
+        return AlertDialog(
+          backgroundColor: const Color(0xFF1a1008),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: const BorderSide(color: Color(0xFFFFD700), width: 2),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('🎉', style: TextStyle(fontSize: 40)),
+              const SizedBox(height: 8),
+              Text(dukkanIsim,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 13, color: Color(0xFFFFD700), fontWeight: FontWeight.bold)),
+              const SizedBox(height: 6),
+              const Text('Yeni dükkana geçildi, hayırlı olsun!',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 15, color: Colors.white, fontWeight: FontWeight.bold)),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   void _dukkanKiralaPopup() {
     showDialog(
       context: context,
@@ -2051,59 +2085,70 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
             itemBuilder: (ctx2, i) {
               final d = tumDukkanlar[i];
               final aktif = d.seviye == _state.aktifDukkan.seviye;
-              return GestureDetector(
-                onTap: () {
-                  _state.dukkanDegistir(d);
-                  Navigator.pop(ctx);
-                },
-                child: Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: aktif ? const Color(0xFFFFD700).withValues(alpha: 0.15) : const Color(0xFF2a1a0a),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: aktif ? const Color(0xFFFFD700) : Colors.white24,
-                      width: aktif ? 2 : 1,
-                    ),
-                  ),
-                  child: Row(children: [
-                    // Dükkan ikonu
-                    Container(
-                      width: 50, height: 50,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF1a1008),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.white24),
+              final kilitli = _state.gun < d.minGun; // gün gereksinimi karşılanmadı
+              return Opacity(
+                opacity: kilitli ? 0.50 : 1.0,
+                child: GestureDetector(
+                  onTap: kilitli ? null : () {
+                    if (aktif) return; // zaten bu dükkanda
+                    _state.dukkanDegistir(d);
+                    Navigator.pop(ctx);
+                    _yeniDukkanPopup(d.isim);
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: aktif ? const Color(0xFFFFD700).withValues(alpha: 0.15) : const Color(0xFF2a1a0a),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: aktif ? const Color(0xFFFFD700) : (kilitli ? Colors.white12 : Colors.white24),
+                        width: aktif ? 2 : 1,
                       ),
-                      child: Center(child: Text(
-                        ['🏚️','🏠','🏪','🏬','🏢'][i],
-                        style: const TextStyle(fontSize: 24),
-                      )),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text(d.isim, style: TextStyle(
-                        fontSize: 13, fontWeight: FontWeight.bold,
-                        color: aktif ? const Color(0xFFFFD700) : Colors.white)),
-                      const SizedBox(height: 3),
-                      Row(children: [
-                        const Text('Büyüklük: ', style: TextStyle(fontSize: 11, color: Colors.white38)),
-                        Text(d.yildizlar, style: const TextStyle(fontSize: 12, color: Color(0xFFFFD700))),
-                      ]),
-                      const SizedBox(height: 2),
-                      Row(children: [
-                        const Text('Kira: ', style: TextStyle(fontSize: 11, color: Colors.white38)),
-                        Text('${d.kira}/gün', style: const TextStyle(fontSize: 12, color: Colors.redAccent, fontWeight: FontWeight.bold)),
-                      ]),
-                      const SizedBox(height: 2),
-                      Row(children: [
-                        const Text('Müşteri: ', style: TextStyle(fontSize: 11, color: Colors.white38)),
-                        Text('${10 + (d.seviye - 1) * 5}-${15 + (d.seviye - 1) * 5}/gün',
-                          style: const TextStyle(fontSize: 11, color: Colors.white60)),
-                      ]),
-                    ])),
-                    if (aktif) const Icon(Icons.check_circle, color: Color(0xFFFFD700), size: 20),
-                  ]),
+                    child: Row(children: [
+                      // Dükkan ikonu
+                      Container(
+                        width: 50, height: 50,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1a1008),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.white24),
+                        ),
+                        child: Center(child: Text(
+                          kilitli ? '🔒' : ['🏚️','🏠','🏪','🏬','🏢'][i],
+                          style: const TextStyle(fontSize: 24),
+                        )),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text(d.isim, style: TextStyle(
+                          fontSize: 13, fontWeight: FontWeight.bold,
+                          color: aktif ? const Color(0xFFFFD700) : Colors.white)),
+                        const SizedBox(height: 3),
+                        if (kilitli)
+                          Text('🔒 ${d.minGun}. günde açılır',
+                            style: const TextStyle(fontSize: 11, color: Colors.white38))
+                        else ...[
+                          Row(children: [
+                            const Text('Büyüklük: ', style: TextStyle(fontSize: 11, color: Colors.white38)),
+                            Text(d.yildizlar, style: const TextStyle(fontSize: 12, color: Color(0xFFFFD700))),
+                          ]),
+                          const SizedBox(height: 2),
+                          Row(children: [
+                            const Text('Kira: ', style: TextStyle(fontSize: 11, color: Colors.white38)),
+                            Text('${d.kira}/gün', style: const TextStyle(fontSize: 12, color: Colors.redAccent, fontWeight: FontWeight.bold)),
+                          ]),
+                          const SizedBox(height: 2),
+                          Row(children: [
+                            const Text('Müşteri: ', style: TextStyle(fontSize: 11, color: Colors.white38)),
+                            Text('${10 + (d.seviye - 1) * 5}-${15 + (d.seviye - 1) * 5}/gün',
+                              style: const TextStyle(fontSize: 11, color: Colors.white60)),
+                          ]),
+                        ],
+                      ])),
+                      if (aktif) const Icon(Icons.check_circle, color: Color(0xFFFFD700), size: 20),
+                    ]),
+                  ),
                 ),
               );
             },
