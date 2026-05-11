@@ -349,7 +349,7 @@ class MusteriOzellik {
 
 // ─── ÖZEL MÜŞTERİ (HIRSIZ / POLİS / VERGİCİ) ────────────────────────────────
 
-enum OzelMusteriTip { hirsiz, polis, vergici }
+enum OzelMusteriTip { hirsiz, polis, vergici, kurye }
 
 class OzelMusteri {
   final OzelMusteriTip tip;
@@ -357,8 +357,10 @@ class OzelMusteri {
   final String ad;
   final int ilkMiktar;
   final String ilkMesaj;
+  final String? kuryeAd;    // kurye için kurye ismi
+  final String? kuryeYemek; // kurye için yemek ismi
 
-  OzelMusteri({required this.tip, required this.gorsel, required this.ad, required this.ilkMiktar, required this.ilkMesaj});
+  OzelMusteri({required this.tip, required this.gorsel, required this.ad, required this.ilkMiktar, required this.ilkMesaj, this.kuryeAd, this.kuryeYemek});
 
   static OzelMusteri olustur(OzelMusteriTip tip) {
     final rng = Random();
@@ -384,6 +386,19 @@ class OzelMusteri {
         return OzelMusteri(tip: tip, gorsel: 'assets/polis.png', ad: 'Polis', ilkMiktar: x, ilkMesaj: m);
       case OzelMusteriTip.vergici:
         return OzelMusteri(tip: tip, gorsel: 'assets/vergici.png', ad: 'Vergi Memuru', ilkMiktar: 0, ilkMesaj: 'Vergilerini düzenli ödüyor musun?');
+      case OzelMusteriTip.kurye:
+        final fiyat = 100 + rng.nextInt(201); // 100–300 TL
+        const kuryeIsimler = ['Müftü', 'Özerk', 'Tuğberk', 'Kemal', 'Atakan', 'Cafer', 'Şemsi', 'Şinasi', 'Rahman', 'Aytuğ'];
+        const yemekler = ['Adana dürüm', 'Urfa dürüm', 'Tavuk şiş dürüm', 'Çöp şiş dürüm', 'Kuzu şiş dürüm', 'Ciğer dürüm'];
+        final kAd   = kuryeIsimler[rng.nextInt(kuryeIsimler.length)];
+        final yemek = yemekler[rng.nextInt(yemekler.length)];
+        final String kuryeMesaj;
+        switch (rng.nextInt(3)) {
+          case 0:  kuryeMesaj = 'Selam! Ben YeSekSepeti kuryesi $kAd. Bir takipçin sana $yemek gönderdi. Ücreti $fiyat lira. Kabul ediyor musun?'; break;
+          case 1:  kuryeMesaj = 'Selam! Ben YeSekSepeti kuryesi $kAd. $yemek siparişi vermişsin, $fiyat lira tutuyor. Doğru muyum?'; break;
+          default: kuryeMesaj = 'Merhaba! Ben YeSekSepeti kuryesi $kAd. $yemek siparişini getirdim babacan. $fiyat lira. Alıyor musun?';
+        }
+        return OzelMusteri(tip: tip, gorsel: 'assets/kurye.png', ad: 'Kurye', ilkMiktar: fiyat, ilkMesaj: kuryeMesaj, kuryeAd: kAd, kuryeYemek: yemek);
     }
   }
 }
@@ -530,6 +545,18 @@ class PazarlikSeans {
 
   // Kolonya bonusu: rezervasyon fiyatını ve maxTur'u güncelle
   // bonus: 0.15..0.35 (her oyuncuda farklı rastgele oran)
+  /// Kurye bonusu: yemek yendikten sonra bir sonraki müşteriye çok avantajlı koşullar
+  void kuryeBonusuUygula() {
+    if (musteriSatiyor) {
+      // Satıcı: çok düşük fiyata bile satar
+      _reservationPrice = (piyasaFiyati * 0.28).clamp(5.0, _reservationPrice);
+    } else {
+      // Alıcı: çok yüksek fiyatı da öder
+      _reservationPrice = (piyasaFiyati * 1.60).clamp(_reservationPrice, double.infinity);
+    }
+    maxTur += 5;
+  }
+
   void kolonyaUygula(double bonus) {
     if (musteriSatiyor) {
       // Satıcı: minimum kabul fiyatı düşer → daha düşük teklifleri kabul eder
@@ -717,7 +744,7 @@ class GameState extends ChangeNotifier {
   bool ozelMusteriGorunuyor = false;
   int _sonrakiOzelMusteriSayisi = 0; // kaçıncı müşteride özel gelecek
   int _ozelMusteriSayaci = 0;        // toplam müşteri sayacı (özel dahil değil)
-  List<OzelMusteriTip> _ozelTipSirasi = [OzelMusteriTip.hirsiz, OzelMusteriTip.polis, OzelMusteriTip.vergici]; // sıra
+  List<OzelMusteriTip> _ozelTipSirasi = [OzelMusteriTip.hirsiz, OzelMusteriTip.polis, OzelMusteriTip.vergici, OzelMusteriTip.kurye]; // sıra
   int _ozelTipIndex = 0;
 
   void _ozelMusteriSayaciniAyarla() {
@@ -732,6 +759,7 @@ class GameState extends ChangeNotifier {
   int kolonyaKullanim = 0;      // mevcut kolonya kullanım hakkı (0 = yok)
   bool kolonyaIkramEdildi = false; // bu müşteriye ikram edildi mi
   double _kolonyaPendingBonus = 0.0; // pazarlık başlamadan ikram edildiyse bekleyen bonus
+  bool kuryeBonusuAktif = false;    // bir sonraki müşteri çok avantajlı olacak
   String mesaj = 'Dükkan açıldı! İlk müşteri bekleniyor...';
   Customer? aktifMusteri;
   PazarlikSeans? aktifPazarlik;
@@ -866,6 +894,8 @@ class GameState extends ChangeNotifier {
     _sonrakiOzelMusteriSayisi = j['sonrakiOzelMusteri'] as int;
     _ozelMusteriSayaci = j['ozelSayac'] as int;
     _ozelTipSirasi = (j['ozelTipSirasi'] as List).map((s) => OzelMusteriTip.values.firstWhere((e) => e.name == s as String)).toList();
+    // Eski kayıt migrasyonu: kurye yoksa sıraya ekle
+    if (!_ozelTipSirasi.contains(OzelMusteriTip.kurye)) _ozelTipSirasi.add(OzelMusteriTip.kurye);
     _ozelTipIndex = j['ozelTipIndex'] as int;
     toplamTeklifSayisi = j['toplamTeklif'] as int;
     krediKalanTaksit = (j['krediKalanTaksit'] as int?) ?? 0;
@@ -1006,6 +1036,11 @@ class GameState extends ChangeNotifier {
     if (_kolonyaPendingBonus > 0) {
       aktifPazarlik!.kolonyaUygula(_kolonyaPendingBonus);
       _kolonyaPendingBonus = 0.0;
+    }
+    // Kurye bonusu: bir önceki kurye kabul edildiyse çok avantajlı koşullar
+    if (kuryeBonusuAktif) {
+      kuryeBonusuAktif = false;
+      aktifPazarlik!.kuryeBonusuUygula();
     }
     notifyListeners();
   }
@@ -1183,6 +1218,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   bool _gameOverGosterildi = false; // game over popup gösterildiyse diğer popup'ları engelle
   String? _kolonyaGeciciMesaj; // 3 saniyeliğine gösterilecek özel mesaj
   Timer? _kolonyaMesajTimer;
+  Timer? _kuryeTimer;
 
   // ── Daire geri sayım animasyonu ──
   late Ticker _daireTicker;
@@ -1238,6 +1274,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   @override
   void dispose() {
     _kolonyaMesajTimer?.cancel();
+    _kuryeTimer?.cancel();
     _daireTicker.dispose();
     _state.removeListener(_daireHedefGuncelle);
     _slideController.dispose();
@@ -2106,6 +2143,39 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                   onPressed: () {
                     Navigator.pop(ctx);
                     _state.krediAl(alinanTutar, geriOdeme, taksitSayisi);
+                    // Tebrik popup — 3 saniye sonra otomatik kapanır
+                    showDialog(
+                      context: context,
+                      barrierDismissible: true,
+                      builder: (ctx3) {
+                        Future.delayed(const Duration(seconds: 3), () {
+                          if (ctx3.mounted) Navigator.of(ctx3).pop();
+                        });
+                        return AlertDialog(
+                          backgroundColor: const Color(0xFF1a1008),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            side: const BorderSide(color: Color(0xFF3fb950), width: 1.5),
+                          ),
+                          content: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Text('🎉', style: TextStyle(fontSize: 44)),
+                              const SizedBox(height: 10),
+                              Text(
+                                'Tebrikler, $alinanTutar ₺ kredi alındı!',
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  color: Color(0xFF3fb950),
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    );
                   },
                   style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF3fb950), foregroundColor: Colors.black),
@@ -2604,7 +2674,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
               color: Colors.black.withValues(alpha: 0.72),
               borderRadius: BorderRadius.circular(10),
               border: Border.all(color: _state.aktifOzelMusteri != null
-                ? ((_state.aktifOzelMusteri!.tip == OzelMusteriTip.hirsiz) ? Colors.redAccent : (_state.aktifOzelMusteri!.tip == OzelMusteriTip.polis) ? Colors.blueAccent : Colors.orangeAccent).withValues(alpha: 0.7)
+                ? ((_state.aktifOzelMusteri!.tip == OzelMusteriTip.hirsiz) ? Colors.redAccent : (_state.aktifOzelMusteri!.tip == OzelMusteriTip.polis) ? Colors.blueAccent : (_state.aktifOzelMusteri!.tip == OzelMusteriTip.kurye) ? const Color(0xFFFF8C00) : Colors.orangeAccent).withValues(alpha: 0.7)
                 : const Color(0xFFFFD700).withValues(alpha: 0.4)),
             ),
             child: _state.aktifMusteri != null && !_state.aktifMusteri!.musteriSatiyor &&
@@ -2635,7 +2705,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                   text: _kolonyaGeciciMesaj ?? _state.mesaj,
                   style: TextStyle(fontSize: 14,
                     color: _state.aktifOzelMusteri != null
-                      ? ((_state.aktifOzelMusteri!.tip == OzelMusteriTip.hirsiz) ? Colors.redAccent : (_state.aktifOzelMusteri!.tip == OzelMusteriTip.polis) ? Colors.blueAccent : Colors.orangeAccent)
+                      ? ((_state.aktifOzelMusteri!.tip == OzelMusteriTip.hirsiz) ? Colors.redAccent : (_state.aktifOzelMusteri!.tip == OzelMusteriTip.polis) ? Colors.blueAccent : (_state.aktifOzelMusteri!.tip == OzelMusteriTip.kurye) ? const Color(0xFFFF8C00) : Colors.orangeAccent)
                       : const Color(0xFFFFD700)),
                   textAlign: TextAlign.center,
                 ),
@@ -2648,9 +2718,10 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   Widget _buildOzelMusteriWidget(OzelMusteri om) {
     Color renk;
     switch (om.tip) {
-      case OzelMusteriTip.hirsiz: renk = Colors.redAccent; break;
-      case OzelMusteriTip.polis: renk = Colors.blueAccent; break;
+      case OzelMusteriTip.hirsiz:  renk = Colors.redAccent; break;
+      case OzelMusteriTip.polis:   renk = Colors.blueAccent; break;
       case OzelMusteriTip.vergici: renk = Colors.orangeAccent; break;
+      case OzelMusteriTip.kurye:   renk = const Color(0xFFFF8C00); break; // parlak turuncu
     }
     // Özel müşteri placeholder: 564×564 — normal müşteriyle AYNI boyut ve bottom değeri
     // dx negatif olduğunda isim etiketi ekran dışına çıkmasın diye left:0/right:0 + Center kullanılır
@@ -3039,6 +3110,26 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       _ozelMusteriGonder();
       return;
     }
+
+    if (om.tip == OzelMusteriTip.kurye) {
+      // Ödeme yap, kurye bonus aktifleştir, veda mesajı göster, 3sn sonra git
+      _state.para -= om.ilkMiktar;
+      SesServisi.paraGirdi();
+      _state.kuryeBonusuAktif = true;
+      _state.musteriKabulBekliyor = false;
+      const vedaMesajlar = [
+        'Afiyet bal şeker olsun dostum!',
+        'Afiyetler olsun, görüşürüz!',
+        'Afiyet ve şifa olsun. Kaçtım ben!',
+      ];
+      _state.mesaj = vedaMesajlar[rng.nextInt(vedaMesajlar.length)];
+      _state.notifyListeners();
+      _kuryeTimer?.cancel();
+      _kuryeTimer = Timer(const Duration(seconds: 3), () {
+        if (mounted) _ozelMusteriGonder();
+      });
+      return;
+    }
   }
 
   void _ozelMusteriHayirPopup(OzelMusteri om) {
@@ -3090,6 +3181,24 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       _state.mesaj = mesaj;
       _state.notifyListeners();
       _ozelMusteriGonder();
+      return;
+    }
+
+    if (om.tip == OzelMusteriTip.kurye) {
+      // Hayır — veda mesajı göster, 3sn sonra git
+      _state.musteriKabulBekliyor = false;
+      const redMesajlar = [
+        'İyi, ben de kendim yerim!',
+        'İstemiyorsan isteme!',
+        'Ben de sokak hayvanlarına veririm!',
+        'Götürüp iade edeyim öyleyse!',
+      ];
+      _state.mesaj = redMesajlar[rng.nextInt(redMesajlar.length)];
+      _state.notifyListeners();
+      _kuryeTimer?.cancel();
+      _kuryeTimer = Timer(const Duration(seconds: 3), () {
+        if (mounted) _ozelMusteriGonder();
+      });
       return;
     }
   }

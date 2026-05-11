@@ -239,6 +239,8 @@ for (int j = 0; j < acikSlotSayisi; j++) slotlar[j] = j < dolu.length ? dolu[j] 
 ## Versiyon Geçmişi (son)
 | Commit | Açıklama |
 |--------|----------|
+| v87 | Kurye özel müşteri: YeSekSepeti kuryesi, 3 farklı selamlama, EVET/HAYIR, 3sn gecikme, kurye bonusu |
+| v86 | Krediyi Al → Tebrikler popup (3 sn otomatik kapanır) |
 | v85 | Banka kredisi popup yeniden yazıldı: gün çarpanı, ok butonları, faiz hesabı, kredi geçmişi taksit limiti |
 | v84 | Kabul Et butonu alıcı müşteriler için de çalışır hale getirildi |
 | v83 | Dükkan kiralama gün koşulları, kilitli dükkan %50 opaklık + 🔒, otomatik kapanan popup |
