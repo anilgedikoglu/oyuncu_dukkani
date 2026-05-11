@@ -2699,8 +2699,8 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
             const SizedBox(height: 8),
           ],
           if (_pazarlikBekleniyor) ...[
-            // Kabul Et — müşteri satıcıysa ve en az 1 tur geçtiyse (popup açmadan direkt kabul)
-            if (_state.aktifMusteri != null && _state.aktifMusteri!.musteriSatiyor &&
+            // Kabul Et — en az 1 tur geçtiyse (alıcı veya satıcı fark etmez)
+            if (_state.aktifMusteri != null &&
                 _state.aktifPazarlik != null && _state.aktifPazarlik!.turSayisi > 0) ...[
               _oyunButon(
                 emoji: '✓', label: 'Kabul Et  (${_state.aktifPazarlik!.musteriTeklif})',
