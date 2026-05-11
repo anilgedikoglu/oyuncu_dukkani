@@ -395,7 +395,7 @@ class PazarlikSeans {
   final bool musteriSatiyor;
   final int piyasaFiyati;
   final MusteriOzellik ozellik;
-  final double _reservationPrice;
+  double _reservationPrice; // colonya bonusu uygulanabilir, final değil
 
   int musteriTeklif;
   int oyuncuTeklif;
@@ -525,6 +525,21 @@ class PazarlikSeans {
     _karsiTeklifMesaj();
     durum = PazarlikDurum.devamEdiyor;
     return durum;
+  }
+
+  // Kolonya bonusu: rezervasyon fiyatını ve maxTur'u güncelle
+  // bonus: 0.15..0.35 (her oyuncuda farklı rastgele oran)
+  void kolonyaUygula(double bonus) {
+    if (musteriSatiyor) {
+      // Satıcı: minimum kabul fiyatı düşer → daha düşük teklifleri kabul eder
+      _reservationPrice = (_reservationPrice * (1 - bonus)).clamp(
+          piyasaFiyati * 0.35, _reservationPrice);
+    } else {
+      // Alıcı: maksimum ödeme fiyatı artar → daha yüksek teklifler verir
+      _reservationPrice = (_reservationPrice * (1 + bonus)).clamp(
+          _reservationPrice, piyasaFiyati * 1.40);
+    }
+    maxTur += 2; // daha uzun pazarlık olabilir
   }
 
   void _karsiTeklifMesaj() {
@@ -683,7 +698,9 @@ class Customer {
   Customer({required this.name, required this.gorsel, required this.musteriSatiyor, required this.item, required this.ilkTeklif, required this.ozellik});
 
   String get selamMesaji => musteriSatiyor
-      ? 'Merhaba, ben $name. Elimde ${item.name} var, satmak istiyorum. İlgilenir misin?'
+      ? (item.id == 'kolonya'
+          ? 'Ben kolonya satıyorum, üreticiyim. İlgilenir misin?'
+          : 'Merhaba, ben $name. Elimde ${item.name} var, satmak istiyorum. İlgilenir misin?')
       : 'Selam! Ben $name. Elinde ${item.name} olduğunu duydum, bana satar mısın?';
 }
 
@@ -710,6 +727,9 @@ class GameState extends ChangeNotifier {
   int krediTaksitMiktar = 0;
   bool get aktifKrediVar => krediKalanTaksit > 0;
   bool imacSatinAlindi = false;
+  int kolonyaKullanim = 0;      // mevcut kolonya kullanım hakkı (0 = yok)
+  bool kolonyaIkramEdildi = false; // bu müşteriye ikram edildi mi
+  double _kolonyaPendingBonus = 0.0; // pazarlık başlamadan ikram edildiyse bekleyen bonus
   String mesaj = 'Dükkan açıldı! İlk müşteri bekleniyor...';
   Customer? aktifMusteri;
   PazarlikSeans? aktifPazarlik;
@@ -736,6 +756,7 @@ class GameState extends ChangeNotifier {
     GameItem(id: 'konsol7',  name: 'son sistem oyun konsolu', gorsel: 'assets/konsol_7.png',       category: ItemCategory.konsol,  basePrice: 3200, kondisyon: 4),
     GameItem(id: 'aksesuar1',name: 'Oyuncu Direksiyonu',   gorsel: 'assets/oyuncudireksiyonu.png', category: ItemCategory.aksesuar,basePrice: 600,  kondisyon: 3),
     GameItem(id: 'aksesuar2',name: 'Joypad',               gorsel: 'assets/joypad.png',            category: ItemCategory.aksesuar,basePrice: 280,  kondisyon: 3),
+    GameItem(id: 'kolonya',  name: 'Kolonya',              gorsel: 'assets/kolonya.png',           category: ItemCategory.aksesuar,basePrice: 120,  kondisyon: 5),
   ];
 
   // 25 slot: index 0-24. Slot bazlı envanter.
@@ -848,6 +869,7 @@ class GameState extends ChangeNotifier {
     krediKalanTaksit = (j['krediKalanTaksit'] as int?) ?? 0;
     krediTaksitMiktar = (j['krediTaksitMiktar'] as int?) ?? 0;
     imacSatinAlindi = (j['imacSatinAlindi'] as bool?) ?? false;
+    kolonyaKullanim = (j['kolonyaKullanim'] as int?) ?? 0;
     mesaj = '$gun. gün devam ediyor...';
   }
 
@@ -867,6 +889,7 @@ class GameState extends ChangeNotifier {
     'krediKalanTaksit': krediKalanTaksit,
     'krediTaksitMiktar': krediTaksitMiktar,
     'imacSatinAlindi': imacSatinAlindi,
+    'kolonyaKullanim': kolonyaKullanim,
   };
 
   @override
@@ -913,7 +936,8 @@ class GameState extends ChangeNotifier {
 
     GameItem? secilenUrun;
     if (!musteriSatiyor) {
-      final mevcut = stokluUrunler;
+      // Kolonya müşterilerin almak istediği bir şey değil — listeden çıkar
+      final mevcut = stokluUrunler.where((u) => u.id != 'kolonya').toList();
       if (mevcut.isEmpty) {
         mesaj = '$isim geldi ama stokta ürün yok!';
         notifyListeners();
@@ -959,6 +983,11 @@ class GameState extends ChangeNotifier {
       ozellik: m.ozellik,
       reservationPrice: reserv,
     );
+    // Pazarlık başlamadan önce kolonya ikram edildiyse bonusu şimdi uygula
+    if (_kolonyaPendingBonus > 0) {
+      aktifPazarlik!.kolonyaUygula(_kolonyaPendingBonus);
+      _kolonyaPendingBonus = 0.0;
+    }
     notifyListeners();
   }
 
@@ -977,6 +1006,8 @@ class GameState extends ChangeNotifier {
     musteriGorunuyor = false;
     ozelMusteriGorunuyor = false;
     musteriKabulBekliyor = false;
+    kolonyaIkramEdildi = false;
+    _kolonyaPendingBonus = 0.0;
     notifyListeners();
   }
 
@@ -1005,6 +1036,8 @@ class GameState extends ChangeNotifier {
         if (!urunEkle(itemMaliyet)) { mesaj = 'Envanter dolu!'; _musteriGonder(); return; }
         para -= anlasilanFiyat;
         SesServisi.paraGirdi();
+        // Kolonya alındıysa 10 kullanım hakkı ver
+        if (m.item.id == 'kolonya') kolonyaKullanim = 10;
       } else {
         mesaj = 'Yeterli paran yok! 💸';
         _musteriGonder();
@@ -1026,6 +1059,24 @@ class GameState extends ChangeNotifier {
     final vazgecM = ['Anlaşmak isterdim ama olmadı...','En azından anlaşmayı denedik...','$isim sana kırgın ayrıldı...','Bu gelişte $isim mutlu olamadı.','Peki. Yanından son hız ayrılıyorum!','Seninle anlaşmak imkansız gibi!...','Faydalar faydasız, imkanlar imkansız...','En sert satıcılardan biri çıktın!...',"Daha da Davos'a gelmem!...",'Yine görüşeceğiz!...'];
     mesaj = vazgecM[Random().nextInt(vazgecM.length)];
     musteriKabulBekliyor = false;
+    notifyListeners();
+  }
+
+  // Kolonya ikramı: pazarlık bonusu uygula, kullanim hakkını düş
+  void kolonyaIkramEt() {
+    if (kolonyaKullanim <= 0 || kolonyaIkramEdildi || aktifMusteri == null) return;
+    kolonyaIkramEdildi = true;
+    kolonyaKullanim--;
+    if (kolonyaKullanim <= 0) {
+      urunCikar('kolonya'); // stok bitti, envanterden çıkar
+    }
+    // Rastgele bonus: 0.15..0.35 (her müşteride farklı etki)
+    final bonus = 0.15 + Random().nextDouble() * 0.20;
+    if (aktifPazarlik != null) {
+      aktifPazarlik!.kolonyaUygula(bonus);
+    } else {
+      _kolonyaPendingBonus = bonus; // pazarlık henüz başlamadı, kaydet
+    }
     notifyListeners();
   }
 
@@ -1091,6 +1142,8 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   bool _gunBitiPopupGosterildi = false;
   bool _pazarlikBekleniyor = false;
   bool _bilgisayarGeldiGosterildi = false;
+  String? _kolonyaGeciciMesaj; // 3 saniyeliğine gösterilecek özel mesaj
+  Timer? _kolonyaMesajTimer;
 
   // ── Daire geri sayım animasyonu ──
   late Ticker _daireTicker;
@@ -1145,6 +1198,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
 
   @override
   void dispose() {
+    _kolonyaMesajTimer?.cancel();
     _daireTicker.dispose();
     _state.removeListener(_daireHedefGuncelle);
     _slideController.dispose();
@@ -2121,6 +2175,41 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                   ),
                 ),
               ),
+              // Kolonya widget — sağ 1/5, dikeyde ortalı; müşteri varsa görünür
+              if (_state.kolonyaKullanim > 0 && _state.aktifMusteri != null)
+                Builder(builder: (ctx) {
+                  final screenW = MediaQuery.of(ctx).size.width;
+                  final imgSize = (screenW / 5 - 12).clamp(40.0, 72.0);
+                  return Positioned(
+                    right: 6,
+                    top: 0, bottom: 0,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        GestureDetector(
+                          onTap: _state.kolonyaIkramEdildi ? null : _kolonyaIkramEt,
+                          child: Opacity(
+                            opacity: _state.kolonyaIkramEdildi ? 0.45 : 1.0,
+                            child: Image.asset(
+                              'assets/kolonya.png',
+                              width: imgSize, height: imgSize, fit: BoxFit.contain,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '${_state.kolonyaKullanim}/10',
+                          style: const TextStyle(
+                            fontSize: 10, color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            shadows: [Shadow(color: Colors.black, blurRadius: 3)],
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }),
               if (_envanterAcik) _buildEnvanterOverlay(),
             ],
           ),
@@ -2351,7 +2440,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                         offset: const Offset(-15, 0),
                         child: Center(
                           child: TypewriterText(
-                            text: _state.mesaj,
+                            text: _kolonyaGeciciMesaj ?? _state.mesaj,
                             style: TextStyle(fontSize: 14, color: const Color(0xFFFFD700)),
                             textAlign: TextAlign.center,
                           ),
@@ -2361,7 +2450,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                   ],
                 )
               : TypewriterText(
-                  text: _state.mesaj,
+                  text: _kolonyaGeciciMesaj ?? _state.mesaj,
                   style: TextStyle(fontSize: 14,
                     color: _state.aktifOzelMusteri != null
                       ? ((_state.aktifOzelMusteri!.tip == OzelMusteriTip.hirsiz) ? Colors.redAccent : (_state.aktifOzelMusteri!.tip == OzelMusteriTip.polis) ? Colors.blueAccent : Colors.orangeAccent)
@@ -2659,7 +2748,26 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Expanded(child: Image.asset(item.gorsel, fit: BoxFit.contain)),
+          Expanded(
+            child: item.id == 'kolonya' && _state.kolonyaKullanim > 0
+              ? Stack(children: [
+                  Positioned.fill(child: Image.asset(item.gorsel, fit: BoxFit.contain)),
+                  Positioned(
+                    bottom: 0, right: 0,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: Colors.black87,
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(color: const Color(0xFF00FF88), width: 0.5),
+                      ),
+                      child: Text('${_state.kolonyaKullanim}/10',
+                        style: const TextStyle(fontSize: 8, color: Color(0xFF00FF88), fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                ])
+              : Image.asset(item.gorsel, fit: BoxFit.contain),
+          ),
           const SizedBox(height: 2),
           Text(item.name, style: const TextStyle(fontSize: 7, fontWeight: FontWeight.bold, color: Colors.white70), textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis),
           Text('${item.basePrice}', style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Color(0xFF00FF88))),
@@ -2801,6 +2909,17 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
         setState(() => _pazarlikBekleniyor = false);
         _slideController.reverse().then((_) { if (mounted) _state.musteriAnimasyonBitti(); });
       }
+    });
+  }
+
+  // Kolonya şişesine tıklandığında: 3 saniyelik teşekkür mesajı + pazarlık bonusu
+  void _kolonyaIkramEt() {
+    if (_state.kolonyaIkramEdildi || _state.kolonyaKullanim <= 0 || _state.aktifMusteri == null) return;
+    _state.kolonyaIkramEt();
+    setState(() => _kolonyaGeciciMesaj = 'Kolonya ikramın için teşekkürler! :)');
+    _kolonyaMesajTimer?.cancel();
+    _kolonyaMesajTimer = Timer(const Duration(seconds: 3), () {
+      if (mounted) setState(() => _kolonyaGeciciMesaj = null);
     });
   }
 
