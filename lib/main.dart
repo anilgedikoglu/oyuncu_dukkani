@@ -1243,13 +1243,29 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   }
 
   void _bilgisayarGeldiPopup() {
+    const mesajlar = [
+      'Tebrikler! Seni seven biri, sana hayırlı olsun hediyesi olarak bilgisayar gönderdi. Artık internete bağlanabilirsin.',
+      'Tebrikler! 2. güne ulaşma hediyesi olarak dükkan sahibin sana bir bilgisayar hediye etti. Artık internete bağlanabilirsin.',
+      'Tebrikler! Yan komşun, kullanmadığı bilgisayarını sana hediye etti. Artık internete bağlanabilirsin.',
+      'Tebrikler! Komşuların aralarında para toplayarak sana hediye bir bilgisayar almışlar. Artık internete bağlanabilirsin.',
+      'Tebrikler! Kimliği belirsiz biri, kapına bir bilgisayar bırakmış. Artık internete bağlanabilirsin.',
+      'Tebrikler! Mağaza çekilişinden bir bilgisayar kazandın. Artık internete bağlanabilirsin.',
+    ];
+    final mesaj = mesajlar[Random().nextInt(mesajlar.length)];
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1a1008),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: const BorderSide(color: Color(0xFFFFD700), width: 2)),
-        title: const Text('🖥️ Bilgisayar Geldi!', textAlign: TextAlign.center, style: TextStyle(color: Color(0xFFFFD700), fontSize: 20)),
-        content: const Text('Tebrikler, ilk bilgisayarın geldi!\nArtık internete bağlanabilirsin.', textAlign: TextAlign.center, style: TextStyle(color: Colors.white70, fontSize: 15)),
+        title: const Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('🖥️', textAlign: TextAlign.center, style: TextStyle(fontSize: 48)),
+            SizedBox(height: 4),
+            Text('Bilgisayar Geldi!', textAlign: TextAlign.center, style: TextStyle(color: Color(0xFFFFD700), fontSize: 20)),
+          ],
+        ),
+        content: Text(mesaj, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white70, fontSize: 15)),
         actions: [Center(child: ElevatedButton(
           onPressed: () => Navigator.pop(ctx),
           style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFFD700), foregroundColor: Colors.black),
