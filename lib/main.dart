@@ -2224,10 +2224,10 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                 Builder(builder: (ctx) {
                   final screenW = MediaQuery.of(ctx).size.width;
                   final screenH = MediaQuery.of(ctx).size.height;
-                  // 2x boyut (öncekinin iki katı)
-                  final imgSize = (screenW / 5 - 12).clamp(40.0, 72.0) * 2;
-                  // Dikey merkez + 1.5 kolonya boyu yukarı
-                  final topOffset = screenH / 2 - imgSize / 2 - imgSize * 1.5;
+                  // 2x * 0.85 = öncekinin ~1.7 katı
+                  final imgSize = (screenW / 5 - 12).clamp(40.0, 72.0) * 2 * 0.85;
+                  // Dikey merkez + 1.0 kolonya boyu yukarı (önceki 1.5'ten yarım aşağı)
+                  final topOffset = screenH / 2 - imgSize / 2 - imgSize * 1.0;
                   return Positioned(
                     right: 6,
                     top: topOffset,
