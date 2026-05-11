@@ -2501,6 +2501,17 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
             const SizedBox(height: 8),
           ],
           if (_pazarlikBekleniyor) ...[
+            // Kabul Et — müşteri satıcıysa ve en az 1 tur geçtiyse (popup açmadan direkt kabul)
+            if (_state.aktifMusteri != null && _state.aktifMusteri!.musteriSatiyor &&
+                _state.aktifPazarlik != null && _state.aktifPazarlik!.turSayisi > 0) ...[
+              _oyunButon(
+                emoji: '✓', label: 'Kabul Et  (${_state.aktifPazarlik!.musteriTeklif})',
+                onTap: _kabulEt,
+                gradyan: const [Color(0xFF43c468), Color(0xFF1a6b32)],
+                kenar: const Color(0xFF81c784),
+              ),
+              const SizedBox(height: 8),
+            ],
             Row(children: [
               Expanded(child: _oyunButon(
                 emoji: '💬', label: 'Teklif Ver',
@@ -2777,6 +2788,18 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     });
   }
 
+  // Ana ekrandaki "Kabul Et" butonuna basılınca — popup açmadan müşteri fiyatını kabul et
+  void _kabulEt() {
+    final p = _state.aktifPazarlik;
+    if (p == null) return;
+    setState(() => _pazarlikBekleniyor = false);
+    _state.teklifVer(p.musteriTeklif); // musteriSatiyor + oyuncuTeklif == musteriTeklif → anlasildi
+    Future.delayed(const Duration(milliseconds: 1500), () {
+      if (!mounted) return;
+      _slideController.reverse().then((_) { if (mounted) _state.musteriAnimasyonBitti(); });
+    });
+  }
+
   void _pazarlikVazgec() {
     setState(() => _pazarlikBekleniyor = false);
     _state.musteriReddet();
@@ -2970,29 +2993,6 @@ class _PazarlikDialogState extends State<_PazarlikDialog> {
                 ),
               if (!_bitti) ...[
                 const SizedBox(height: 12),
-                // Kabul Et — sadece müşteri satıcıysa ve en az 1 tur geçtiyse
-                if (m.musteriSatiyor && p != null && p.turSayisi > 0 && !anlasildi && !gitti) ...[
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        widget.state.teklifVer(musteriTeklif);
-                        Navigator.of(context).pop();
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF2e7d32),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                      ),
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: Text('✓  Kabul Et  ($musteriTeklif)', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                ],
                 Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                   Expanded(child: ElevatedButton(
                     onPressed: () { Navigator.of(context).pop(); widget.state.musteriReddet(); },
