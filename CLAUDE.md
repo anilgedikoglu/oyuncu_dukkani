@@ -6,7 +6,7 @@ Flutter ile geliştirilmiş bir mobil oyun. Oyuncu bir oyun dükkanı yönetir: 
 ## Teknik Yığın
 - **Flutter** (Dart) — tek dosya mimarisi: `lib/main.dart`
 - **Android** — paket adı: `com.oyuncudukkani.app`
-- **pubspec.yaml** — versiyon: `1.0.0+11`
+- **pubspec.yaml** — versiyon: `1.0.1+12`
 - Paketler: `audioplayers`, `shared_preferences`, `google_mobile_ads`, `device_preview` (dev), `flutter_launcher_icons` (dev)
 - **Kotlin**: 2.1.0 (Android `settings.gradle.kts`)
 
@@ -478,6 +478,7 @@ Base ratio hâlâ `_clamp(0.18 - progress * 0.15, 0.02, 0.18)`.
 ## Versiyon Geçmişi (son)
 | Commit | Açıklama |
 |--------|----------|
+| v93 | Versiyon 1.0.1+12 — Google Play Store için AAB yayını (app-release.aab 61.9MB) |
 | v92 | Prod AdMob ID (ca-app-pub-6470338276121414/...); device_info_plus ile emülatör algılama (emülatörde reklam yok); pazarlık çeşitliliği: %6 zengin/%14 cömert müşteri rezervasyon sürprizi, %10 büyük + %20 orta + %70 normal adım sıçraması |
 | v91 | AdMob interstitial reklam: her yeni gün başına geçiş reklamı (game over değilse). ReklamServisi sınıfı, Kotlin 2.1.0'a yükseltildi (transitive webview_flutter bağımlılığı için) |
 | v90 | "Vazgeç" → "Reddet" (altbar + popup); Maliyet fontu Piyasa ile eşitlendi (RichText, fontSize 14, w600); "el konsolu" → "El Konsolu"; alıcıya kolonya sonrası 6 random mesaj (tekrar engelli, X = orijinal ürün adı) |
