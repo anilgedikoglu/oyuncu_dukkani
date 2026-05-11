@@ -1,7 +1,9 @@
 ﻿import 'dart:async';
 import 'dart:convert';
+import 'dart:io' show Platform;
 import 'dart:math';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:device_info_plus/device_info_plus.dart';
 import 'package:device_preview/device_preview.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart' show Ticker;
@@ -9,10 +11,13 @@ import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  MobileAds.instance.initialize();
-  ReklamServisi.yukle(); // ilk interstitial'i yukle
+  await ReklamServisi.emulatorAlgila();
+  if (!ReklamServisi.emulator) {
+    MobileAds.instance.initialize();
+    ReklamServisi.yukle(); // ilk interstitial'i yukle
+  }
   runApp(
     DevicePreview(
       enabled: false,
@@ -22,16 +27,27 @@ void main() {
 }
 
 // ─── REKLAM SERVİSİ ──────────────────────────────────────────────────────────
-// Gün başı interstitial (geçiş reklamı). Google test ID kullanılıyor —
-// yayına çıkarken kendi unitId'nizle değiştirin.
+// Gün başı interstitial (geçiş reklamı). Prod AdMob unit ID'si kullanıyor.
+// Emülatörde reklam çıkmaz (politika ihlali olmasın diye).
 class ReklamServisi {
-  // Android test interstitial ad unit ID (gerçek için değiştir):
-  // ca-app-pub-3940256099942544/1033173712
-  static const String _adUnitId = 'ca-app-pub-3940256099942544/1033173712';
+  static const String _adUnitId = 'ca-app-pub-6470338276121414/4138047986';
   static InterstitialAd? _interstitial;
   static bool _yukleniyor = false;
+  static bool emulator = false;
+
+  /// main()'de bir kez çağrılır — emülatör mü gerçek cihaz mı tespit eder.
+  static Future<void> emulatorAlgila() async {
+    if (!Platform.isAndroid) { emulator = false; return; }
+    try {
+      final info = await DeviceInfoPlugin().androidInfo;
+      emulator = !info.isPhysicalDevice;
+    } catch (_) {
+      emulator = false; // bilemiyorsak güvenli taraf: gerçek cihaz say
+    }
+  }
 
   static void yukle() {
+    if (emulator) return;
     if (_yukleniyor || _interstitial != null) return;
     _yukleniyor = true;
     InterstitialAd.load(
@@ -52,11 +68,11 @@ class ReklamServisi {
   }
 
   /// Hazırsa reklamı gösterir, sonra bir sonraki için yeniden yükler.
-  /// Hazır değilse onClosed çağrılır ve yeni yükleme başlar.
+  /// Emülatörde veya reklam yoksa onClosed anında çağrılır.
   static void goster({required VoidCallback onClosed}) {
+    if (emulator) { onClosed(); return; }
     final ad = _interstitial;
     if (ad == null) {
-      // Reklam yok — anında devam et + arka planda yükle
       yukle();
       onClosed();
       return;
@@ -65,7 +81,7 @@ class ReklamServisi {
       onAdDismissedFullScreenContent: (ad) {
         ad.dispose();
         _interstitial = null;
-        yukle(); // sonraki gün için
+        yukle();
         onClosed();
       },
       onAdFailedToShowFullScreenContent: (ad, err) {
@@ -76,7 +92,7 @@ class ReklamServisi {
       },
     );
     ad.show();
-    _interstitial = null; // tek kullanımlık
+    _interstitial = null;
   }
 }
 
@@ -401,13 +417,22 @@ class MusteriOzellik {
   }
 
   // reservationPrice: müşterinin geçemeyeceği sınır
+  // Sürpriz çarpanı: %6 ihtimalle çok cömert/cimri, %14 ihtimalle hafifçe — pazarlığı renklendirir
   double reservationPrice(double pv, int marketPrice, bool musteriSatiyor) {
+    final rng = Random();
+    final roll = rng.nextDouble();
+    double surpriz = 1.0;
+    if (roll < 0.06) {
+      surpriz = 1.55 + rng.nextDouble() * 0.55;   // 1.55–2.10x (zengin/aceleci alıcı / dar satıcı)
+    } else if (roll < 0.20) {
+      surpriz = 1.18 + rng.nextDouble() * 0.27;   // 1.18–1.45x (cömert)
+    }
     if (!musteriSatiyor) { // NPC alıyor: maksimum ödeyeceği
-      return (pv * (0.75 + pat * 0.20 + met * 0.05))
-          .clamp(marketPrice * 0.50, marketPrice * 1.20);
+      return (pv * (0.75 + pat * 0.20 + met * 0.05) * surpriz)
+          .clamp(marketPrice * 0.50, marketPrice * 2.30);
     } else { // NPC satıyor: minimum alacağı
-      return (pv * (1.25 - pat * 0.20 - met * 0.05))
-          .clamp(marketPrice * 0.65, marketPrice * 1.50);
+      return (pv * (1.25 - pat * 0.20 - met * 0.05) / surpriz)
+          .clamp(marketPrice * 0.40, marketPrice * 1.55);
     }
   }
 
@@ -556,10 +581,24 @@ class PazarlikSeans {
 
     // ── 5. Müşteri karşı teklif miktarını hesapla ──
     // Erken turda büyük konsesyon, geç turda küçük — ama her zaman en az 1
+    // Sürpriz çeşitlilik: %10 büyük sıçrama, %20 orta sıçrama, %70 normal/küçük
     final gapToReserv = musteriSatiyor
         ? (musteriTeklif - _reservationPrice).abs()
         : (_reservationPrice - musteriTeklif).abs();
-    final concessionRatio = _clamp(0.18 - progress * 0.15, 0.02, 0.18);
+    final baseRatio = _clamp(0.18 - progress * 0.15, 0.02, 0.18);
+    final rng = Random();
+    final stepRoll = rng.nextDouble();
+    double concessionRatio;
+    if (stepRoll < 0.10) {
+      // büyük sıçrama: 2.5–4x normal — "anlaştık gibi" hissi
+      concessionRatio = baseRatio * (2.5 + rng.nextDouble() * 1.5);
+    } else if (stepRoll < 0.30) {
+      // orta sıçrama: 1.4–2.2x normal
+      concessionRatio = baseRatio * (1.4 + rng.nextDouble() * 0.8);
+    } else {
+      // normal aralık: 0.5–1.3x — sürekli gıdım olmasın
+      concessionRatio = baseRatio * (0.5 + rng.nextDouble() * 0.8);
+    }
     final move = (gapToReserv * concessionRatio + goodwill * mp * 0.03)
         .clamp(1, double.infinity)
         .round();

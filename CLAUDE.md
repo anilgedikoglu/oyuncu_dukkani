@@ -400,42 +400,85 @@ for (int j = 0; j < acikSlotSayisi; j++) slotlar[j] = j < dolu.length ? dolu[j] 
 
 ---
 
-## AdMob Reklam Sistemi (v91)
+## AdMob Reklam Sistemi (v91-v92)
 
-Her yeni günün başına interstitial (geçiş) reklamı, game over değilse.
+Her yeni günün başına interstitial (geçiş) reklamı, game over değilse. **Emülatörde reklam çıkmaz** (politika güvenliği).
+
+### AdMob Kimlikleri (PROD)
+- **App ID** (AndroidManifest): `ca-app-pub-6470338276121414~9391747814`
+- **Interstitial Unit ID**: `ca-app-pub-6470338276121414/4138047986`
 
 ### Akış
 ```
-Gün Bitti popup → "Yeni Güne Başla" → ReklamServisi.goster() → onClosed: _state.gunuBitir() → Yeni gün
+Gün Bitti popup → "Yeni Güne Başla" → ReklamServisi.goster()
+  ↓ (emülatörse / reklam yoksa: anında)
+  ↓ (gerçek cihaz + reklam varsa: tam ekran geçiş reklamı)
+onClosed: _state.gunuBitir() → Yeni gün
 ```
 
 İflas durumunda reklam GÖSTERİLMEZ (`paraOncesi - toplamKesinti < 0` dalı).
 
+### Emülatör Algılama
+`main()` başında `ReklamServisi.emulatorAlgila()` `device_info_plus` ile `androidInfo.isPhysicalDevice` okur. Emülatörde:
+- `MobileAds.instance.initialize()` ATLANIR
+- `yukle()` no-op olur
+- `goster()` direkt `onClosed()` çağırır
+
+Bu sayede emülatörde AdMob hiç başlamaz, sahte gösterim olmaz.
+
 ### Kod Yapısı
 ```dart
 class ReklamServisi {
-  static const String _adUnitId = 'ca-app-pub-3940256099942544/1033173712'; // TEST
+  static const String _adUnitId = 'ca-app-pub-6470338276121414/4138047986';
   static InterstitialAd? _interstitial;
-  static void yukle();                                  // arka planda yükler
-  static void goster({required VoidCallback onClosed}); // hazırsa göster, değilse onClosed direkt
+  static bool emulator = false;
+  static Future<void> emulatorAlgila();
+  static void yukle();
+  static void goster({required VoidCallback onClosed});
 }
 ```
 
-`main()` içinde:
+`main()`:
 ```dart
-MobileAds.instance.initialize();
-ReklamServisi.yukle();
+WidgetsFlutterBinding.ensureInitialized();
+await ReklamServisi.emulatorAlgila();
+if (!ReklamServisi.emulator) {
+  MobileAds.instance.initialize();
+  ReklamServisi.yukle();
+}
 ```
 
-### Yayın için DEĞİŞTİR
-1. **AndroidManifest.xml** `APPLICATION_ID`: `ca-app-pub-3940256099942544~3347511713` → kendi AdMob app ID
-2. **ReklamServisi._adUnitId**: `ca-app-pub-3940256099942544/1033173712` → kendi interstitial unit ID
+---
+
+## Pazarlık Çeşitliliği (v92)
+
+Karşı tarafın hareketi her zaman gıdım gıdım değil — sürpriz büyük adımlar var. Bazen alıcı maliyetin çok üstüne, hatta piyasa fiyatının üstüne çıkabilir.
+
+### Rezervasyon Fiyatı Sürprizi (`MusteriOzellik.reservationPrice`)
+| Olasılık | Çarpan | Anlam |
+|----------|--------|-------|
+| %6 | 1.55–2.10× | Zengin/aceleci alıcı (veya dar satıcı) — çok yüksek tavan |
+| %14 | 1.18–1.45× | Cömert |
+| %80 | 1.00× | Normal (eski davranış) |
+
+- Alıcı tavanı: `marketPrice * 0.50 ... 2.30` (eskiden max 1.20)
+- Satıcı tabanı: `marketPrice * 0.40 ... 1.55` (eskiden min 0.65)
+
+### Tur Başına Adım Büyüklüğü (`oyuncuTeklifVer` → `concessionRatio`)
+| Olasılık | Çarpan | Anlam |
+|----------|--------|-------|
+| %10 | 2.5–4× | BÜYÜK sıçrama — "anlaştık gibi" |
+| %20 | 1.4–2.2× | Orta sıçrama |
+| %70 | 0.5–1.3× | Normal/küçük — gıdım değil ama makul |
+
+Base ratio hâlâ `_clamp(0.18 - progress * 0.15, 0.02, 0.18)`.
 
 ---
 
 ## Versiyon Geçmişi (son)
 | Commit | Açıklama |
 |--------|----------|
+| v92 | Prod AdMob ID (ca-app-pub-6470338276121414/...); device_info_plus ile emülatör algılama (emülatörde reklam yok); pazarlık çeşitliliği: %6 zengin/%14 cömert müşteri rezervasyon sürprizi, %10 büyük + %20 orta + %70 normal adım sıçraması |
 | v91 | AdMob interstitial reklam: her yeni gün başına geçiş reklamı (game over değilse). ReklamServisi sınıfı, Kotlin 2.1.0'a yükseltildi (transitive webview_flutter bağımlılığı için) |
 | v90 | "Vazgeç" → "Reddet" (altbar + popup); Maliyet fontu Piyasa ile eşitlendi (RichText, fontSize 14, w600); "el konsolu" → "El Konsolu"; alıcıya kolonya sonrası 6 random mesaj (tekrar engelli, X = orijinal ürün adı) |
 | v89 | Asset optimizasyonu: bgbos/bg1/bg2/bgbosmasa/anamenu/browser/biri resize+recompress (APK 70.8MB → 36.1MB); pubspec wildcard → explicit list; Skia rendering (EnableImpeller=false) — emülatör ANR çözümü; Kolonya Tut butonu altbar'a taşındı (parlak amber, beyaz yazı), eski yerleşik widget kaldırıldı |
