@@ -6,16 +6,78 @@ import 'package:device_preview/device_preview.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart' show Ticker;
 import 'package:flutter/material.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+  MobileAds.instance.initialize();
+  ReklamServisi.yukle(); // ilk interstitial'i yukle
   runApp(
     DevicePreview(
       enabled: false,
       builder: (context) => const OyuncuDukkaniApp(),
     ),
   );
+}
+
+// ─── REKLAM SERVİSİ ──────────────────────────────────────────────────────────
+// Gün başı interstitial (geçiş reklamı). Google test ID kullanılıyor —
+// yayına çıkarken kendi unitId'nizle değiştirin.
+class ReklamServisi {
+  // Android test interstitial ad unit ID (gerçek için değiştir):
+  // ca-app-pub-3940256099942544/1033173712
+  static const String _adUnitId = 'ca-app-pub-3940256099942544/1033173712';
+  static InterstitialAd? _interstitial;
+  static bool _yukleniyor = false;
+
+  static void yukle() {
+    if (_yukleniyor || _interstitial != null) return;
+    _yukleniyor = true;
+    InterstitialAd.load(
+      adUnitId: _adUnitId,
+      request: const AdRequest(),
+      adLoadCallback: InterstitialAdLoadCallback(
+        onAdLoaded: (ad) {
+          _interstitial = ad;
+          _yukleniyor = false;
+        },
+        onAdFailedToLoad: (err) {
+          _interstitial = null;
+          _yukleniyor = false;
+          // Sessizce başarısız ol — sonraki gün tekrar denenir
+        },
+      ),
+    );
+  }
+
+  /// Hazırsa reklamı gösterir, sonra bir sonraki için yeniden yükler.
+  /// Hazır değilse onClosed çağrılır ve yeni yükleme başlar.
+  static void goster({required VoidCallback onClosed}) {
+    final ad = _interstitial;
+    if (ad == null) {
+      // Reklam yok — anında devam et + arka planda yükle
+      yukle();
+      onClosed();
+      return;
+    }
+    ad.fullScreenContentCallback = FullScreenContentCallback(
+      onAdDismissedFullScreenContent: (ad) {
+        ad.dispose();
+        _interstitial = null;
+        yukle(); // sonraki gün için
+        onClosed();
+      },
+      onAdFailedToShowFullScreenContent: (ad, err) {
+        ad.dispose();
+        _interstitial = null;
+        yukle();
+        onClosed();
+      },
+    );
+    ad.show();
+    _interstitial = null; // tek kullanımlık
+  }
 }
 
 class OyuncuDukkaniApp extends StatelessWidget {
@@ -1505,9 +1567,12 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                 if (mounted) _gameOverPopup('Kira ödenemedi!\n\n${_state.gun}. günde iflas ettin.', _state.gun);
               });
             } else {
-              // Normal geçiş — yeni güne başla
-              _state.gunuBitir();
-              setState(() => _gunBitiPopupGosterildi = false);
+              // Normal geçiş — yeni güne başlamadan önce interstitial reklam
+              ReklamServisi.goster(onClosed: () {
+                if (!mounted) return;
+                _state.gunuBitir();
+                setState(() => _gunBitiPopupGosterildi = false);
+              });
             }
           },
           style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFFD700), foregroundColor: Colors.black),

@@ -7,7 +7,8 @@ Flutter ile geliştirilmiş bir mobil oyun. Oyuncu bir oyun dükkanı yönetir: 
 - **Flutter** (Dart) — tek dosya mimarisi: `lib/main.dart`
 - **Android** — paket adı: `com.oyuncudukkani.app`
 - **pubspec.yaml** — versiyon: `1.0.0+11`
-- Paketler: `audioplayers`, `shared_preferences`, `device_preview` (dev), `flutter_launcher_icons` (dev)
+- Paketler: `audioplayers`, `shared_preferences`, `google_mobile_ads`, `device_preview` (dev), `flutter_launcher_icons` (dev)
+- **Kotlin**: 2.1.0 (Android `settings.gradle.kts`)
 
 ## Dosya Yapısı
 ```
@@ -399,9 +400,43 @@ for (int j = 0; j < acikSlotSayisi; j++) slotlar[j] = j < dolu.length ? dolu[j] 
 
 ---
 
+## AdMob Reklam Sistemi (v91)
+
+Her yeni günün başına interstitial (geçiş) reklamı, game over değilse.
+
+### Akış
+```
+Gün Bitti popup → "Yeni Güne Başla" → ReklamServisi.goster() → onClosed: _state.gunuBitir() → Yeni gün
+```
+
+İflas durumunda reklam GÖSTERİLMEZ (`paraOncesi - toplamKesinti < 0` dalı).
+
+### Kod Yapısı
+```dart
+class ReklamServisi {
+  static const String _adUnitId = 'ca-app-pub-3940256099942544/1033173712'; // TEST
+  static InterstitialAd? _interstitial;
+  static void yukle();                                  // arka planda yükler
+  static void goster({required VoidCallback onClosed}); // hazırsa göster, değilse onClosed direkt
+}
+```
+
+`main()` içinde:
+```dart
+MobileAds.instance.initialize();
+ReklamServisi.yukle();
+```
+
+### Yayın için DEĞİŞTİR
+1. **AndroidManifest.xml** `APPLICATION_ID`: `ca-app-pub-3940256099942544~3347511713` → kendi AdMob app ID
+2. **ReklamServisi._adUnitId**: `ca-app-pub-3940256099942544/1033173712` → kendi interstitial unit ID
+
+---
+
 ## Versiyon Geçmişi (son)
 | Commit | Açıklama |
 |--------|----------|
+| v91 | AdMob interstitial reklam: her yeni gün başına geçiş reklamı (game over değilse). ReklamServisi sınıfı, Kotlin 2.1.0'a yükseltildi (transitive webview_flutter bağımlılığı için) |
 | v90 | "Vazgeç" → "Reddet" (altbar + popup); Maliyet fontu Piyasa ile eşitlendi (RichText, fontSize 14, w600); "el konsolu" → "El Konsolu"; alıcıya kolonya sonrası 6 random mesaj (tekrar engelli, X = orijinal ürün adı) |
 | v89 | Asset optimizasyonu: bgbos/bg1/bg2/bgbosmasa/anamenu/browser/biri resize+recompress (APK 70.8MB → 36.1MB); pubspec wildcard → explicit list; Skia rendering (EnableImpeller=false) — emülatör ANR çözümü; Kolonya Tut butonu altbar'a taşındı (parlak amber, beyaz yazı), eski yerleşik widget kaldırıldı |
 | v88 | Kolonya butonu tasarım: 0xFFE6A800 (parlak amber), beyaz yazı; gun=3 sonrası gösterilir; aktif/pasif state |
