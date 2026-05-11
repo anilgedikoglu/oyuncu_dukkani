@@ -1064,18 +1064,20 @@ class GameState extends ChangeNotifier {
 
   // Kolonya ikramı: pazarlık bonusu uygula, kullanim hakkını düş
   void kolonyaIkramEt() {
-    if (kolonyaKullanim <= 0 || kolonyaIkramEdildi || aktifMusteri == null) return;
+    final hasMusteri = aktifMusteri != null || aktifOzelMusteri != null;
+    if (kolonyaKullanim <= 0 || kolonyaIkramEdildi || !hasMusteri) return;
     kolonyaIkramEdildi = true;
     kolonyaKullanim--;
-    if (kolonyaKullanim <= 0) {
-      urunCikar('kolonya'); // stok bitti, envanterden çıkar
-    }
-    // Rastgele bonus: 0.15..0.35 (her müşteride farklı etki)
-    final bonus = 0.15 + Random().nextDouble() * 0.20;
-    if (aktifPazarlik != null) {
-      aktifPazarlik!.kolonyaUygula(bonus);
-    } else {
-      _kolonyaPendingBonus = bonus; // pazarlık henüz başlamadı, kaydet
+    if (kolonyaKullanim <= 0) urunCikar('kolonya');
+    // Özel müşteriye ikram: pazarlık bonusu yok (onlar zaten gidecek)
+    if (aktifMusteri != null) {
+      // Normal müşteri: rastgele bonus 0.15..0.35
+      final bonus = 0.15 + Random().nextDouble() * 0.20;
+      if (aktifPazarlik != null) {
+        aktifPazarlik!.kolonyaUygula(bonus);
+      } else {
+        _kolonyaPendingBonus = bonus;
+      }
     }
     notifyListeners();
   }
@@ -2199,16 +2201,20 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                   ),
                 ),
               ),
-              // Kolonya widget — sağ 1/5, dikeyde ortalı; müşteri varsa görünür
-              if (_state.kolonyaKullanim > 0 && _state.aktifMusteri != null)
+              // Kolonya widget — sağ 1/5; normal veya özel müşteri varsa görünür
+              if (_state.kolonyaKullanim > 0 &&
+                  (_state.aktifMusteri != null || _state.aktifOzelMusteri != null))
                 Builder(builder: (ctx) {
                   final screenW = MediaQuery.of(ctx).size.width;
-                  final imgSize = (screenW / 5 - 12).clamp(40.0, 72.0);
+                  final screenH = MediaQuery.of(ctx).size.height;
+                  // 2x boyut (öncekinin iki katı)
+                  final imgSize = (screenW / 5 - 12).clamp(40.0, 72.0) * 2;
+                  // Dikey merkez + 1.5 kolonya boyu yukarı
+                  final topOffset = screenH / 2 - imgSize / 2 - imgSize * 1.5;
                   return Positioned(
                     right: 6,
-                    top: 0, bottom: 0,
+                    top: topOffset,
                     child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         GestureDetector(
@@ -2611,7 +2617,8 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (_state.musteriKabulBekliyor) ...[
+          // Özel müşteriye kolonya ikram edilmişse EVET/HAYIR gizlenir (3 sn sonra gider)
+          if (_state.musteriKabulBekliyor && _kolonyaGeciciMesaj == null) ...[
             Row(children: [
               Expanded(child: _oyunButon(
                 emoji: '✅', label: 'EVET',
@@ -2938,13 +2945,25 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
 
   // Kolonya şişesine tıklandığında: 3 saniyelik teşekkür mesajı + pazarlık bonusu
   void _kolonyaIkramEt() {
-    if (_state.kolonyaIkramEdildi || _state.kolonyaKullanim <= 0 || _state.aktifMusteri == null) return;
+    if (_state.kolonyaIkramEdildi || _state.kolonyaKullanim <= 0) return;
+    if (_state.aktifMusteri == null && _state.aktifOzelMusteri == null) return;
     _state.kolonyaIkramEt();
-    setState(() => _kolonyaGeciciMesaj = 'Kolonya ikramın için teşekkürler! :)');
     _kolonyaMesajTimer?.cancel();
-    _kolonyaMesajTimer = Timer(const Duration(seconds: 3), () {
-      if (mounted) setState(() => _kolonyaGeciciMesaj = null);
-    });
+    if (_state.aktifOzelMusteri != null) {
+      // Özel müşteriye ikram: 3 sn sonra müşteriyi parasız gönder
+      setState(() => _kolonyaGeciciMesaj = 'Vay, çok naziksin, seni bu seferlik rahat bırakıyorum!');
+      _kolonyaMesajTimer = Timer(const Duration(seconds: 3), () {
+        if (!mounted) return;
+        setState(() => _kolonyaGeciciMesaj = null);
+        _ozelMusteriGonder();
+      });
+    } else {
+      // Normal müşteriye ikram
+      setState(() => _kolonyaGeciciMesaj = 'Kolonya ikramın için teşekkürler! :)');
+      _kolonyaMesajTimer = Timer(const Duration(seconds: 3), () {
+        if (mounted) setState(() => _kolonyaGeciciMesaj = null);
+      });
+    }
   }
 
   // Ana ekrandaki "Kabul Et" butonuna basılınca — popup açmadan müşteri fiyatını kabul et
