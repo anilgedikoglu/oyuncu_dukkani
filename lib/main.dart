@@ -870,6 +870,17 @@ class GameState extends ChangeNotifier {
     krediTaksitMiktar = (j['krediTaksitMiktar'] as int?) ?? 0;
     imacSatinAlindi = (j['imacSatinAlindi'] as bool?) ?? false;
     kolonyaKullanim = (j['kolonyaKullanim'] as int?) ?? 0;
+    // Eski kayıt migrasyonu: kolonya slotta idiyse çıkar, kullanım hakkını koru
+    for (int i = 0; i < slotlar.length; i++) {
+      if (slotlar[i]?.id == 'kolonya') {
+        slotlar[i] = null;
+        if (kolonyaKullanim == 0) kolonyaKullanim = 10; // eski kayıt: kullanim yoksa 10 ver
+      }
+    }
+    // Kompaksiyon (slotlardaki boşlukları öne çek)
+    final _acik = (j['aktifDukkanSeviye'] as int) * 5;
+    final _dolu2 = slotlar.sublist(0, _acik).whereType<GameItem>().toList();
+    for (int i = 0; i < _acik; i++) slotlar[i] = i < _dolu2.length ? _dolu2[i] : null;
     mesaj = '$gun. gün devam ediyor...';
   }
 
@@ -945,7 +956,11 @@ class GameState extends ChangeNotifier {
       }
       secilenUrun = mevcut[rng.nextInt(mevcut.length)];
     } else {
-      secilenUrun = _baslangicUrunler[rng.nextInt(_baslangicUrunler.length)];
+      // Kolonya zaten varsa tekrar kolonya satan müşteri gelmesin
+      final satisHavuzu = kolonyaKullanim > 0
+          ? _baslangicUrunler.where((u) => u.id != 'kolonya').toList()
+          : _baslangicUrunler;
+      secilenUrun = satisHavuzu[rng.nextInt(satisHavuzu.length)];
     }
 
     // Yeni model: perceivedValue → reservationPrice → openingOffer
@@ -1032,12 +1047,15 @@ class GameState extends ChangeNotifier {
     final anlasilanFiyat = m.musteriSatiyor ? p.musteriTeklif : p.oyuncuTeklif;
     if (m.musteriSatiyor) {
       if (para >= anlasilanFiyat) {
-        final itemMaliyet = GameItem(id: m.item.id, name: m.item.name, gorsel: m.item.gorsel, category: m.item.category, basePrice: m.item.basePrice, kondisyon: m.item.kondisyon, maliyet: anlasilanFiyat);
-        if (!urunEkle(itemMaliyet)) { mesaj = 'Envanter dolu!'; _musteriGonder(); return; }
+        if (m.item.id == 'kolonya') {
+          // Kolonya slota girmez — ayrı tutulur, +1 ilave
+          kolonyaKullanim = 10;
+        } else {
+          final itemMaliyet = GameItem(id: m.item.id, name: m.item.name, gorsel: m.item.gorsel, category: m.item.category, basePrice: m.item.basePrice, kondisyon: m.item.kondisyon, maliyet: anlasilanFiyat);
+          if (!urunEkle(itemMaliyet)) { mesaj = 'Envanter dolu!'; _musteriGonder(); return; }
+        }
         para -= anlasilanFiyat;
         SesServisi.paraGirdi();
-        // Kolonya alındıysa 10 kullanım hakkı ver
-        if (m.item.id == 'kolonya') kolonyaKullanim = 10;
       } else {
         mesaj = 'Yeterli paran yok! 💸';
         _musteriGonder();
@@ -1067,8 +1085,7 @@ class GameState extends ChangeNotifier {
     final hasMusteri = aktifMusteri != null || aktifOzelMusteri != null;
     if (kolonyaKullanim <= 0 || kolonyaIkramEdildi || !hasMusteri) return;
     kolonyaIkramEdildi = true;
-    kolonyaKullanim--;
-    if (kolonyaKullanim <= 0) urunCikar('kolonya');
+    kolonyaKullanim--; // 0'a düşünce widget otomatik gizlenir, slotta olmadığı için urunCikar gerekmez
     // Özel müşteriye ikram: pazarlık bonusu yok (onlar zaten gidecek)
     if (aktifMusteri != null) {
       // Normal müşteri: rastgele bonus 0.15..0.35
@@ -2717,14 +2734,57 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                       crossAxisSpacing: 10,
                       childAspectRatio: 0.80,
                     ),
-                    itemCount: 25,
-                    itemBuilder: (context, i) => _buildSlotKart(i),
+                    // +1 ilave kart: kolonya slota girmez, ayrı gösterilir
+                    itemCount: 25 + (_state.kolonyaKullanim > 0 ? 1 : 0),
+                    itemBuilder: (context, i) {
+                      if (i == 25 && _state.kolonyaKullanim > 0) return _buildKolonyaEnvanterKarti();
+                      return _buildSlotKart(i);
+                    },
                   ),
                 ),
               ]),
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  // Kolonya envanter kartı — slota girmez, grid'in sonuna eklenir (+1 ilave)
+  Widget _buildKolonyaEnvanterKarti() {
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0a1a0a).withValues(alpha: 0.9),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFF00FF88).withValues(alpha: 0.7), width: 1.2),
+        boxShadow: [BoxShadow(color: const Color(0xFF00FF88).withValues(alpha: 0.15), blurRadius: 6)],
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Expanded(
+            child: Stack(children: [
+              Positioned.fill(child: Image.asset('assets/kolonya.png', fit: BoxFit.contain)),
+              Positioned(
+                bottom: 0, right: 0,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
+                  decoration: BoxDecoration(
+                    color: Colors.black87,
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(color: const Color(0xFF00FF88), width: 0.5),
+                  ),
+                  child: Text('${_state.kolonyaKullanim}/10',
+                    style: const TextStyle(fontSize: 8, color: Color(0xFF00FF88), fontWeight: FontWeight.bold)),
+                ),
+              ),
+            ]),
+          ),
+          const SizedBox(height: 2),
+          const Text('Kolonya', style: TextStyle(fontSize: 7, fontWeight: FontWeight.bold, color: Color(0xFF00FF88)), textAlign: TextAlign.center),
+          const Text('+1 özel', style: TextStyle(fontSize: 7, color: Colors.white38), textAlign: TextAlign.center),
+        ],
       ),
     );
   }
@@ -2779,26 +2839,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Expanded(
-            child: item.id == 'kolonya' && _state.kolonyaKullanim > 0
-              ? Stack(children: [
-                  Positioned.fill(child: Image.asset(item.gorsel, fit: BoxFit.contain)),
-                  Positioned(
-                    bottom: 0, right: 0,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
-                      decoration: BoxDecoration(
-                        color: Colors.black87,
-                        borderRadius: BorderRadius.circular(4),
-                        border: Border.all(color: const Color(0xFF00FF88), width: 0.5),
-                      ),
-                      child: Text('${_state.kolonyaKullanim}/10',
-                        style: const TextStyle(fontSize: 8, color: Color(0xFF00FF88), fontWeight: FontWeight.bold)),
-                    ),
-                  ),
-                ])
-              : Image.asset(item.gorsel, fit: BoxFit.contain),
-          ),
+          Expanded(child: Image.asset(item.gorsel, fit: BoxFit.contain)),
           const SizedBox(height: 2),
           Text(item.name, style: const TextStyle(fontSize: 7, fontWeight: FontWeight.bold, color: Colors.white70), textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis),
           Text('${item.basePrice}', style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Color(0xFF00FF88))),
