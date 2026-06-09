@@ -7,13 +7,11 @@ workflows:
     instance_type: mac_mini_m2
     max_build_duration: 60
 
-    # ⚠️ ÖNEMLİ: Bu isim, Codemagic UI'da oluşturduğun App Store Connect
-    # entegrasyonunun adı OLMALI (Teams → Integrations → App Store Connect).
-    # Henüz oluşturmadıysan: Codemagic UI → Teams → Integrations → App Store Connect
-    # → "Add new" → İsmi: appstore_oyuncudukkani (veya istediğin bir ad)
-    # Aşağıdaki ismi de aynısıyla değiştir.
+    # Codemagic UI'da mevcut Apple Developer Portal entegrasyonunun ismi
+    # (Personal Account → Settings → Integrations → Developer Portal → "Codemagic"
+    #  Key: 2M84B256CL — Magnus için kurulmus, paylaşılan)
     integrations:
-      app_store_connect: appstore_oyuncudukkani
+      app_store_connect: Codemagic
 
     environment:
       flutter: stable
