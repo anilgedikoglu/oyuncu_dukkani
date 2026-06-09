@@ -45,6 +45,9 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<!-- Şifreleme bildirimi: oyun kendi şifrelemesi kullanmaz, sadece HTTPS (Apple OS muaf) -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<!-- AdMob iOS App ID -->
 	<key>GADApplicationIdentifier</key>
 	<string>ca-app-pub-6470338276121414~7413384913</string>
