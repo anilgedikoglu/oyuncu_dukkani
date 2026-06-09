@@ -25,7 +25,8 @@ dev_dependencies:
 
 flutter_launcher_icons:
   android: true
-  ios: false
+  ios: true
+  remove_alpha_ios: true  # Apple App Store şeffaflık (alpha kanal) kabul etmiyor
   image_path: "assets/oyuncu_dukkani_icon.png"
   adaptive_icon_background: "#000000"
   adaptive_icon_foreground: "assets/oyuncu_dukkani_icon.png"
