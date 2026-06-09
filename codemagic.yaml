@@ -16,8 +16,9 @@ workflows:
       flutter: stable
       xcode: latest
       cocoapods: default
-      # ios_signing YOK — script ile auto-create profile yapacağız
-      # (cert Code signing identities'te yüklü, profil yok, --create ile oluşacak)
+      # Variable group(s) — Codemagic UI'da grup oluşturulduysa burada referans verilmeli
+      groups:
+        - signing_credentials  # CERTIFICATE_PRIVATE_KEY bu grupta olmalı (ya da grupsuz)
       vars:
         APP_STORE_APP_ID: "6778437262"
         BUNDLE_ID: "com.oyuncudukkani.app"
@@ -35,8 +36,23 @@ workflows:
           keychain initialize
       - name: Fetch signing files (auto-create profile if missing)
         script: |
+          # Debug: env var'ı kontrol et
+          if [ -z "$CERTIFICATE_PRIVATE_KEY" ]; then
+            echo "❌ HATA: CERTIFICATE_PRIVATE_KEY env var BOŞ veya yok!"
+            echo "Codemagic UI → App settings → Environment variables'a ekleyin."
+            echo "Eğer bir 'group' içine eklediyseniz, group adı YAML'daki ile eşleşmeli."
+            exit 1
+          fi
+          echo "✓ CERTIFICATE_PRIVATE_KEY uzunluğu: ${#CERTIFICATE_PRIVATE_KEY} karakter"
           # Private key'i base64'ten decode edip dosyaya yaz
           echo "$CERTIFICATE_PRIVATE_KEY" | base64 --decode > /tmp/cert_key.pem
+          KEY_SIZE=$(wc -c < /tmp/cert_key.pem)
+          echo "✓ Decoded key dosya boyutu: $KEY_SIZE byte"
+          if [ "$KEY_SIZE" -lt 100 ]; then
+            echo "❌ Decoded key çok küçük, base64 hatalı olabilir"
+            head -3 /tmp/cert_key.pem
+            exit 1
+          fi
           app-store-connect fetch-signing-files \
             "$BUNDLE_ID" \
             --type IOS_APP_STORE \
