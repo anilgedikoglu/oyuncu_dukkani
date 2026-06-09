@@ -257,6 +257,38 @@ X = `_state.aktifMusteri!.item.name` (orijinal balondaki ürün)
 
 ---
 
+## iOS Yapılandırması (v94)
+
+- **Bundle ID**: `com.oyuncudukkani.app` (Android ile aynı)
+- **Display Name**: `Oyuncu Dükkanı` (Info.plist `CFBundleDisplayName`)
+- **Deployment Target**: 13.0 (AdMob için minimum)
+- **AdMob iOS App ID**: `ca-app-pub-6470338276121414~7413384913` (Info.plist `GADApplicationIdentifier`)
+- **AdMob iOS Interstitial Unit ID**: ⚠️ TEST ID kullanılıyor (`ca-app-pub-3940256099942544/4411468910`)
+  - AdMob konsolunda iOS interstitial unit oluşturup `lib/main.dart` → `ReklamServisi._adUnitId` iOS dalını güncelle
+- **NSUserTrackingUsageDescription**: ATT (App Tracking Transparency) izni için
+- **SKAdNetworkItems**: AdMob 12.x için Google'ın güncel SKAN ID listesi (43 ağ)
+
+### Codemagic CI/CD (TestFlight)
+
+`codemagic.yaml` — `ios-testflight` workflow git tag `v*` push edilince tetiklenir, otomatik TestFlight yükleme yapar.
+
+**Codemagic UI'da yapılması gerekenler (BİR KEZ):**
+1. **Codemagic hesabı aç** + **GitHub repo bağla**: https://codemagic.io
+2. **Apple Developer hesabı bağla**: Teams → Integrations → "App Store Connect API key" ekle
+   - App Store Connect → Users and Access → Keys → "+" ile yeni key oluştur
+   - Key ID, Issuer ID, .p8 dosyasını Codemagic'e gir
+3. **App ID'sini doldur**: `codemagic.yaml` içindeki `APP_STORE_APP_ID` değişkenine App Store Connect'te oluşturulan numerical App ID'yi yaz
+4. **App Store Connect'te uygulama oluştur**: Bundle ID `com.oyuncudukkani.app`, Adı "Oyuncu Dükkanı"
+
+**Tetikleme:**
+```bash
+git tag v1.0.1+12
+git push origin v1.0.1+12
+```
+Codemagic otomatik build başlatır → .ipa üretir → TestFlight'a yükler.
+
+---
+
 ## Android Yapılandırması
 - **Paket adı**: `com.oyuncudukkani.app` (eski: `com.example.oyuncu_dukkani`)
 - **Uygulama ikonu**: `flutter_launcher_icons` ile `oyuncu_dukkani_icon.png`'den üretildi, adaptive icon destekli
@@ -478,6 +510,7 @@ Base ratio hâlâ `_clamp(0.18 - progress * 0.15, 0.02, 0.18)`.
 ## Versiyon Geçmişi (son)
 | Commit | Açıklama |
 |--------|----------|
+| v94 | iOS App Store hazırlığı: Bundle ID `com.oyuncudukkani.app`, deployment target 13.0, Info.plist'e AdMob iOS App ID + ATT izni + 43 SKAdNetwork ID, codemagic.yaml ile TestFlight'a otomatik gönderim |
 | v93 | Versiyon 1.0.1+12 — Google Play Store için AAB yayını (app-release.aab 61.9MB) |
 | v92 | Prod AdMob ID (ca-app-pub-6470338276121414/...); device_info_plus ile emülatör algılama (emülatörde reklam yok); pazarlık çeşitliliği: %6 zengin/%14 cömert müşteri rezervasyon sürprizi, %10 büyük + %20 orta + %70 normal adım sıçraması |
 | v91 | AdMob interstitial reklam: her yeni gün başına geçiş reklamı (game over değilse). ReklamServisi sınıfı, Kotlin 2.1.0'a yükseltildi (transitive webview_flutter bağımlılığı için) |

@@ -1,0 +1,66 @@
+# Codemagic CI/CD — Oyuncu Dükkanı iOS
+# https://docs.codemagic.io/yaml-quick-start/building-a-flutter-app/
+
+workflows:
+  ios-testflight:
+    name: iOS TestFlight (Otomatik)
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+    environment:
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+      ios_signing:
+        # Codemagic UI'da App Store Connect API key entegrasyonu yapıldıktan sonra:
+        # Teams → Integrations → Apple Developer Portal → "App Store Connect API key" ekle
+        # (Key ID, Issuer ID, .p8 dosyası gerekli)
+        # Sonra bu workflow'a bağla — distribution_type otomatik halleder.
+        distribution_type: app_store
+        bundle_identifier: com.oyuncudukkani.app
+      vars:
+        APP_STORE_APP_ID: "BU_DEGERI_DOLDUR"  # App Store Connect'te oluşturulan numerical App ID
+        BUNDLE_ID: "com.oyuncudukkani.app"
+      groups:
+        # Codemagic UI'da bir env group oluşturun ve App Store Connect API anahtarını
+        # buraya ekleyin (otomatik atanır). İsim önerisi: "appstore_credentials"
+        - appstore_credentials  # App Store API key burada saklanacak
+    triggering:
+      events:
+        - tag    # sadece git tag push edildiğinde tetiklenir (v* gibi)
+      tag_patterns:
+        - pattern: 'v*'
+          include: true
+    scripts:
+      - name: Bundle ID set
+        script: |
+          # Codemagic helper script — pbxproj'daki Bundle ID'yi env ile değiştirir
+          xcode-project use-profiles
+      - name: Flutter packages
+        script: |
+          flutter --version
+          flutter packages pub get
+      - name: Pod install
+        script: |
+          find . -name "Podfile" -execdir pod install \;
+      - name: Flutter build ipa
+        script: |
+          BUILD_NUMBER=$(($(app-store-connect get-latest-app-store-build-number "$APP_STORE_APP_ID") + 1))
+          flutter build ipa --release \
+            --build-name=1.0.1 \
+            --build-number=$BUILD_NUMBER \
+            --export-options-plist=/Users/builder/export_options.plist
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+      - flutter_drive.log
+    publishing:
+      app_store_connect:
+        # Codemagic UI'daki App Store Connect API key entegrasyonu otomatik kullanılır
+        auth: integration
+        # Otomatik TestFlight yükleme
+        submit_to_testflight: true
+        # Beta grubu (opsiyonel — App Store Connect'te oluştur, sonra adını gir)
+        # beta_groups:
+        #   - "Internal Testers"
+        # App Store'a otomatik göndermek için (TestFlight onayından sonra):
+        submit_to_app_store: false

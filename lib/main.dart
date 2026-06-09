@@ -30,7 +30,10 @@ void main() async {
 // Gün başı interstitial (geçiş reklamı). Prod AdMob unit ID'si kullanıyor.
 // Emülatörde reklam çıkmaz (politika ihlali olmasın diye).
 class ReklamServisi {
-  static const String _adUnitId = 'ca-app-pub-6470338276121414/4138047986';
+  // Android: prod interstitial. iOS: TEST interstitial (gerçek için AdMob'da iOS interstitial unit oluştur).
+  static String get _adUnitId => Platform.isIOS
+      ? 'ca-app-pub-3940256099942544/4411468910' // iOS TEST — değiştir
+      : 'ca-app-pub-6470338276121414/4138047986'; // Android PROD
   static InterstitialAd? _interstitial;
   static bool _yukleniyor = false;
   static bool emulator = false;
