@@ -34,8 +34,14 @@ workflows:
           include: true
 
     scripts:
-      - name: Otomatik imza profilleri
+      - name: Set up code signing identities (cert + profile auto-create)
         script: |
+          app-store-connect fetch-signing-files \
+            "$BUNDLE_ID" \
+            --type IOS_APP_STORE \
+            --create
+          keychain initialize
+          keychain add-certificates
           xcode-project use-profiles
       - name: Flutter packages
         script: |
