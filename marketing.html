@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Oyuncu Dükkanı — Resmi Sayfa / Official Page</title>
+  <meta name="description" content="Oyuncu Dükkanı: kendi oyun dükkanını yönet! Oyun CD'leri, konsollar ve oyuncu ekipmanları al-sat, müşterilerle pazarlık et, dükkanını büyüt.">
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: Arial, sans-serif; max-width: 880px; margin: 0 auto; padding: 30px 20px; color: #333; line-height: 1.7; background: #1a1008; }
+    .container { background: #fff; border-radius: 12px; padding: 36px 42px; box-shadow: 0 8px 24px rgba(0,0,0,0.3); }
+    h1 { color: #1a1008; border-bottom: 3px solid #E6A800; padding-bottom: 12px; font-size: 2em; }
+    h2 { color: #3a2000; margin-top: 32px; }
+    p, li { margin: 8px 0; }
+    .lang-switch { display: flex; gap: 8px; justify-content: flex-end; margin-bottom: 16px; }
+    .lang-switch button {
+      background: #f5e6c8; color: #1a1008; border: 1.5px solid #8B5E3C;
+      padding: 6px 14px; border-radius: 16px; font-weight: 700; cursor: pointer;
+      font-size: 13px; transition: all .15s;
+    }
+    .lang-switch button:hover { background: #8B5E3C; color: #fff; }
+    .lang-switch button.active { background: #8B5E3C; color: #fff; }
+    [data-lang]:not(.show) { display: none; }
+    .hero { background: linear-gradient(135deg, #E6A800 0%, #8B5E3C 100%); color: #fff; padding: 30px; border-radius: 10px; margin: 20px 0; text-align: center; }
+    .hero h2 { color: #fff; margin: 0 0 12px 0; font-size: 1.6em; border: none; }
+    .hero p { color: #fff; font-size: 1.1em; margin: 0; }
+    .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin-top: 14px; }
+    .feature { background: #faf6ef; border-left: 4px solid #E6A800; padding: 14px 18px; border-radius: 6px; }
+    .feature strong { display: block; color: #1a1008; margin-bottom: 4px; }
+    .badges { display: flex; gap: 14px; flex-wrap: wrap; margin: 24px 0; }
+    .badge { background: #1a1008; color: #fff; padding: 12px 22px; border-radius: 8px; text-decoration: none; font-weight: 600; transition: all .15s; }
+    .badge:hover { background: #E6A800; color: #1a1008; }
+    footer { margin-top: 36px; padding-top: 20px; border-top: 1px solid #e0d8c8; color: #888; font-size: 13px; text-align: center; }
+    a { color: #8B5E3C; }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+
+    <div class="lang-switch">
+      <button id="btnTR" class="active" onclick="setLang('tr')">🇹🇷 Türkçe</button>
+      <button id="btnEN" onclick="setLang('en')">🇬🇧 English</button>
+    </div>
+
+    <!-- ─────────── TÜRKÇE ─────────── -->
+    <section data-lang="tr" class="show">
+      <h1>🕹️ Oyuncu Dükkanı</h1>
+      <p><strong>Kendi oyun dükkanını yönet!</strong> Oyun CD'leri, konsollar ve oyuncu ekipmanları al-sat. Müşterilerle pazarlık et, kasayı doldur, kira gününü atlat. Dükkanını geliştir. Zengin ol!</p>
+
+      <div class="hero">
+        <h2>Tezgâhın arkasındaki yerini al!</h2>
+        <p>Pazarlık tabanlı oyun dükkanı simülasyonu. Akıllıca al, kârla sat, dükkanını imparatorluğa dönüştür.</p>
+      </div>
+
+      <h2>Nasıl Oynanır?</h2>
+      <p>Tezgâhın arkasında bekle, müşteriyi içeri al, pazarlık et, anlaşırsan sat — anlaşamazsan kapıyı göster! Gün sonunda kirayı öde, yeni güne başla. Para biter ve elinde mal kalmazsa iflas edersin.</p>
+
+      <h2>Özellikler</h2>
+      <div class="features">
+        <div class="feature"><strong>💰 Heyecanlı Pazarlık</strong>Bazen cömert bir müşteri çıkar, istediğinden çok daha fazlasını verir.</div>
+        <div class="feature"><strong>🎮 Onlarca Ürün</strong>Oyun CD'leri, konsollar, joystickler ve aksesuarlar.</div>
+        <div class="feature"><strong>🏪 5 Dükkan Seviyesi</strong>Büyüdükçe büyü — kira da kazanç da artıyor.</div>
+        <div class="feature"><strong>👮 Özel Müşteriler</strong>Hırsız, polis, vergici, kurye — her tip ile başa çık.</div>
+        <div class="feature"><strong>🌹 Kolonya İkramı</strong>Müşterinin gönlünü al, pazarlığı kendi lehine çevir.</div>
+        <div class="feature"><strong>🏦 Banka Kredisi</strong>Risk al, taksitle öde, daha büyük yatırımlara giriş.</div>
+        <div class="feature"><strong>💾 Otomatik Kayıt</strong>İstediğin zaman bırak, kaldığın yerden devam et.</div>
+      </div>
+
+      <h2>İndir</h2>
+      <div class="badges">
+        <a href="#" class="badge">📱 App Store (Yakında)</a>
+        <a href="https://play.google.com/store/apps/details?id=com.oyuncudukkani.app" class="badge">▶ Google Play</a>
+      </div>
+
+      <h2>İletişim & Destek</h2>
+      <p>Sorularınız ve geri bildirimleriniz için: <a href="mailto:anilgedikoglu@gmail.com">anilgedikoglu@gmail.com</a></p>
+      <p>Daha fazla bilgi: <a href="support.html">Destek Sayfası</a> · <a href="privacy-policy.html">Gizlilik Politikası</a></p>
+    </section>
+
+    <!-- ─────────── ENGLISH ─────────── -->
+    <section data-lang="en">
+      <h1>🕹️ Oyuncu Dükkanı (Gamer Shop)</h1>
+      <p><strong>Run your own gaming shop!</strong> Buy and sell game CDs, consoles, and gaming gear. Bargain with customers, fill the till, pay the rent. Grow your shop. Get rich!</p>
+
+      <div class="hero">
+        <h2>Take your place behind the counter!</h2>
+        <p>A bargaining-based gaming shop simulator. Buy smart, sell at profit, turn your shop into an empire.</p>
+      </div>
+
+      <h2>How to Play</h2>
+      <p>Wait behind the counter, let the customer in, bargain — sell if you agree, show them the door if not! Pay the rent at day's end, start a new day. If your money runs out and you have no stock, you go bankrupt.</p>
+
+      <h2>Features</h2>
+      <div class="features">
+        <div class="feature"><strong>💰 Exciting Bargaining</strong>Sometimes a generous customer offers way above what you asked.</div>
+        <div class="feature"><strong>🎮 Dozens of Items</strong>Game CDs, consoles, joysticks, and accessories.</div>
+        <div class="feature"><strong>🏪 5 Shop Levels</strong>Grow bigger — rent and profit both scale up.</div>
+        <div class="feature"><strong>👮 Special Customers</strong>Thief, police, tax collector, courier — handle each one.</div>
+        <div class="feature"><strong>🌹 Cologne Treat</strong>Win the customer's heart, tilt the bargain in your favor.</div>
+        <div class="feature"><strong>🏦 Bank Loans</strong>Take risks, pay in installments, invest bigger.</div>
+        <div class="feature"><strong>💾 Auto-Save</strong>Quit anytime, resume where you left off.</div>
+      </div>
+
+      <h2>Download</h2>
+      <div class="badges">
+        <a href="#" class="badge">📱 App Store (Coming Soon)</a>
+        <a href="https://play.google.com/store/apps/details?id=com.oyuncudukkani.app" class="badge">▶ Google Play</a>
+      </div>
+
+      <h2>Contact & Support</h2>
+      <p>For questions and feedback: <a href="mailto:anilgedikoglu@gmail.com">anilgedikoglu@gmail.com</a></p>
+      <p>More info: <a href="support.html">Support Page</a> · <a href="privacy-policy.html">Privacy Policy</a></p>
+    </section>
+
+    <footer>
+      © 2026 Anıl Gedikoglu — Oyuncu Dükkanı
+    </footer>
+  </div>
+
+  <script>
+    function setLang(lang) {
+      document.querySelectorAll('[data-lang]').forEach(el => {
+        el.classList.toggle('show', el.getAttribute('data-lang') === lang);
+      });
+      document.getElementById('btnTR').classList.toggle('active', lang === 'tr');
+      document.getElementById('btnEN').classList.toggle('active', lang === 'en');
+      document.documentElement.lang = lang;
+      try { localStorage.setItem('oyuncuDukkani_lang', lang); } catch(e) {}
+    }
+    try {
+      const saved = localStorage.getItem('oyuncuDukkani_lang');
+      if (saved === 'en') setLang('en');
+      else if (!saved) {
+        const browserLang = (navigator.language || 'tr').toLowerCase();
+        if (!browserLang.startsWith('tr')) setLang('en');
+      }
+    } catch(e) {}
+  </script>
+
+</body>
+</html>

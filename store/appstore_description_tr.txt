@@ -1,0 +1,38 @@
+Oyuncu Dükkanı — kendi oyun dükkanını yönet!
+
+Oyun CD'leri, konsollar ve oyuncu ekipmanları al-sat.
+Müşterilerle pazarlık et, kasayı doldur, kira gününü atlat.
+Dükkanını geliştir. Zengin ol!
+
+▸ NASIL OYNANIR
+Tezgâhın arkasında bekle, müşteriyi içeri al, pazarlık et,
+anlaşırsan sat — anlaşamazsan kapıyı göster!
+Gün sonunda kirayı öde, yeni güne başla.
+Para biter ve elinde mal kalmazsa iflas edersin.
+
+▸ ÖZELLİKLER
+• Heyecanlı pazarlık sistemi — bazen cömert bir müşteri çıkar,
+  istediğinden çok daha fazlasını verir
+• Onlarca farklı ürün: oyun CD'leri, konsollar, joystickler, aksesuarlar
+• 5 farklı dükkan seviyesi — büyüdükçe büyü
+• Özel müşteriler: hırsızdan polise, vergiciden kuryeye kadar
+• Kolonya ikram et, müşterinin gönlünü al, pazarlığı çevir
+• Banka kredisi: risk al, taksitle öde
+• Otomatik kayıt — istediğin zaman devam et
+
+Akıllıca al, kârla sat, dükkanını imparatorluğa dönüştür.
+
+Reklam: Her gün başında kısa bir geçiş reklamı gösterilir.
+
+
+---
+PROMOTIONAL TEXT (170 karakter):
+Oyun CD'leri, konsollar, oyuncu ekipmanları al-sat! Müşterilerle pazarlık et, kasayı doldur, dükkanını büyüt. Sürprizli pazarlıklar, özel müşteriler ve daha fazlası!
+
+---
+KEYWORDS (100 karakter):
+pazarlık,oyun dükkanı,al sat,konsol,işletme,simülasyon,türkçe,dükkan,kasiyer,oyuncu
+
+---
+SUBTITLE (30 karakter):
+Al, sat, pazarlık et, büyü!
