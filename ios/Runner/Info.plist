@@ -51,9 +51,10 @@
 	<!-- AdMob iOS App ID -->
 	<key>GADApplicationIdentifier</key>
 	<string>ca-app-pub-6470338276121414~7413384913</string>
-	<!-- NSUserTrackingUsageDescription KALDIRILDI — App Privacy formu doldurma yükümlülüğü olmasın,
-	     reklamlar non-personalized olarak gösterilir, kullanıcıya "Allow tracking?" dialogu çıkmaz -->
-	<!-- SKAdNetwork (AdMob 12.0.0 itibariyle Google'ın güncel listesi) - attribution için, tracking değil -->
+	<!-- AdMob ATT (App Tracking Transparency) — iOS 14.5+ kişiselleştirilmiş reklam için izin -->
+	<key>NSUserTrackingUsageDescription</key>
+	<string>Bu izin, size daha alakalı reklamlar gösterilmesi için kullanılır.</string>
+	<!-- SKAdNetwork (AdMob 12.0.0 itibariyle Google'ın güncel listesi) -->
 	<key>SKAdNetworkItems</key>
 	<array>
 		<dict><key>SKAdNetworkIdentifier</key><string>cstr6suwn9.skadnetwork</string></dict>
