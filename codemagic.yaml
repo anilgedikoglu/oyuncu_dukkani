@@ -23,7 +23,7 @@ workflows:
       vars:
         # App Store Connect'te uygulamayı oluşturduktan sonra URL'deki numerik ID:
         # https://appstoreconnect.apple.com/apps/XXXXXXXXXX/  →  buraya yaz
-        APP_STORE_APP_ID: "BU_DEGERI_DOLDUR"
+        APP_STORE_APP_ID: "6778437262"
         BUNDLE_ID: "com.oyuncudukkani.app"
 
     triggering:
