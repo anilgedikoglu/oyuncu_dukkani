@@ -17,12 +17,10 @@ workflows:
       flutter: stable
       xcode: latest
       cocoapods: default
-      ios_signing:
-        distribution_type: app_store
-        bundle_identifier: com.oyuncudukkani.app
+      # ios_signing bloğu YOK — çünkü profil yoksa script'ten önce hata verir.
+      # Signing tamamen scripts içinde "app-store-connect fetch-signing-files --create"
+      # ile yapılıyor (profil yoksa OLUŞTURULUR).
       vars:
-        # App Store Connect'te uygulamayı oluşturduktan sonra URL'deki numerik ID:
-        # https://appstoreconnect.apple.com/apps/XXXXXXXXXX/  →  buraya yaz
         APP_STORE_APP_ID: "6778437262"
         BUNDLE_ID: "com.oyuncudukkani.app"
 
