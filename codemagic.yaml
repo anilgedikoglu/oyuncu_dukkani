@@ -65,9 +65,11 @@ workflows:
       - name: Set up code signing settings on Xcode project
         script: |
           xcode-project use-profiles
-      - name: Flutter packages
+      - name: Flutter packages + disable SwiftPM
         script: |
           flutter --version
+          # google_mobile_ads CocoaPods, webview_flutter SwiftPM — çakışıyor, SwiftPM kapat
+          flutter config --no-enable-swift-package-manager
           flutter packages pub get
       - name: Pod install
         script: |
