@@ -16,11 +16,8 @@ workflows:
       flutter: stable
       xcode: latest
       cocoapods: default
-      # Code signing: Code signing identities'te yüklü ios_distribution.p12 + integration
-      # ile Codemagic otomatik profile oluşturur (ilk build'de).
-      ios_signing:
-        distribution_type: app_store
-        bundle_identifier: com.oyuncudukkani.app
+      # ios_signing YOK — script ile auto-create profile yapacağız
+      # (cert Code signing identities'te yüklü, profil yok, --create ile oluşacak)
       vars:
         APP_STORE_APP_ID: "6778437262"
         BUNDLE_ID: "com.oyuncudukkani.app"
@@ -33,6 +30,22 @@ workflows:
           include: true
 
     scripts:
+      - name: Initialize keychain
+        script: |
+          keychain initialize
+      - name: Fetch signing files (auto-create profile if missing)
+        script: |
+          app-store-connect fetch-signing-files \
+            "$BUNDLE_ID" \
+            --type IOS_APP_STORE \
+            --platform IOS \
+            --create
+      - name: Add certificates to keychain
+        script: |
+          keychain add-certificates
+      - name: Set up code signing settings on Xcode project
+        script: |
+          xcode-project use-profiles
       - name: Flutter packages
         script: |
           flutter --version
