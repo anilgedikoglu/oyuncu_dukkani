@@ -6,34 +6,38 @@ workflows:
     name: iOS TestFlight (Otomatik)
     instance_type: mac_mini_m2
     max_build_duration: 60
+
+    # ⚠️ ÖNEMLİ: Bu isim, Codemagic UI'da oluşturduğun App Store Connect
+    # entegrasyonunun adı OLMALI (Teams → Integrations → App Store Connect).
+    # Henüz oluşturmadıysan: Codemagic UI → Teams → Integrations → App Store Connect
+    # → "Add new" → İsmi: appstore_oyuncudukkani (veya istediğin bir ad)
+    # Aşağıdaki ismi de aynısıyla değiştir.
+    integrations:
+      app_store_connect: appstore_oyuncudukkani
+
     environment:
       flutter: stable
       xcode: latest
       cocoapods: default
       ios_signing:
-        # Codemagic UI'da App Store Connect API key entegrasyonu yapıldıktan sonra:
-        # Teams → Integrations → Apple Developer Portal → "App Store Connect API key" ekle
-        # (Key ID, Issuer ID, .p8 dosyası gerekli)
-        # Sonra bu workflow'a bağla — distribution_type otomatik halleder.
         distribution_type: app_store
         bundle_identifier: com.oyuncudukkani.app
       vars:
-        APP_STORE_APP_ID: "BU_DEGERI_DOLDUR"  # App Store Connect'te oluşturulan numerical App ID
+        # App Store Connect'te uygulamayı oluşturduktan sonra URL'deki numerik ID:
+        # https://appstoreconnect.apple.com/apps/XXXXXXXXXX/  →  buraya yaz
+        APP_STORE_APP_ID: "BU_DEGERI_DOLDUR"
         BUNDLE_ID: "com.oyuncudukkani.app"
-      groups:
-        # Codemagic UI'da bir env group oluşturun ve App Store Connect API anahtarını
-        # buraya ekleyin (otomatik atanır). İsim önerisi: "appstore_credentials"
-        - appstore_credentials  # App Store API key burada saklanacak
+
     triggering:
       events:
-        - tag    # sadece git tag push edildiğinde tetiklenir (v* gibi)
+        - tag
       tag_patterns:
         - pattern: 'v*'
           include: true
+
     scripts:
-      - name: Bundle ID set
+      - name: Otomatik imza profilleri
         script: |
-          # Codemagic helper script — pbxproj'daki Bundle ID'yi env ile değiştirir
           xcode-project use-profiles
       - name: Flutter packages
         script: |
@@ -49,18 +53,16 @@ workflows:
             --build-name=1.0.1 \
             --build-number=$BUILD_NUMBER \
             --export-options-plist=/Users/builder/export_options.plist
+
     artifacts:
       - build/ios/ipa/*.ipa
       - /tmp/xcodebuild_logs/*.log
       - flutter_drive.log
+
     publishing:
       app_store_connect:
-        # Codemagic UI'daki App Store Connect API key entegrasyonu otomatik kullanılır
         auth: integration
-        # Otomatik TestFlight yükleme
+        # Otomatik TestFlight yükleme (App Store onayı GEREKTİRMEZ — internal testing için)
         submit_to_testflight: true
-        # Beta grubu (opsiyonel — App Store Connect'te oluştur, sonra adını gir)
-        # beta_groups:
-        #   - "Internal Testers"
-        # App Store'a otomatik göndermek için (TestFlight onayından sonra):
+        # App Store'a otomatik göndermek için TestFlight onayından sonra true yap:
         submit_to_app_store: false
