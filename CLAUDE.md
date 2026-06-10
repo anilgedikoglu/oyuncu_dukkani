@@ -257,35 +257,186 @@ X = `_state.aktifMusteri!.item.name` (orijinal balondaki ürün)
 
 ---
 
-## iOS Yapılandırması (v94)
+## iOS Yapılandırması
 
+### Temel Bilgiler
 - **Bundle ID**: `com.oyuncudukkani.app` (Android ile aynı)
 - **Display Name**: `Oyuncu Dükkanı` (Info.plist `CFBundleDisplayName`)
 - **Deployment Target**: 13.0 (AdMob için minimum)
+- **Team ID**: `SN5Y726ZKF` (FUTURASTIC TEKNOLOJI URUNLERI VE DANISMANLIGI ORGANIZASYON TICARET LIMITED SIRKETI)
 - **AdMob iOS App ID**: `ca-app-pub-6470338276121414~7413384913` (Info.plist `GADApplicationIdentifier`)
 - **AdMob iOS Interstitial Unit ID**: ⚠️ TEST ID kullanılıyor (`ca-app-pub-3940256099942544/4411468910`)
   - AdMob konsolunda iOS interstitial unit oluşturup `lib/main.dart` → `ReklamServisi._adUnitId` iOS dalını güncelle
+- **App Store Connect App ID** (numerik): `6778437262`
 - **NSUserTrackingUsageDescription**: ATT (App Tracking Transparency) izni için
 - **SKAdNetworkItems**: AdMob 12.x için Google'ın güncel SKAN ID listesi (43 ağ)
+- **ITSAppUsesNonExemptEncryption**: `false` (sadece HTTPS, custom crypto yok — Apple muaf)
+- **iOS App Icon**: `flutter_launcher_icons` ile `assets/oyuncu_dukkani_icon.png`'den üretildi
+  - `ios: true`, `remove_alpha_ios: true` (Apple alpha kanal kabul etmiyor)
 
-### Codemagic CI/CD (TestFlight)
+### Apple Developer Portal Setup (BİR KEZ)
+1. https://developer.apple.com/account/resources/identifiers/list
+2. **+** (Add) → App IDs → App
+3. Description: `Oyuncu Dukkani` (ASCII), Bundle ID: `com.oyuncudukkani.app` (Explicit)
+4. Capabilities: hiçbir şey işaretleme
+5. Register
 
-`codemagic.yaml` — `ios-testflight` workflow git tag `v*` push edilince tetiklenir, otomatik TestFlight yükleme yapar.
+### App Store Connect Setup (BİR KEZ)
+1. https://appstoreconnect.apple.com → My Apps → **"+"** → New App
+2. Platforms: iOS, Name: **Oyuncu Dükkanı**, Bundle ID: dropdown'dan seç
+3. SKU: **OYUNCUDUKKANI001**, User Access: **Full Access**
+4. Create → URL'deki numerik App ID'yi al (örn. `6778437262`)
 
-**Codemagic UI'da yapılması gerekenler (BİR KEZ):**
-1. **Codemagic hesabı aç** + **GitHub repo bağla**: https://codemagic.io
-2. **Apple Developer hesabı bağla**: Teams → Integrations → "App Store Connect API key" ekle
-   - App Store Connect → Users and Access → Keys → "+" ile yeni key oluştur
-   - Key ID, Issuer ID, .p8 dosyasını Codemagic'e gir
-3. **App ID'sini doldur**: `codemagic.yaml` içindeki `APP_STORE_APP_ID` değişkenine App Store Connect'te oluşturulan numerical App ID'yi yaz
-4. **App Store Connect'te uygulama oluştur**: Bundle ID `com.oyuncudukkani.app`, Adı "Oyuncu Dükkanı"
+---
 
-**Tetikleme:**
+## 🚀 Codemagic CI/CD — iOS TestFlight Pipeline
+
+`codemagic.yaml` git tag `v*` push edilince tetiklenir, otomatik TestFlight yükleme yapar.
+
+### Workflow tetikleme
 ```bash
-git tag v1.0.1+12
-git push origin v1.0.1+12
+# YA git tag ile (otomatik)
+git tag v1.0.x-iosN
+git push origin v1.0.x-iosN
+
+# YA Codemagic UI'dan manuel: Applications → oyuncu_dukkani → Start new build → main → ios-testflight
 ```
-Codemagic otomatik build başlatır → .ipa üretir → TestFlight'a yükler.
+
+### Codemagic UI Kurulum (BİR KEZ tamamlandı)
+
+**1. Repo bağlantısı**
+- https://codemagic.io → Sign in with GitHub → "Add application" → oyuncu_dukkani repo
+
+**2. App Store Connect API Key entegrasyonu**
+- Codemagic UI → Personal Account → **Settings** → Integrations → **Developer Portal** → "Connect"
+- App Store Connect → Users and Access → Integrations / Keys → "+" → App Manager rolünde key oluştur
+- Key ID, Issuer ID, .p8 dosyasını Codemagic'e gir
+- Name: **`Codemagic`** (YAML'da `integrations.app_store_connect: Codemagic` ile referans veriliyor)
+- **Mevcut Key ID:** `2M84B256CL` (Magnus ile paylaşımlı)
+
+**3. iOS Distribution Certificate (Code signing identity)**
+- Personal Account → **Settings** → "Code signing identities" → "iOS certificates"
+- **Upload a certificate file**: `.p12` dosyası sürükle
+- Şifre boş olabilmesi için yerel olarak yeniden üretildi:
+  ```bash
+  openssl pkcs12 -export -legacy \
+    -out ios_distribution_nopass.p12 \
+    -inkey C:/src/magnus_app/ios_certs/ios_distribution.key \
+    -in   C:/src/magnus_app/ios_certs/distribution.pem \
+    -passout pass:
+  ```
+- Reference name: `ios_distribution`
+- ⚠️ NOT: Magnus için yapılmış cert'ten türetildi, **aynı Apple Developer Team** olduğu için oyuncu_dukkani için de geçerli
+
+**4. Private Key Environment Variable**
+- Codemagic Personal Account → Settings → Global vars **deprecated** → Applications → oyuncu_dukkani → **Environment variables**
+- `CERTIFICATE_PRIVATE_KEY` (Secret ✅, group: `signing_credentials`)
+- Değer: `ios_distribution.key`'in **base64 encoded** içeriği:
+  ```bash
+  cat ios_distribution.key | base64 -w 0 > cert_key_base64.txt
+  ```
+- YAML'da `signing_credentials` group referansı zorunlu
+
+### codemagic.yaml Yapısı
+
+```yaml
+workflows:
+  ios-testflight:
+    name: iOS TestFlight (Otomatik)
+    instance_type: mac_mini_m2
+    integrations:
+      app_store_connect: Codemagic   # UI'daki integration adı
+    environment:
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+      groups:
+        - signing_credentials         # CERTIFICATE_PRIVATE_KEY burada
+      vars:
+        APP_STORE_APP_ID: "6778437262"
+        BUNDLE_ID: "com.oyuncudukkani.app"
+    triggering:
+      events: [tag]
+      tag_patterns:
+        - pattern: 'v*'
+    scripts:
+      - name: Initialize keychain
+        script: keychain initialize
+      - name: Fetch signing files (auto-create profile if missing)
+        script: |
+          echo "$CERTIFICATE_PRIVATE_KEY" | base64 --decode > /tmp/cert_key.pem
+          app-store-connect fetch-signing-files "$BUNDLE_ID" \
+            --type IOS_APP_STORE --platform IOS \
+            --certificate-key=@file:/tmp/cert_key.pem --create
+      - name: Add certificates to keychain
+        script: keychain add-certificates
+      - name: Set up Xcode profiles
+        script: xcode-project use-profiles
+      - name: Flutter packages + disable SwiftPM
+        script: |
+          # google_mobile_ads CocoaPods, webview_flutter SwiftPM — çakışıyor
+          flutter config --no-enable-swift-package-manager
+          flutter packages pub get
+      - name: Pod install
+        script: find . -name "Podfile" -execdir pod install \;
+      - name: Flutter build ipa
+        script: |
+          # Build number: latest+1, hata olursa timestamp (uniqlik garantili)
+          LATEST_BUILD=$(app-store-connect get-latest-app-store-build-number "$APP_STORE_APP_ID" 2>/dev/null || echo "0")
+          if [ -z "$LATEST_BUILD" ] || [ "$LATEST_BUILD" = "0" ]; then
+            BUILD_NUMBER=$(date +%s | tail -c 7)
+          else
+            BUILD_NUMBER=$((LATEST_BUILD + 1))
+          fi
+          flutter build ipa --release \
+            --build-name=1.0.1 \
+            --build-number=$BUILD_NUMBER \
+            --export-options-plist=/Users/builder/export_options.plist
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+        submit_to_app_store: false
+```
+
+### ⚠️ Çözülen Codemagic Sorunları (referans)
+
+| Hata | Sebep | Çözüm |
+|------|-------|-------|
+| `auth: integration requires workflow → integrations → app_store_connect` | YAML'da integrations bloğu eksik | `integrations.app_store_connect: Codemagic` eklendi |
+| `No matching profiles found for bundle identifier` | `ios_signing` env block profil yoksa hata fırlatır | Env block kaldırıldı, script ile `--create` |
+| `Cannot save Signing Certificates without certificate private key` | Cert auto-create için private key gerekli | `CERTIFICATE_PRIVATE_KEY` env var + `--certificate-key=@file:` |
+| `Provided value "" is not valid` (cert key) | Env var boş veya group bağlanmamış | YAML'a `groups: [signing_credentials]` eklendi |
+| `google_mobile_ads uses CocoaPods while webview_flutter_wkwebview uses Swift Package Manager` | SDK çakışması | `flutter config --no-enable-swift-package-manager` |
+| `The bundle version must be higher than the previously uploaded version` | Build number unique olmuyor | Timestamp fallback (`date +%s | tail -c 7`) |
+| Mavi Flutter üçgeni ikon | `flutter_launcher_icons` ios:false | `ios: true` + `flutter pub run flutter_launcher_icons` |
+| Encryption sorusu her build'de soruluyor | Info.plist'te bildirim yok | `ITSAppUsesNonExemptEncryption=false` eklendi |
+| App Privacy formu doldurulmamış | NSUserTrackingUsageDescription ATT istiyor | App Privacy → Publish → Tracking yapılandır |
+
+### TestFlight Test Etme
+1. iPhone'a **TestFlight** uygulamasını App Store'dan kur
+2. App Store Connect'teki Apple ID ile giriş yap
+3. App Store Connect → Oyuncu Dükkanı → TestFlight → **Internal Testing** → "+" Group oluştur
+4. Group → Testers → kendi Apple ID'ni ekle
+5. Group → Builds → "+ Add Build" → son build seç
+6. iPhone'a mail gelir (5-15 dk) veya doğrudan TestFlight uygulamasında belirir
+
+### App Privacy Formu (NSUserTrackingUsageDescription kullanılırsa)
+App Store Connect → Oyuncu Dükkanı → **App Privacy** → Get Started:
+
+**Data Types collected** (AdMob için):
+- **Identifiers → Device ID**: Linked=Yes, Tracking=Yes, Purpose=Third-Party Advertising
+- **Diagnostics → Crash Data**: Linked=No, Tracking=No, Purpose=App Functionality
+- **Diagnostics → Performance Data**: Linked=No, Tracking=No, Purpose=App Functionality
+
+**Privacy Policy URL**: `https://anilgedikoglu.github.io/oyuncu_dukkani/privacy-policy.html`
+
+⚠️ Form doldurulunca **"Publish"** butonuna tıklamak ZORUNLU (Save yetmiyor).
+
+### Versiyon Kontrolü
+- pubspec.yaml: `1.0.1+12`
+- Build number Codemagic tarafından OTOMATİK atanıyor (timestamp), pubspec'tekiyle çakışmaz
+- Yeni release için: `pubspec.yaml` version arttır → commit + push → Codemagic UI'dan manuel build başlat veya `git tag v1.0.x-iosN`
 
 ---
 
@@ -510,6 +661,7 @@ Base ratio hâlâ `_clamp(0.18 - progress * 0.15, 0.02, 0.18)`.
 ## Versiyon Geçmişi (son)
 | Commit | Açıklama |
 |--------|----------|
+| v95 | iOS TestFlight aktif: Codemagic pipeline tam çalışır durumda (10+ iterasyon sonrası signing/SwiftPM/build-number/icon hataları çözüldü); Magnus'tan paylaşımlı .p12 cert; CERTIFICATE_PRIVATE_KEY env var; iOS app icon (mavi Flutter üçgeni → gerçek ikon); ITSAppUsesNonExemptEncryption=false; App Privacy formu dolduruldu; support.html + marketing.html (TR/EN) GitHub Pages'te yayında; store/appstore_description_tr.txt yedeği |
 | v94 | iOS App Store hazırlığı: Bundle ID `com.oyuncudukkani.app`, deployment target 13.0, Info.plist'e AdMob iOS App ID + ATT izni + 43 SKAdNetwork ID, codemagic.yaml ile TestFlight'a otomatik gönderim |
 | v93 | Versiyon 1.0.1+12 — Google Play Store için AAB yayını (app-release.aab 61.9MB) |
 | v92 | Prod AdMob ID (ca-app-pub-6470338276121414/...); device_info_plus ile emülatör algılama (emülatörde reklam yok); pazarlık çeşitliliği: %6 zengin/%14 cömert müşteri rezervasyon sürprizi, %10 büyük + %20 orta + %70 normal adım sıçraması |
