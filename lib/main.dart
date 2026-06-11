@@ -2,6 +2,7 @@
 import 'dart:convert';
 import 'dart:io' show Platform;
 import 'dart:math';
+import 'package:app_tracking_transparency/app_tracking_transparency.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:device_preview/device_preview.dart';
@@ -15,6 +16,21 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await ReklamServisi.emulatorAlgila();
   if (!ReklamServisi.emulator) {
+    // iOS: AdMob initialize'tan ÖNCE ATT izni iste (Apple zorunluyor — Guideline 2.1)
+    // - notDetermined ise sistem dialog gösterir
+    // - Daha önce reddedildiyse/onaylandıysa direkt geçer
+    if (Platform.isIOS) {
+      try {
+        final status = await AppTrackingTransparency.trackingAuthorizationStatus;
+        if (status == TrackingStatus.notDetermined) {
+          // Apple bilgi mesajı için ufak bekleme önerir, ardından sistem dialog'u tetiklenir
+          await Future.delayed(const Duration(milliseconds: 200));
+          await AppTrackingTransparency.requestTrackingAuthorization();
+        }
+      } catch (_) {
+        // iOS 14 altı veya hata — sessizce devam et, AdMob non-personalized çalışır
+      }
+    }
     MobileAds.instance.initialize();
     ReklamServisi.yukle(); // ilk interstitial'i yukle
   }
