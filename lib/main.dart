@@ -2701,7 +2701,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
               children: [
                 const SizedBox(width: 564, height: 564), // Z-order placeholder — DOKUNMA!
                 Positioned(
-                  bottom: 306, // ← DOKUNMA! İsim etiketi yüksekliği (SON DEĞER)
+                  bottom: 318, // 306→318 (isim 12px yukarı)
                   left: 0, right: 0,
                   child: Center(
                     child: GestureDetector(
@@ -2770,7 +2770,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                 + (gorsel == 'assets/oyuncudireksiyonu.png' ? 7 : 0)
                 + (gorsel == 'assets/konsol_2.png'          ? 5 : 0)
                 + (gorsel == 'assets/konsol_3.png'          ? 5 : 0);
-              final productTop = screenH * 0.57 - productSize - st - hh + 32;
+              final productTop = screenH * 0.57 - productSize - st - hh + 20; // +32→+20 (ürünler 12px yukarı)
               return Positioned(
                 left: productLeft, top: productTop,
                 child: Image.asset(
@@ -2861,7 +2861,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       children: [
         const SizedBox(width: 564, height: 564), // Z-order placeholder
         Positioned(
-          bottom: 306, // ← DOKUNMA! (SON DEĞER — normal müşteriyle eşleşmeli)
+          bottom: 318, // 306→318 (özel müşteri ismi de 12px yukarı)
           left: 0, right: 0,
           child: Center(
             child: Container(
