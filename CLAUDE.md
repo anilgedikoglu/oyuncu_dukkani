@@ -98,7 +98,7 @@ musteriTop = screenH * 0.14 + 44   ← SafeArea içi (statusBar yok)
 Normal müşteri (Stack içi Positioned):
 ```dart
 Positioned(
-  bottom: 306,   // ← DOKUNMA! (SON DEĞER)
+  bottom: 338,   // ← SON DEĞER (306→318→328→338, toplam 32px yukarı çekildi)
   left: 0, right: 0,
   child: Center(child: ...isim container...),
 )
@@ -107,7 +107,7 @@ Positioned(
 Özel müşteri — `_buildOzelMusteriWidget()` içinde **AYNI** yapı:
 ```dart
 Positioned(
-  bottom: 306,   // ← DOKUNMA! Normal müşteriyle eşleşmeli
+  bottom: 338,   // ← SON DEĞER, normal müşteriyle eşleşmeli
   left: 0, right: 0,
   child: Center(child: ...isim container...),
 )
@@ -147,12 +147,12 @@ konsol_3.png          : dx + 311 (+5 sağa)
 
 **Dikey (productTop):**
 ```
-screenH * 0.57 - productSize - st - hh + 32
+screenH * 0.57 - productSize - st - hh - 20
   └─ 0.57       = ürün ALT kenarı ekranın %57'sinde (masa yüzeyi hizası)
   └─ productSize = 151 / 128 / 121 (ürüne göre)
   └─ st         = viewPadding.top (status bar)
   └─ hh         = 48.0 (header yüksekliği)
-  └─ +32        = ince ayar ← DOKUNMA! (SON DEĞER)
+  └─ -20        = ince ayar ← SON DEĞER (+32→+20→0→-20, toplam 52px yukarı çekildi)
 ```
 
 > Koordinatlar `_buildSahne()` Stack'ine göreli — SafeArea içinde, header altında başlar.
