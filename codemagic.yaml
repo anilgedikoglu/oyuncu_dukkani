@@ -82,7 +82,7 @@ workflows:
           BUILD_NUMBER=$(date +%s)
           echo "Using BUILD_NUMBER=$BUILD_NUMBER"
           flutter build ipa --release \
-            --build-name=1.0.1 \
+            --build-name=1.0.2 \
             --build-number=$BUILD_NUMBER \
             --export-options-plist=/Users/builder/export_options.plist
 
