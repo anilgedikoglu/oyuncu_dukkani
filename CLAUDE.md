@@ -265,8 +265,9 @@ X = `_state.aktifMusteri!.item.name` (orijinal balondaki ürün)
 - **Deployment Target**: 13.0 (AdMob için minimum)
 - **Team ID**: `SN5Y726ZKF` (FUTURASTIC TEKNOLOJI URUNLERI VE DANISMANLIGI ORGANIZASYON TICARET LIMITED SIRKETI)
 - **AdMob iOS App ID**: `ca-app-pub-6470338276121414~7413384913` (Info.plist `GADApplicationIdentifier`)
-- **AdMob iOS Interstitial Unit ID**: ⚠️ TEST ID kullanılıyor (`ca-app-pub-3940256099942544/4411468910`)
-  - AdMob konsolunda iOS interstitial unit oluşturup `lib/main.dart` → `ReklamServisi._adUnitId` iOS dalını güncelle
+- **AdMob iOS Interstitial Unit ID**: `ca-app-pub-6470338276121414/1436676062` (oyuncudukkanigecis, PROD)
+- **AdMob iOS Ödüllü (Rewarded) Unit ID**: `ca-app-pub-6470338276121414/2648809677` (oyuncudukkaniodullu, OLUŞTURULDU ama oyunda henüz KULLANILMIYOR)
+- **AdMob Android Interstitial Unit ID**: `ca-app-pub-6470338276121414/4138047986` (PROD)
 - **App Store Connect App ID** (numerik): `6778437262`
 - **NSUserTrackingUsageDescription**: ATT (App Tracking Transparency) izni için
 - **SKAdNetworkItems**: AdMob 12.x için Google'ın güncel SKAN ID listesi (43 ağ)
