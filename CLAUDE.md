@@ -1,5 +1,19 @@
 # Oyuncu Dükkanı — Claude Bağlamı
 
+## 🚨 MARKET BUILD ÖNCESİ ZORUNLU KONTROL (KULLANICI KURALI)
+**Herhangi bir market çıktısı (AAB / IPA / appbundle / App Store / Play Store build) hazırlamadan ÖNCE:**
+1. Kodda Google TEST reklam ID'si (`ca-app-pub-3940256099942544/...`) kaldı mı KONTROL ET
+   - `grep "3940256099942544" lib/main.dart` ile bak
+2. Test ID kaldıysa → **MARKET BUILD VERME**, önce kullanıcıdan gerçek (prod) AdMob ID'lerini iste ve değiştir
+3. Bu kural TÜM uygulamalar için geçerli (oyuncu_dukkani, snapiq, matematikcik, magnus...)
+
+**Mevcut PROD reklam ID'leri (oyuncu_dukkani):**
+- iOS geçiş: `ca-app-pub-6470338276121414/1436676062`
+- Android geçiş: `ca-app-pub-6470338276121414/4138047986`
+- iOS ödüllü (henüz kullanılmıyor): `ca-app-pub-6470338276121414/2648809677`
+
+---
+
 ## Proje Özeti
 Flutter ile geliştirilmiş bir mobil oyun. Oyuncu bir oyun dükkanı yönetir: müşteri kabul eder, pazarlık yapar, envanter yönetir, dükkanını büyütür.
 
