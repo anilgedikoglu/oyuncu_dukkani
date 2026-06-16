@@ -20,9 +20,10 @@ Flutter ile geliştirilmiş bir mobil oyun. Oyuncu bir oyun dükkanı yönetir: 
 ## Teknik Yığın
 - **Flutter** (Dart) — tek dosya mimarisi: `lib/main.dart`
 - **Android** — paket adı: `com.oyuncudukkani.app`
-- **pubspec.yaml** — versiyon: `1.0.1+12`
-- Paketler: `audioplayers`, `shared_preferences`, `google_mobile_ads`, `device_preview` (dev), `flutter_launcher_icons` (dev)
+- **pubspec.yaml** — versiyon: `1.0.2+13`
+- Paketler: `audioplayers`, `shared_preferences`, `google_mobile_ads`, `device_info_plus`, `app_tracking_transparency`, `device_preview` (dev), `flutter_launcher_icons` (dev)
 - **Kotlin**: 2.1.0 (Android `settings.gradle.kts`)
+- **App Store**: YAYINDA → https://apps.apple.com/us/app/oyuncu-dükkanı/id6778437262
 
 ## Dosya Yapısı
 ```
@@ -449,9 +450,39 @@ App Store Connect → Oyuncu Dükkanı → **App Privacy** → Get Started:
 ⚠️ Form doldurulunca **"Publish"** butonuna tıklamak ZORUNLU (Save yetmiyor).
 
 ### Versiyon Kontrolü
-- pubspec.yaml: `1.0.1+12`
-- Build number Codemagic tarafından OTOMATİK atanıyor (timestamp), pubspec'tekiyle çakışmaz
+- pubspec.yaml: `1.0.2+13`
+- iOS build number Codemagic tarafından OTOMATİK timestamp ile atanıyor, pubspec'teki +13 ile çakışmaz
+- Android AAB: pubspec'teki versionCode kullanılır → Play'e her yüklemede ARTTIR (12→13→14...)
 - Yeni release için: `pubspec.yaml` version arttır → commit + push → Codemagic UI'dan manuel build başlat veya `git tag v1.0.x-iosN`
+
+---
+
+## app-ads.txt (AdMob Doğrulama)
+
+AdMob'un yetkisiz reklam envanteri satışını önlemek için kullandığı doğrulama dosyası.
+
+**Dosya konumu (KRİTİK):** Domain KÖKÜNDE olmalı, alt-path'te DEĞİL.
+- ✅ Doğru: `anilgedikoglu.github.io/app-ads.txt` (ayrı `anilgedikoglu.github.io` repo'sunda)
+- ❌ Yanlış: `anilgedikoglu.github.io/oyuncu_dukkani/app-ads.txt` (proje alt-path'i — AdMob bakmaz)
+
+**İçerik (tüm app'ler için ortak, aynı pub ID):**
+```
+google.com, pub-6470338276121414, DIRECT, f08c47fec0942fa0
+```
+
+**AdMob doğrulama zinciri:** AdMob app kaydı → bağlı App Store/Play URL → store'daki "Developer Website" domaini → o domainin kökündeki app-ads.txt → pub ID eşleşmesi.
+
+**Oyuncu Dükkanı için zincir (hepsi doğru):**
+- App Store Developer Website: `https://anilgedikoglu.github.io/oyuncu_dukkani/marketing.html`
+- Domain: `anilgedikoglu.github.io` → app-ads.txt orada mevcut ✅
+
+**"Doğrulanamadı" hatası çözümü:**
+1. Dosya/içerik genelde DOĞRUDUR — panik yapma, önce zinciri kontrol et
+2. AdMob'daki app kaydı App Store/Play'e BAĞLI olmalı (manuel oluşturulduysa bağlanmamış olabilir)
+3. AdMob tarama günde ~1 kez → "yeniden tara" deyip 24 saat bekle
+4. Doğrulama hatası reklam gelirini ENGELLEMEZ, reklamlar yine gösterilir — acil değil
+
+⚠️ App Store/Play'de "Marketing/Developer Website" alanı domaini `anilgedikoglu.github.io` olmalı (app-ads.txt orada).
 
 ---
 
@@ -676,6 +707,7 @@ Base ratio hâlâ `_clamp(0.18 - progress * 0.15, 0.02, 0.18)`.
 ## Versiyon Geçmişi (son)
 | Commit | Açıklama |
 |--------|----------|
+| v96 | App Store'da YAYINDA (id6778437262); iOS reklam ID TEST→PROD (1436676062); ATT dialog (Guideline 2.1 düzeltmesi, app_tracking_transparency); ürün/isim konumu yukarı (ürün -20, isim 338); sürüm 1.0.2+13 (AAB v13); MARKET BUILD ÖNCESİ test-ID kontrol kuralı; app-ads.txt doğrulama notları |
 | v95 | iOS TestFlight aktif: Codemagic pipeline tam çalışır durumda (10+ iterasyon sonrası signing/SwiftPM/build-number/icon hataları çözüldü); Magnus'tan paylaşımlı .p12 cert; CERTIFICATE_PRIVATE_KEY env var; iOS app icon (mavi Flutter üçgeni → gerçek ikon); ITSAppUsesNonExemptEncryption=false; App Privacy formu dolduruldu; support.html + marketing.html (TR/EN) GitHub Pages'te yayında; store/appstore_description_tr.txt yedeği |
 | v94 | iOS App Store hazırlığı: Bundle ID `com.oyuncudukkani.app`, deployment target 13.0, Info.plist'e AdMob iOS App ID + ATT izni + 43 SKAdNetwork ID, codemagic.yaml ile TestFlight'a otomatik gönderim |
 | v93 | Versiyon 1.0.1+12 — Google Play Store için AAB yayını (app-release.aab 61.9MB) |
