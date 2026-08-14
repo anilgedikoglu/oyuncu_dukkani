@@ -1036,11 +1036,25 @@ class GameState extends ChangeNotifier {
   bool ozelMusteriGorunuyor = false;
   int _sonrakiOzelMusteriSayisi = 0; // kaçıncı müşteride özel gelecek
   int _ozelMusteriSayaci = 0;        // toplam müşteri sayacı (özel dahil değil)
-  List<OzelMusteriTip> _ozelTipSirasi = [OzelMusteriTip.hirsiz, OzelMusteriTip.polis, OzelMusteriTip.vergici, OzelMusteriTip.kurye]; // sıra
+  // Rotasyon: sadece "olay" tipli özel müşteriler. Toptancı Rıza BURADA DEĞİL —
+  // onun kendi günlük programı var (_rizaGunuAyarla).
+  List<OzelMusteriTip> _ozelTipSirasi = [OzelMusteriTip.hirsiz, OzelMusteriTip.polis, OzelMusteriTip.vergici, OzelMusteriTip.kurye];
   int _ozelTipIndex = 0;
 
   void _ozelMusteriSayaciniAyarla() {
     _sonrakiOzelMusteriSayisi = _ozelMusteriSayaci + 10 + Random().nextInt(11); // 10-20 sonra
+  }
+
+  // ── Toptancı Rıza: hırsız/polis/vergici/kurye rotasyonundan AYRI çalışır.
+  //    O rotasyon 10-20 müşteride bir → 5 tiple Rıza'ya sıra 5-7 günde bir gelirdi.
+  //    Ekonominin merkezindeki bir karakter için çok seyrek. Rıza günde bir uğrar.
+  bool _rizaBugunGeldi = false;
+  int  _rizaZiyaretSirasi = 2;
+
+  void _rizaGunuAyarla() {
+    _rizaBugunGeldi = false;
+    final ust = gunlukMusteriLimiti - 3;
+    _rizaZiyaretSirasi = 2 + (ust > 1 ? Random().nextInt(ust) : 0);
   }
   int toplamTeklifSayisi = 0;
   int krediKalanTaksit = 0;
@@ -1407,6 +1421,7 @@ class GameState extends ChangeNotifier {
     gunlukMusteriLimiti = aktifDukkan.gunlukMusteriSayisiUret();
     _ozelTipSirasi.shuffle(Random());
     _ozelMusteriSayaciniAyarla();
+    _rizaGunuAyarla();
   }
 
   GameState.fromJson(Map<String, dynamic> j) {
@@ -1424,10 +1439,13 @@ class GameState extends ChangeNotifier {
     if (rawSira != null) {
       _ozelTipSirasi = rawSira.map((s) => OzelMusteriTip.values.firstWhere((e) => e.name == s as String, orElse: () => OzelMusteriTip.hirsiz)).toList();
     }
-    // Eski kayıt migrasyonu: eksik tipler varsa sıraya ekle
+    // Eski kayıt migrasyonu: eksik "olay" tipleri sıraya ekle
     for (final tip in OzelMusteriTip.values) {
+      if (tip == OzelMusteriTip.toptanci) continue; // Rıza ayrı programda
       if (!_ozelTipSirasi.contains(tip)) _ozelTipSirasi.add(tip);
     }
+    // Rıza rotasyona sızmışsa çıkar (ara sürüm kayıtları için)
+    _ozelTipSirasi.removeWhere((t) => t == OzelMusteriTip.toptanci);
     _ozelTipIndex = j['ozelTipIndex'] as int;
     toplamTeklifSayisi = j['toplamTeklif'] as int;
     krediKalanTaksit = (j['krediKalanTaksit'] as int?) ?? 0;
@@ -1462,6 +1480,8 @@ class GameState extends ChangeNotifier {
     enYuksekPara           = (j['enYuksekPara'] as int?) ?? para;
     satilanUrunIdleri      = ((j['satilanUrunIdleri'] as List?) ?? []).map((e) => e as String).toSet();
     kazanilanRozetler      = ((j['kazanilanRozetler'] as List?) ?? []).map((e) => e as String).toSet();
+    _rizaBugunGeldi        = (j['rizaBugunGeldi'] as bool?) ?? false;
+    _rizaZiyaretSirasi     = (j['rizaZiyaretSirasi'] as int?) ?? 2;
     mesaj = '$gun. gün devam ediyor...';
   }
 
@@ -1496,6 +1516,8 @@ class GameState extends ChangeNotifier {
     'enYuksekPara': enYuksekPara,
     'satilanUrunIdleri': satilanUrunIdleri.toList(),
     'kazanilanRozetler': kazanilanRozetler.toList(),
+    'rizaBugunGeldi': _rizaBugunGeldi,
+    'rizaZiyaretSirasi': _rizaZiyaretSirasi,
   };
 
   @override
@@ -1516,6 +1538,18 @@ class GameState extends ChangeNotifier {
 
   void yeniMusteriGonder() {
     _ozelMusteriSayaci++;
+    // Toptancı Rıza günde bir uğrar (özel müşteri rotasyonundan bağımsız)
+    if (!_rizaBugunGeldi && gunlukMusteriSayisi >= _rizaZiyaretSirasi) {
+      _rizaBugunGeldi = true;
+      aktifOzelMusteri = OzelMusteri.olustur(OzelMusteriTip.toptanci);
+      ozelMusteriGorunuyor = true;
+      musteriKabulBekliyor = true;
+      musteriSayisi++;
+      gunlukMusteriSayisi++;
+      mesaj = aktifOzelMusteri!.ilkMesaj;
+      notifyListeners();
+      return;
+    }
     // Özel müşteri vakti mi?
     if (_ozelMusteriSayaci >= _sonrakiOzelMusteriSayisi) {
       final tip = _ozelTipSirasi[_ozelTipIndex % _ozelTipSirasi.length];
@@ -1762,6 +1796,7 @@ class GameState extends ChangeNotifier {
     }
     // Yeni gün → toptancı stoğu tazelensin (indirim hesaba katılarak yeniden üretilir)
     toptanciStokGunu = 0;
+    _rizaGunuAyarla(); // Rıza bugün hangi müşteri sırasında uğrayacak?
     mesaj = '$gun. gün başlıyor!';
     notifyListeners();
     return (kira, krediKesinti, para < 0);
