@@ -475,7 +475,7 @@ class MusteriOzellik {
 
 // ─── ÖZEL MÜŞTERİ (HIRSIZ / POLİS / VERGİCİ) ────────────────────────────────
 
-enum OzelMusteriTip { hirsiz, polis, vergici, kurye }
+enum OzelMusteriTip { hirsiz, polis, vergici, kurye, toptanci }
 
 class OzelMusteri {
   final OzelMusteriTip tip;
@@ -525,6 +525,16 @@ class OzelMusteri {
           default: kuryeMesaj = 'Merhaba! Ben YeSekSepeti kuryesi $kAd. $yemek siparişini getirdim babacan. $fiyat lira. Alıyor musun?';
         }
         return OzelMusteri(tip: tip, gorsel: 'assets/kurye.png', ad: 'Kurye', ilkMiktar: fiyat, ilkMesaj: kuryeMesaj, kuryeAd: kAd, kuryeYemek: yemek);
+      case OzelMusteriTip.toptanci:
+        const selamlar = [
+          'Selam patron! Tepsimde taze mal var, bir bakar mısın?',
+          'Kolay gelsin usta! Bugün elim dolu, ucuza veriyorum. Bakalım mı?',
+          'Merhaba komşu! Yeni parti geldi, sana özel fiyat yaparım. Göstereyim mi?',
+          'Selamünaleyküm! Mal getirdim, hem de kelepir. Açayım mı tepsiyi?',
+          'Patron, ayağına kadar geldim! Stoğa bakmak ister misin?',
+        ];
+        return OzelMusteri(tip: tip, gorsel: 'assets/toptanci.png', ad: 'Toptancı Rıza',
+          ilkMiktar: 0, ilkMesaj: selamlar[rng.nextInt(selamlar.length)]);
     }
   }
 }
@@ -1225,6 +1235,12 @@ class GameState extends ChangeNotifier {
     id: 'kapali_kutu', name: 'Kapalı Kutu', gorsel: 'assets/zarf.png',
     category: ItemCategory.aksesuar, basePrice: 300, kondisyon: 3, kapaliKutu: true,
   );
+
+  /// Rıza kapıya geldiğinde stok tazelenir — ziyaretin bonusu budur.
+  void toptanciZiyaretiTazele() {
+    toptanciStokGunu = 0;
+    toptanciStokKontrol();
+  }
 
   /// Günlük stok. Aynı gün içinde tekrar çağrılırsa mevcut stoğu korur.
   void toptanciStokKontrol() {
@@ -2313,9 +2329,13 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   // ═══════════════════════════════════════════════════════════════════════════
   //  TOPTANCI — günlük stok, ucuz ürün / çürük ürün / tamir seti / kapalı kutu
   // ═══════════════════════════════════════════════════════════════════════════
-  void _toptanciPopup() {
-    _state.toptanciStokKontrol(); // stok bugüne aitse korunur, değilse üretilir
-    showDialog(
+  Future<void> _toptanciPopup({bool ziyaret = false}) async {
+    if (ziyaret) {
+      _state.toptanciZiyaretiTazele(); // kapıya geldiyse taze stok
+    } else {
+      _state.toptanciStokKontrol();    // stok bugüne aitse korunur, değilse üretilir
+    }
+    await showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDlg) {
@@ -2355,9 +2375,11 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                                 style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFFd29922), letterSpacing: 1.2)),
                               const SizedBox(height: 3),
                               Text(
-                                indirimliGun
-                                    ? 'Bugün stok eritiyorum abi, fiyatlar dibde!'
-                                    : 'Gel bakalım, bugün elimde bunlar var.',
+                                ziyaret
+                                    ? 'Ayağına kadar getirdim, tepsi taze!'
+                                    : (indirimliGun
+                                        ? 'Bugün stok eritiyorum abi, fiyatlar dibde!'
+                                        : 'Gel bakalım, bugün elimde bunlar var.'),
                                 style: const TextStyle(fontSize: 11, color: Colors.white60, height: 1.25)),
                               const SizedBox(height: 4),
                               Row(children: [
@@ -3725,6 +3747,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       case OzelMusteriTip.polis:   renk = Colors.blueAccent; break;
       case OzelMusteriTip.vergici: renk = Colors.orangeAccent; break;
       case OzelMusteriTip.kurye:   renk = const Color(0xFFFF8C00); break; // parlak turuncu
+      case OzelMusteriTip.toptanci: renk = const Color(0xFFd29922); break; // toptancı altın sarısı
     }
     // Özel müşteri placeholder: 564×564 — normal müşteriyle AYNI boyut ve bottom değeri
     // dx negatif olduğunda isim etiketi ekran dışına çıkmasın diye left:0/right:0 + Center kullanılır
@@ -4404,6 +4427,28 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       });
       return;
     }
+
+    if (om.tip == OzelMusteriTip.toptanci) {
+      // Tepsiyi aç: taze stokla toptancı ekranı. Ekran kapanınca Rıza gider.
+      _state.musteriKabulBekliyor = false;
+      _state.mesaj = 'Bakalım Rıza bugün ne getirmiş...';
+      _state.notifyListeners();
+      _toptanciPopup(ziyaret: true).then((_) {
+        if (!mounted) return;
+        const vedalar = [
+          'Bereketli olsun patron, yine uğrarım!',
+          'Eyvallah usta, kolay gelsin!',
+          'Hadi ben kaçtım, tepsi soğumadan!',
+        ];
+        _state.mesaj = vedalar[Random().nextInt(vedalar.length)];
+        _state.notifyListeners();
+        _kuryeTimer?.cancel();
+        _kuryeTimer = Timer(const Duration(milliseconds: 1400), () {
+          if (mounted) _ozelMusteriGonder();
+        });
+      });
+      return;
+    }
   }
 
   void _ozelMusteriHayirPopup(OzelMusteri om) {
@@ -4475,6 +4520,23 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       });
       return;
     }
+
+    if (om.tip == OzelMusteriTip.toptanci) {
+      _state.musteriKabulBekliyor = false;
+      const redMesajlar = [
+        'Peki patron, başka sefere. Kolay gelsin!',
+        'Olsun, tepsiyi başkasına götüreyim.',
+        'Eyvallah, işin varmış. Yine uğrarım!',
+        'Nasıl istersen usta, mal burada bekler.',
+      ];
+      _state.mesaj = redMesajlar[rng.nextInt(redMesajlar.length)];
+      _state.notifyListeners();
+      _kuryeTimer?.cancel();
+      _kuryeTimer = Timer(const Duration(milliseconds: 1600), () {
+        if (mounted) _ozelMusteriGonder();
+      });
+      return;
+    }
   }
 
   void _pazarlikGoster() {
@@ -4510,7 +4572,12 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     _kolonyaMesajTimer?.cancel();
     if (_state.aktifOzelMusteri != null) {
       // Özel müşteriye ikram: 3 sn sonra müşteriyi parasız gönder
-      setState(() => _kolonyaGeciciMesaj = 'Vay, çok naziksin, seni bu seferlik rahat bırakıyorum!');
+      // Tehdit eden tipler (hırsız/polis/vergici) "affediyorum" der; kurye/toptancı sadece teşekkür eder.
+      final tip = _state.aktifOzelMusteri!.tip;
+      final dostane = tip == OzelMusteriTip.kurye || tip == OzelMusteriTip.toptanci;
+      setState(() => _kolonyaGeciciMesaj = dostane
+          ? 'Ellerine sağlık patron, mis gibi! Ben kaçtım.'
+          : 'Vay, çok naziksin, seni bu seferlik rahat bırakıyorum!');
       _kolonyaMesajTimer = Timer(const Duration(seconds: 3), () {
         if (!mounted) return;
         setState(() => _kolonyaGeciciMesaj = null);
@@ -4594,7 +4661,6 @@ class _PazarlikDialogState extends State<_PazarlikDialog> {
   void _teklifGonder() {
     final teklif = int.tryParse(_teklifController.text);
     if (teklif == null || teklif <= 0) return;
-    final p = widget.state.aktifPazarlik!;
     widget.state.teklifVer(teklif);
     // Her durumda popup kapanır, mesaj ana ekranda balondan okunur
     Navigator.of(context).pop();
