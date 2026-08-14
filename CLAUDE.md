@@ -63,7 +63,58 @@ SplashScreen (6 sn yasal metin)
 
 ---
 
-## ⚠️ KRİTİK: Görsel Katman Sistemi ve Tüm Konumlar — DOKUNMA!
+## 🎯 SAHNE METRİĞİ — Çözünürlükten Bağımsız Konumlandırma (v97)
+
+**Artık sahnede SABİT PİKSEL DEĞERİ YOK.** Ürün, isim etiketi ve müşteri, masa
+görselinin ekrandaki kutusuna kilitlidir. Her çözünürlük/en-boy oranında masa
+nereye giderse onlar da oraya gider.
+
+### Neden gerekti
+Eskiden masa görseli ekran **genişliğine** göre ölçekleniyordu (`fitWidth` + `scale 1.4`),
+ürün ise ekran **yüksekliğine** göre konumlanıyordu (`screenH * 0.57 + sabit`). En-boy
+oranı değişince ikisi ayrışıyordu → her cihazda elle ayar → sonsuz yama döngüsü.
+
+### Nasıl çalışıyor
+`SahneMetrik` sınıfı, masa görselinin render zincirini birebir modelleyip ekrandaki
+kutusunu (üst kenar + yükseklik) hesaplar:
+```
+Align(bottomCenter) → translate(0, 6) → scale(1.4, bottomCenter) → fitWidth
+```
+Konumlar görselin içindeki **0..1 oranlarıyla** ifade edilir:
+
+| Sabit | Değer | Anlamı |
+|---|---|---|
+| `kMasaYuzeyi` | 0.4833 | Masa arka kenarı — **sanat eserinden ölçüldü** (bg1.png y=522/1080) |
+| `kUrunTabani` | 0.5680 | Ürünün oturduğu çizgi (mousepad/klavye derinliği) |
+| `kUrunBoyu` | 0.1745 | Ürün yüksekliği (masa boyuna oranla) |
+| `kUrunSagKaydir` | 0.3537 | Ürünün müşteriye göre yatay kayması |
+| `kIsimAlti` | 0.4920 | İsim etiketi alt kenarı (masa çizgisinin hemen altı) |
+| `kMusteriUstu` | 0.2183 | Müşteri görseli üst kenarı |
+| `kMusteriBoyu` | 0.6519 | Müşteri görseli boyu |
+
+Kullanım: `m.y(oran)` → ekranda mutlak y, `m.u(oran)` → dp uzunluk (boyutlar da ölçeklenir).
+
+> `_buildSahne()` içindeki konumlar yerel koordinatta olduğu için
+> `ofs = mq.padding.top + 48.0` çıkarılır.
+
+### Masa görselleri (üçü de aynı — doğrulandı)
+`bgbosmasa.png` / `bg1.png` / `bg2.png` → hepsi **719×1080**, masa kenarı y=522/523.
+Bilgisayar alınınca veya dükkan değişince ürün kaymaz.
+
+### Test edildi (gerçek cihaz ölçümüyle)
+| Çözünürlük | Oran | Sonuç |
+|---|---|---|
+| 1080×2400 | 20:9 | ✅ ürün mousepad hizasında, isim masada |
+| 1080×1920 | 16:9 | ✅ birebir aynı bağıl konum |
+| 1200×1600 | 4:3 | ✅ birebir aynı bağıl konum |
+
+**Yeni bir konum ayarlamak gerekirse:** sabit px ekleme — yukarıdaki oran sabitlerini
+değiştir. Ölçüm için: `adb shell screencap` ile ekran görüntüsü al, masa kenarını bul,
+`(hedefY - m.ust) / m.boy` ile oranı hesapla.
+
+---
+
+## ⚠️ Görsel Katman Sistemi (Z-order)
 
 ### Stack Z-order (arkadan öne) — GameScreen build()
 

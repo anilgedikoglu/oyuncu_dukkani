@@ -165,6 +165,65 @@ const List<DukkanSeviye> tumDukkanlar = [
   DukkanSeviye(seviye: 5, isim: 'AVM Dükkanı',          kira: 1500, minGun: 10),
 ];
 
+// ═══════════════════════════════════════════════════════════════════════════
+//  SAHNE METRİĞİ — ÇÖZÜNÜRLÜKTEN BAĞIMSIZ KONUMLANDIRMA
+// ═══════════════════════════════════════════════════════════════════════════
+//
+//  SORUN (eskiden): Masa görseli ekran GENİŞLİĞİNE göre ölçekleniyordu
+//  (fitWidth + scale 1.4), ürün/isim/müşteri ise ekran YÜKSEKLİĞİNE göre
+//  (screenH * 0.57) veya sabit piksellerle (bottom: 338) konumlanıyordu.
+//  En-boy oranı değişince ikisi ayrışıyor, her cihazda elle ayar gerekiyordu.
+//
+//  ÇÖZÜM: Her şey masa görselinin EKRANDAKİ KUTUSUNA kilitlenir. Konumlar
+//  görselin kendi içindeki 0..1 oranlarıyla ifade edilir (sanat eserinden
+//  ölçülmüştür). Masa nereye giderse ürün, isim ve müşteri de oraya gider.
+//  Oyun motorlarındaki "reference canvas / canvas scaler" yaklaşımı budur.
+//
+//  Masa görselinin render zinciri (build() içinde birebir aynısı):
+//    Align(bottomCenter) → translate(0, 6) → scale(1.4, bottomCenter) → fitWidth
+//
+class SahneMetrik {
+  final double ust; // masa görselinin ekrandaki üst kenarı (dp)
+  final double boy; // masa görselinin ekrandaki yüksekliği (dp)
+  const SahneMetrik(this.ust, this.boy);
+
+  // bgbosmasa/bg1/bg2 — üçü de bu boyutta (doğrulandı)
+  static const double gorselW = 719.0;
+  static const double gorselH = 1080.0;
+  static const double olcek   = 1.4;  // Transform.scale
+  static const double kaydir  = 6.0;  // Transform.translate(0, 6)
+
+  factory SahneMetrik.hesapla(Size ekran) {
+    // Image(fit: fitWidth) gevşek kısıt altında en-boy koruyarak sığar
+    double w = ekran.width;
+    double h = w * gorselH / gorselW;
+    if (h > ekran.height) { h = ekran.height; w = h * gorselW / gorselH; }
+    final b = h * olcek;
+    return SahneMetrik((ekran.height + kaydir) - b, b);
+  }
+
+  /// Görsel içi oran (0..1) → ekranda mutlak y
+  double y(double oran) => ust + boy * oran;
+
+  /// Görsel içi oran → dp uzunluk (boyutlar da masayla ölçeklenir)
+  double u(double oran) => boy * oran;
+}
+
+// ── Sanat eserinden ölçülen / kalibre edilen oranlar ──
+// Masa arka kenarı: bg1.png'de y=522/1080 (üç varyantta da aynı)
+const double kMasaYuzeyi   = 0.4833;
+// Ürünün masaya oturduğu çizgi (alt kenarı) — mousepad/klavye derinliği
+const double kUrunTabani   = 0.5680;
+// Ürün yüksekliği (masa boyuna oranla) — 411dp ekranda ~151dp'ye denk gelir
+const double kUrunBoyu     = 0.1745;
+// Ürünün müşteriye göre yatay kayması
+const double kUrunSagKaydir= 0.3537;
+// İsim etiketinin alt kenarı — masa çizgisinin hemen altı
+const double kIsimAlti     = 0.4920;
+// Müşteri görselinin üst kenarı ve boyu
+const double kMusteriUstu  = 0.2183;
+const double kMusteriBoyu  = 0.6519;
+
 // ─── ANA MENÜ ────────────────────────────────────────────────────────────────
 
 // ─── SPLASH SCREEN ───────────────────────────────────────────────────────────
@@ -3463,23 +3522,23 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                 AnimatedBuilder(
                   animation: _slideAnim,
                   builder: (context, child) {
-                    final mq = MediaQuery.of(context);
-                    final screenW = mq.size.width;
-                    final screenH = mq.size.height;
-                    final statusBar = mq.padding.top;
-                    final hedef = (screenW - 564) / 2;
+                    // Masa metriğine kilitli — çözünürlükten bağımsız
+                    final m = SahneMetrik.hesapla(MediaQuery.of(context).size);
+                    final screenW = MediaQuery.of(context).size.width;
+                    final boy = m.u(kMusteriBoyu);
+                    final hedef = (screenW - boy) / 2;
                     final dx = hedef + (screenW - hedef) * _slideAnim.value;
-                    final musteriTop = statusBar + 48.0 + screenH * 0.14 + 44;
-                    return Positioned(left: dx, top: musteriTop, child: child!);
+                    return Positioned(
+                      left: dx, top: m.y(kMusteriUstu),
+                      width: boy, height: boy,
+                      child: child!,
+                    );
                   },
-                  child: SizedBox(
-                    width: 564, height: 564,
-                    child: Image.asset(
-                      _state.aktifOzelMusteri != null
-                        ? _state.aktifOzelMusteri!.gorsel
-                        : _state.aktifMusteri!.gorsel,
-                      fit: BoxFit.contain, isAntiAlias: true, filterQuality: FilterQuality.high,
-                    ),
+                  child: Image.asset(
+                    _state.aktifOzelMusteri != null
+                      ? _state.aktifOzelMusteri!.gorsel
+                      : _state.aktifMusteri!.gorsel,
+                    fit: BoxFit.contain, isAntiAlias: true, filterQuality: FilterQuality.high,
                   ),
                 ),
               // 4. Masa layer'ı (müşterinin üzerinde, SafeArea'nın altında)
@@ -3599,93 +3658,73 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
         // ╔═══════════════════════════════════════════════════════════════╗
         // ║  _buildSahne() MÜŞTERİ PLACEHOLDER (SafeArea içi)            ║
         // ║  Gerçek müşteri görseli dış Stack katman 3'te render edilir.  ║
-        // ║  Burası sadece Z-order'ı korumak için 564×564 boş yer tutar. ║
-        // ║  KONUM (SafeArea içi — status bar YOK, header altında başlar):║
-        // ║    hedef     = (screenW - 564) / 2                            ║
-        // ║    dx        = hedef + (screenW - hedef) * slideAnim.value    ║
-        // ║    musteriTop = screenH * 0.14 + 44  ← DOKUNMA!               ║
-        // ║      0.14 = ekranın %14'ü, 44 = ince ayar (SON DEĞER)        ║
-        // ╠═══════════════════════════════════════════════════════════════╣
-        // ║  İSİM ETİKETİ (normal müşteri):                               ║
-        // ║    Positioned(bottom: 306, left: 0, right: 0)                 ║
-        // ║    → 564px placeholder'ın altından 306px yukarıda, ortalı    ║
-        // ║    → Özel müşteri (polis/hırsız/vergici) da AYNI bottom:306  ║
-        // ║      _buildOzelMusteriWidget() içinde aynı değer kullanılır   ║
+        // ║  Burası Z-order'ı korumak için boş yer tutar + isim etiketi.  ║
+        // ║  Tüm konumlar SahneMetrik ile masa görseline kilitlidir —     ║
+        // ║  sabit piksel YOK, her çözünürlükte aynı yere oturur.         ║
         // ╚═══════════════════════════════════════════════════════════════╝
         if (_state.aktifMusteri != null || _state.aktifOzelMusteri != null)
           AnimatedBuilder(
             animation: _slideAnim,
-            builder: (context, child) {
+            builder: (context, _) {
               final mq = MediaQuery.of(context);
-              final screenW = mq.size.width;
-              final screenH = mq.size.height;
-              final hedef = (screenW - 564) / 2;
-              final dx = hedef + (screenW - hedef) * _slideAnim.value;
-              final musteriTop = screenH * 0.14 + 44;
-              return Positioned(left: dx, top: musteriTop, child: child!);
-            },
-            child: _state.aktifOzelMusteri != null
-              ? _buildOzelMusteriWidget(_state.aktifOzelMusteri!)
-              : Stack(
-              clipBehavior: Clip.none,
-              children: [
-                const SizedBox(width: 564, height: 564), // Z-order placeholder — DOKUNMA!
-                Positioned(
-                  bottom: 338, // 328→338 (isim 10px daha yukarı)
-                  left: 0, right: 0,
-                  child: Center(
-                    child: GestureDetector(
-                      onTap: () => _ozellikKartiGoster(_state.aktifMusteri!),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.75),
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: const Color(0xFFFFD700).withValues(alpha: 0.6)),
-                        ),
-                        child: Text(_state.aktifMusteri!.name, style: const TextStyle(fontSize: 12, color: Color(0xFFFFD700), fontWeight: FontWeight.bold)),
+              final m = SahneMetrik.hesapla(mq.size);
+              final ofs = mq.padding.top + 48.0; // _buildSahne yerel koordinat kayması
+              final boy = m.u(kMusteriBoyu);
+              final hedef = (mq.size.width - boy) / 2;
+              final dx = hedef + (mq.size.width - hedef) * _slideAnim.value;
+              // İsmin alt kenarı masa çizgisine kilitli → kutunun altından uzaklığı:
+              final isimBottom = boy - (m.y(kIsimAlti) - m.y(kMusteriUstu));
+              return Positioned(
+                left: dx, top: m.y(kMusteriUstu) - ofs,
+                width: boy, height: boy,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Positioned(
+                      bottom: isimBottom,
+                      left: 0, right: 0,
+                      child: Center(
+                        child: _state.aktifOzelMusteri != null
+                          ? _ozelMusteriIsimEtiketi(_state.aktifOzelMusteri!)
+                          : GestureDetector(
+                              onTap: () => _ozellikKartiGoster(_state.aktifMusteri!),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withValues(alpha: 0.75),
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(color: const Color(0xFFFFD700).withValues(alpha: 0.6)),
+                                ),
+                                child: Text(_state.aktifMusteri!.name, style: const TextStyle(fontSize: 12, color: Color(0xFFFFD700), fontWeight: FontWeight.bold)),
+                              ),
+                            ),
                       ),
                     ),
-                  ),
+                  ],
                 ),
-              ],
-            ),
+              );
+            },
           ),
         // ╔═══════════════════════════════════════════════════════════════╗
-        // ║  ÜRÜN KONUMU — _buildSahne() içi, masa layer'ının ÜSTÜNDEKİ ║
-        // ║  Sadece müşteri satıcıyken (musteriSatiyor==true) gösterilir  ║
+        // ║  ÜRÜN KONUMU — masa görseline kilitli (SahneMetrik)           ║
+        // ║  Sadece müşteri satıcıyken veya kurye geldiğinde gösterilir   ║
         // ║                                                               ║
-        // ║  BOYUT:                                                       ║
-        // ║    Standart ürünler      : 151 × 151 px                       ║
-        // ║    konsol_3.png          : 151 * 0.85 ≈ 128px  (%15 küçük)   ║
-        // ║    oyuncudireksiyonu.png : 151 * 0.85 ≈ 128px  (%15 küçük)   ║
-        // ║                                                               ║
-        // ║  YATAY (productLeft):                                         ║
-        // ║    dx + 306              — tüm ürünler                        ║
-        // ║    dx + 306 + 7 = dx+313 — sadece oyuncudireksiyonu.png       ║
-        // ║    dx = hedef + (screenW-hedef)*slideAnim (müşteriyi takip)   ║
-        // ║                                                               ║
-        // ║  DİKEY (productTop):                                          ║
-        // ║    screenH * 0.57 - productSize - st - hh + 32               ║
-        // ║      0.57 = ürün ALT kenarı ekranın %57'sinde (masa yüzeyi)  ║
-        // ║      st   = viewPadding.top (status bar)                      ║
-        // ║      hh   = 48.0 (header yüksekliği)                          ║
-        // ║      +32  = ince ayar (SON DEĞER — DOKUNMA!)                  ║
-        // ║                                                               ║
-        // ║  NOT: Koordinatlar _buildSahne() Stack'ine göreli             ║
-        // ║       (SafeArea içinde, header altında başlar)                ║
+        // ║  Alt kenarı  : kUrunTabani (masa görselinin %56.8'i)          ║
+        // ║  Yüksekliği  : kUrunBoyu × masa boyu (masayla ölçeklenir)     ║
+        // ║  Yatay       : müşteriyi takip eder (dx + oransal kayma)      ║
+        // ║  Sabit piksel YOK — her çözünürlükte masaya oturur.           ║
         // ╚═══════════════════════════════════════════════════════════════╝
         if (_state.aktifMusteri != null && _state.aktifMusteri!.musteriSatiyor ||
             _state.aktifOzelMusteri?.tip == OzelMusteriTip.kurye)
           AnimatedBuilder(
             animation: _slideAnim,
             builder: (context, _) {
-              final screenW = MediaQuery.of(context).size.width;
-              final screenH = MediaQuery.of(context).size.height;
-              final st = MediaQuery.of(context).viewPadding.top;
-              const hh = 48.0;
-              final hedef = (screenW - 564) / 2;
-              final dx = hedef + (screenW - hedef) * _slideAnim.value;
+              final mq = MediaQuery.of(context);
+              final m = SahneMetrik.hesapla(mq.size);
+              final ofs = mq.padding.top + 48.0; // _buildSahne yerel koordinat kayması
+              final musteriBoy = m.u(kMusteriBoyu);
+              final hedef = (mq.size.width - musteriBoy) / 2;
+              final dx = hedef + (mq.size.width - hedef) * _slideAnim.value;
               // Kurye ise durum.png, normal müşteri ise kendi ürün görseli
               final gorsel = _state.aktifOzelMusteri?.tip == OzelMusteriTip.kurye
                   ? 'assets/durum.png'
@@ -3693,14 +3732,16 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
               final kucukUrun = gorsel == 'assets/konsol_3.png' || gorsel == 'assets/oyuncudireksiyonu.png'
                   || gorsel == 'assets/konsol_4.png' || gorsel == 'assets/konsol_5.png' || gorsel == 'assets/konsol_6.png'
                   || gorsel == 'assets/joypad.png';
-              final productSize = gorsel == 'assets/durum.png'
-                  ? 151.0 * 0.80   // dürüm %20 küçük
-                  : kucukUrun ? 151.0 * 0.85 : 151.0;
-              final productLeft = dx + 306
-                + (gorsel == 'assets/oyuncudireksiyonu.png' ? 7 : 0)
-                + (gorsel == 'assets/konsol_2.png'          ? 5 : 0)
-                + (gorsel == 'assets/konsol_3.png'          ? 5 : 0);
-              final productTop = screenH * 0.57 - productSize - st - hh - 20; // 0→-20 (ürünler 20px daha yukarı)
+              // Ürüne özel küçültmeler (oranlar korunur)
+              final urunOran = gorsel == 'assets/durum.png' ? 0.80 : (kucukUrun ? 0.85 : 1.0);
+              final productSize = m.u(kUrunBoyu) * urunOran;
+              // Yatay ince ayarlar da oransal (sabit px değil)
+              final ekKaydir = (gorsel == 'assets/oyuncudireksiyonu.png' ? 0.0081 : 0.0)
+                             + (gorsel == 'assets/konsol_2.png'          ? 0.0058 : 0.0)
+                             + (gorsel == 'assets/konsol_3.png'          ? 0.0058 : 0.0);
+              final productLeft = dx + m.u(kUrunSagKaydir + ekKaydir);
+              // Alt kenarı masa çizgisine kilitli → üst kenar = taban - boy
+              final productTop = m.y(kUrunTabani) - productSize - ofs;
               return Positioned(
                 left: productLeft, top: productTop,
                 child: Image.asset(
@@ -3775,38 +3816,25 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildOzelMusteriWidget(OzelMusteri om) {
+  /// Özel müşteri isim etiketi. Konumu normal müşteriyle ORTAK kod tarafından
+  /// (SahneMetrik + kIsimAlti) verilir — burada sadece görünüm var.
+  Widget _ozelMusteriIsimEtiketi(OzelMusteri om) {
     Color renk;
     switch (om.tip) {
-      case OzelMusteriTip.hirsiz:  renk = Colors.redAccent; break;
-      case OzelMusteriTip.polis:   renk = Colors.blueAccent; break;
-      case OzelMusteriTip.vergici: renk = Colors.orangeAccent; break;
-      case OzelMusteriTip.kurye:   renk = const Color(0xFFFF8C00); break; // parlak turuncu
+      case OzelMusteriTip.hirsiz:   renk = Colors.redAccent; break;
+      case OzelMusteriTip.polis:    renk = Colors.blueAccent; break;
+      case OzelMusteriTip.vergici:  renk = Colors.orangeAccent; break;
+      case OzelMusteriTip.kurye:    renk = const Color(0xFFFF8C00); break; // parlak turuncu
       case OzelMusteriTip.toptanci: renk = const Color(0xFFd29922); break; // toptancı altın sarısı
     }
-    // Özel müşteri placeholder: 564×564 — normal müşteriyle AYNI boyut ve bottom değeri
-    // dx negatif olduğunda isim etiketi ekran dışına çıkmasın diye left:0/right:0 + Center kullanılır
-    // bottom: 306 ← DOKUNMA! Normal müşteriyle aynı değer (her ikisi de bu değeri kullanır)
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        const SizedBox(width: 564, height: 564), // Z-order placeholder
-        Positioned(
-          bottom: 338, // 328→338 (özel müşteri ismi de 10px daha yukarı)
-          left: 0, right: 0,
-          child: Center(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.75),
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: renk.withValues(alpha: 0.8)),
-              ),
-              child: Text(om.ad, style: TextStyle(fontSize: 13, color: renk, fontWeight: FontWeight.bold)),
-            ),
-          ),
-        ),
-      ],
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.75),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: renk.withValues(alpha: 0.8)),
+      ),
+      child: Text(om.ad, style: TextStyle(fontSize: 13, color: renk, fontWeight: FontWeight.bold)),
     );
   }
 
