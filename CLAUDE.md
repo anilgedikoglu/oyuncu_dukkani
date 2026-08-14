@@ -199,6 +199,71 @@ Container(padding: EdgeInsets.all(6))    // ← iç dolgu (SON DEĞER)
 
 ---
 
+## 🆕 Toptancı / Çürük-Tamir / Kapalı Kutu / Hedefler / Gün Olayları (v97)
+
+Dört yeni sistem eklendi. **Hepsi mevcut mekanikleri KİLİTLEMEZ, sadece ekler** — bu bilinçli bir tasarım kararı (eski akış hiç bozulmadı).
+
+### Erişim noktası
+Hepsi **browser popup'ı** (`_browserPopup`, 🖥️ butonu, `gun >= 2`) üzerinden. Alt bara hiç dokunulmadı → layout riski sıfır.
+```
+🖥️ Browser → 🏠 Kiralık Dükkanlar / 🏦 Banka / 🚚 Toptancı Rıza / 🏆 Hedefler / 🛒 Market / ⚙️ Ayarlar
+```
+
+### 1. Çürük ürün (`GameItem.curuk`)
+- `etkinFiyat` getter: `curuk ? basePrice * 0.35 : basePrice`
+- **Tüm pazarlık hesapları `etkinFiyat` kullanır** (`basePrice` DEĞİL): `yeniMusteriGonder`, `musteriKabul`, `PazarlikSeans.piyasaFiyati`, envanter kartı, pazarlık dialogu
+- Kaynakları: toptancı, kapalı kutu, fare olayı. **Müşteriler çürük ürün satmaz** (mesaj tutarlılığı için bilinçli)
+- Envanterde: kırmızı çerçeve + `ÇÜRÜK` rozeti + %50 opaklık, tıklanınca tamir popup'ı
+
+### 2. Tamir Seti (`tamirSetiAdet`)
+- Kolonyanın **birebir aynı deseni**: slot işgal etmez, sayaç, envanterde ek kart
+- Toptancıdan 450'ye alınır → **5 kullanım** (≈90/kullanım)
+- `tamirEt(slotIndex)`: `curuk=false`, kondisyon 4-5 rastgele
+- Ekonomi: pahalı ürünü tamir kârlı (2.3-3.2x), ucuz CD'yi tamir zararlı — **kasıtlı karar noktası**
+
+### 3. Kapalı Kutu (`GameItem.kapaliKutu`)
+- `GameState.kapaliKutuUret()` — görseli `assets/zarf.png`, slot işgal EDER
+- Toptancıdan 300'e, envanterde tıkla → onay → `kutuAc()` → aynı slota rastgele ürün
+- %25 çürük çıkma şansı (kutu_avcisi rozetiyle %12.5)
+- **Alıcı müşteriler açılmamış kutuyu isteyemez** (`!u.kapaliKutu` filtresi) — kilitlenme yok, kutu açmak bedava
+
+### 4. Toptancı (`ToptanciUrun`, `ToptanciTip`)
+- Stok **günlük**, `toptanciStokGunu != gun` ise yeniden üretilir (`gunuBitir` içinde 0'lanır)
+- 5 tezgâh (tuccar rozetiyle 6): 1 tamir seti + %70 kapalı kutu + kalanı ürün
+- Fiyatlar: sağlam %55-75, çürük %28-40 (piyasa fiyatının)
+- İndirimler toplanır: günlük olay + `zengin` rozeti (%10) + `pazarlikci` rozeti (çürükte %20)
+- Görsel: `assets/toptanci.png` (400×400, kullanıcı üretti)
+
+### 5. Hedefler & Rozetler (`Rozet`)
+8 rozet. `_rozetleriDenetle()` **`notifyListeners()` içinde** çalışır (kendisi notify çağırmaz → döngü yok).
+Kazanılanlar `yeniKazanilanRozetler` kuyruğuna girer, UI `_rozetKuyrugunuIsle()` ile **ekran müsaitken** gösterir (müşteri/pazarlık/envanter/gün-sonu yokken → dialog çakışması olmaz).
+
+| Rozet | Hedef | Ödül (sadece yeni sistemleri etkiler) |
+|---|---|---|
+| 🏪 İlk Satış | 1 satış | +100 lira |
+| 💼 Tüccar | 10 satış | Toptancıda 6. tezgâh |
+| 🔧 Tamirci | 5 tamir | Tamir seti %30 indirimli |
+| 🎁 Kutu Avcısı | 10 kutu | Kutuda çürük şansı yarıya iner |
+| 💎 Koleksiyoncu | 10 farklı ürün sat | Toptancı ürünleri iyi kondisyonda |
+| 💰 Zengin | 10.000 lira | Toptancıda kalıcı %10 indirim |
+| 🤝 Pazarlık Ustası | 30 anlaşma | Çürükler %20 daha ucuz |
+| 📅 Emektar | 15. gün | Her gün +200 lira destek |
+
+### 6. Gün Olayları (`GunOlayi`)
+- `gunuBitir()` içinde, **3. günden itibaren %55 ihtimalle** biri seçilir
+- Etkiler: `musteriDelta`, `piyasaCarpani`, `paraDelta`, `toptanciIndirim`, `fareIstilasi`
+- `piyasaCarpani` `_piyasaEtkisi()` ile uygulanır: **alıcı daha çok öder, satıcı daha az ister** (`musteriSatiyor ? reserv/c : reserv*c`)
+- 10 olay: TikTok viral, elektrik kesintisi, retro fuar, ekonomik kriz, kaldırım kazısı, sürpriz zarf, fare istilası, toptancı kampanyası, sağanak yağmur, gazete övgüsü
+- Reklamdan sonra popup ile tanıtılır
+
+### Kritik uygulama notları
+- **`urunCikarOrnek(GameItem)`** eklendi: aynı id'den çürük + sağlam iki kopya varsa `identical` ile doğru örneği çıkarır (eski `urunCikar(id)` yanlışını satabilirdi)
+- `GameItem.kopyaWith()` — alan bazlı kopya (final alanlar için)
+- `_slotaKoy()` sessiz ekleme (çift kayıt önler), `_slotlariSikistir()` ortak sıkıştırma
+- Tüm yeni alanlar `toJson`/`fromJson`'da **null-safe default** → eski kayıtlar bozulmaz
+
+---
+
 ## Önemli Oyun Mekanikleri
 - **Gün sistemi**: Her gün N müşteri, gün sonunda kira düşülür
 - **Pazarlık**: Müşteri teklif verir, oyuncu kabul/reddeder
@@ -707,6 +772,7 @@ Base ratio hâlâ `_clamp(0.18 - progress * 0.15, 0.02, 0.18)`.
 ## Versiyon Geçmişi (son)
 | Commit | Açıklama |
 |--------|----------|
+| v97 | **Büyük oynanış güncellemesi**: Toptancı Rıza (günlük stok, ucuz ürün), çürük ürün + CD tamir seti ekonomisi, kapalı kutu (lootbox), 8 rozetli Hedefler ekranı, 10 rastgele gün olayı. Tümü browser menüsünden erişilir — alt bar/sahne layout'una dokunulmadı |
 | v96 | App Store'da YAYINDA (id6778437262); iOS reklam ID TEST→PROD (1436676062); ATT dialog (Guideline 2.1 düzeltmesi, app_tracking_transparency); ürün/isim konumu yukarı (ürün -20, isim 338); sürüm 1.0.2+13 (AAB v13); MARKET BUILD ÖNCESİ test-ID kontrol kuralı; app-ads.txt doğrulama notları |
 | v95 | iOS TestFlight aktif: Codemagic pipeline tam çalışır durumda (10+ iterasyon sonrası signing/SwiftPM/build-number/icon hataları çözüldü); Magnus'tan paylaşımlı .p12 cert; CERTIFICATE_PRIVATE_KEY env var; iOS app icon (mavi Flutter üçgeni → gerçek ikon); ITSAppUsesNonExemptEncryption=false; App Privacy formu dolduruldu; support.html + marketing.html (TR/EN) GitHub Pages'te yayında; store/appstore_description_tr.txt yedeği |
 | v94 | iOS App Store hazırlığı: Bundle ID `com.oyuncudukkani.app`, deployment target 13.0, Info.plist'e AdMob iOS App ID + ATT izni + 43 SKAdNetwork ID, codemagic.yaml ile TestFlight'a otomatik gönderim |
