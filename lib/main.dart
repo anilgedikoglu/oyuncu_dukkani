@@ -779,50 +779,179 @@ class PazarlikSeans {
     maxTur += 2; // daha uzun pazarlık olabilir
   }
 
+  // ── KARŞI TEKLİF REPLİKLERİ ──────────────────────────────────────────────
+  // X → teklif tutarıyla değiştirilir. Rol ayrımı önemli: malı SATAN ile
+  // ALAN aynı cümleyi kuramaz. İkisi için ayrı havuz.
+
+  /// Müşteri malı SATIYOR (oyuncu alıcı) — "bu para bu malı almaz" tonu
+  static const List<String> _saticiKarsiTeklif = [
+    "Yok abi, o para bu malı almaz. X diyelim.",
+    "Bu fiyata versem eve dönemem. X olsun, helalleşelim.",
+    "Vallahi zarar ederim. X, son sözüm... şimdilik.",
+    "Ayıp ya! Bu mala X bile az.",
+    "Gönlümden X koptu, gerisi lafıgüzaf.",
+    "Bak, X. Bundan aşağısı kul hakkı.",
+    "Kalbimi kırdın ama pazarlık bu. X?",
+    "Bu malın hikâyesi var, hikâye de para eder. X.",
+    "X. Bak yuvarlak sayı, hesabı kolay olsun.",
+    "Böyle giderse akşama kadar buradayız. X.",
+    "İnsaf be! X'e razıyım, bitirelim şu işi.",
+    "X olur mu? Olmazsa da kırılmam... biraz kırılırım.",
+    "X. Üstüne bir çay ısmarlarsan hiç itiraz etmem.",
+    "Pazarlıkta ustayımdır ama bugün yorgunum: X.",
+    "Sen de bir adım at ya! X.",
+    "Anam görse 'satma' derdi. X'e satarım.",
+    "X. Bu fiyatı sadece sana söylüyorum, kimseye deme.",
+    "Az kaldı az! X de tamam.",
+    "Rakamlar konuşsun: X.",
+    "Bu fiyatı duysa malın eski sahibi ters döner. X.",
+    "X diyorum, gözün arkada kalmasın.",
+    "Elimi kolumu bağladın. X, bitti gitti.",
+    "Ben buraya pazarlık etmeye geldim, dilenmeye değil. X.",
+    "X. Hesap makinesi getireyim mi, beraber bakalım?",
+    "Şu malın tozunu bile X eder. Hadi.",
+  ];
+
+  /// Müşteri malı ALIYOR (oyuncu satıcı) — "o kadar para vermem" tonu
+  static const List<String> _aliciKarsiTeklif = [
+    "O paraya bu mu? X veririm, fazlası yok.",
+    "Cebimde X var, gerisi hayal.",
+    "X. Üstüne bir teşekkür de ederim, olur mu?",
+    "Bu fiyata yenisini alırım ben. X.",
+    "Gönlüm X diyor, cüzdanım da öyle.",
+    "X'ten yukarısı için evden izin almam lazım.",
+    "Sen fiyatı söylerken bile utandın. X.",
+    "X. Sen de kâr et ama tek başına etme.",
+    "X veriyorum, üstüne poşet de isterim.",
+    "Şu ekonomide X bile büyük laf.",
+    "Bak X diyorum, sonra fikrim değişir ha.",
+    "X. Yuvarlıyorum, hesap kolay olsun.",
+    "Bu mala X, bir de gülümseme veririm.",
+    "Fiyatı duyunca gözüm karardı. X'e gelirim.",
+    "X. Anlaşırsak arkadaşlara da tavsiye ederim.",
+    "Harçlığım X, ötesi yok vallahi.",
+    "X olsun, ikimiz de kazanalım.",
+    "Pazarlık kültürümüzde var, kusura bakma: X.",
+    "X. Bunun üstüne çıkarsam bana evde kızarlar.",
+    "İndirim yapmayan esnaf, esnaf değildir. X.",
+    "Bugün şanslı günün: X kabul.",
+    "Son teklifim X... yani şimdilik son.",
+    "X diyorum, gerisini hayır dualarımla tamamlarım.",
+    "Sen bunu bana X'e verirsen adamsın.",
+    "X. Elimi vicdanıma koydum, çıkan rakam bu.",
+  ];
+
   void _karsiTeklifMesaj() {
-    final rng = Random();
-    final x = musteriTeklif;
-    const sablonlar = [
-      "Maalesef bu fiyata olmaz. X'e ne dersin?",
-      'Verdiğin fiyat benim için uygun değil. X yapalım mı?',
-      'Anlaşabilmemiz için farklı bir fiyatta buluşmamız gerek. X diyelim mi?',
-      "Kabul etmiyorum. X'e ne dersin?",
-      'Bunu kabul edemem. X diyebilirim?',
-    ];
-    mesaj = sablonlar[rng.nextInt(sablonlar.length)].replaceAll('X', '$x');
+    final havuz = musteriSatiyor ? _saticiKarsiTeklif : _aliciKarsiTeklif;
+    mesaj = havuz[Random().nextInt(havuz.length)].replaceAll('X', '$musteriTeklif');
   }
+
+  static const List<String> _kabulSablonlari = [
+    'Anlaştık! Elini sıkayım, hayırlı olsun.',
+    'Tamamdır! Böyle pazarlık severim işte.',
+    'Oldu bu iş! X lira, helali hoş olsun.',
+    'Kabul! Sen de iyi pazarlıkçısın ha.',
+    'Yaptın yapacağını, X\'e razıyım!',
+    'Anlaştık. Bir dahakine bu kadar kolay olmayacak ama.',
+    'X. Tamam! Vicdanım rahat.',
+    'Hah şöyle! İkimiz de kazandık.',
+    'Kabul ediyorum, ellerine sağlık.',
+    'Oldu! Bu alışverişten memnunum.',
+    'X\'e anlaştık. Bereketli olsun!',
+    'Peki! Zaten seni kıramazdım.',
+    'Tamam, kabul. Sen kazandın bu sefer.',
+    'X! Hemen kapatalım, fikrim değişmeden.',
+    'Anlaştık. Arkadaşlara da senden bahsedeceğim.',
+    'Al benden de o kadar! Kabul.',
+    'Uzattık yeter, X\'e tamam.',
+    'Bak bu güzel oldu. X, anlaştık.',
+    'Eyvallah, X\'e razıyım.',
+    'Şu tokalaşma anı var ya, işte bunun için buradayım!',
+    'Tamam! Gözüm arkada kalmadı.',
+    'X lira. Hesap tamam, gönül tamam.',
+    'Kabul kabul, bitsin de çayımı içeyim.',
+    'Helal olsun sana. X, anlaştık.',
+    'Ooo, sonunda! X. Tokalaşalım.',
+    'Bu fiyata evet demezsem ayıp olur. Kabul!',
+  ];
 
   PazarlikDurum _kabul(double fiyat) {
     musteriTeklif = fiyat.round();
     durum = PazarlikDurum.anlasildi;
-    final x = musteriTeklif;
-    final sablonlar = [
-      'Teklifini kabul ediyorum, teşekkürler!',
-      'Bu fiyat benim için uygun, çok sağol!',
-      '$x liralık teklifini kabul ettim!',
-      '$x benim için okeydir, kabul!',
-      'Anlaştık o zaman!',
-      'Güzel fiyat, aldım kabul ettim!...',
-      'Neden olmasın, kabul ediyorum.',
-      'Peki, dediğin gibi olsun. Kabul!',
-    ];
-    mesaj = sablonlar[Random().nextInt(sablonlar.length)];
+    mesaj = _kabulSablonlari[Random().nextInt(_kabulSablonlari.length)]
+        .replaceAll('X', '$musteriTeklif');
     return durum;
   }
+
+  // ── Çekip gitme replikleri: üç ruh haline göre ayrı havuz ──
+
+  /// Sinirlenip gitti (frustration yüksek)
+  static const List<String> _gitOfkeli = [
+    'Sen şaşırmışsın, konuşmasak daha iyi!',
+    'Senin piyasadan hiç mi haberin yok!',
+    'Yok artık Lebron James!',
+    'Oldu paşam, Malkara Keşan!',
+    'Sen tok satıcısın, anlaşıldı!...',
+    'Beni aptal yerine koyamazsın!',
+    'Bu ne pazarlık ya, resmen soygun!',
+    'Sinirlerim! Ben gidiyorum.',
+    'Sen bu kafayla dükkânı kapatırsın!',
+    'Vallahi güldüm. Güle güle!',
+    'Buraya bir daha adımımı atarsam...',
+    'Enflasyon senin yüzünden bu kadar!',
+    'Fiyatı duyunca kulaklarım çınladı, kaçtım!',
+    'Yandaki dükkân yarı fiyatına veriyor, hoşça kal!',
+    'Sabrımı taşırdın, gidiyorum!',
+    'Bu pazarlık değil, işkence!',
+    'Kalbim kırıldı, hem de gerçekten.',
+    'Şaka gibisin, valla şaka gibi!',
+  ];
+
+  /// Tur bitti, anlaşamadılar (kızgın değil, yorgun)
+  static const List<String> _gitTurBitti = [
+    'Yok ya seninle anlaşamıyoruz...',
+    'Olmadı, olduramadık...',
+    'Pazarlık benim için bitmiştir!...',
+    'Biz bu işi unutalım bence.',
+    "Ne sen Leyla'sın ne de ben Mecnun.",
+    'Tekliflerimiz ikimize de makul gelmedi.',
+    'Başka işlerim var, gitmeliyim...',
+    'Güzel pazarlıktı ama olmadı.',
+    'Vakit geçti, ben kaçayım.',
+    'Olmuyor işte olmuyor. Eyvallah.',
+    'İkimiz de haklıyız ama anlaşamıyoruz.',
+    'Bu iş bugünlük burada bitsin.',
+    'Belki başka bahar...',
+    'Yolumuz ayrıldı dostum.',
+    'Kısmet değilmiş, hoşça kal.',
+    'Çok konuştuk, az anlaştık. Gidiyorum.',
+    'Sana da bana da yazık. Görüşürüz.',
+    'Uzadı bu iş, bende o sabır yok.',
+  ];
+
+  /// Erken vazgeçti
+  static const List<String> _gitErken = [
+    'Dur ya, vazgeçtim!...',
+    'Şu teklifle anında vazgeçtim!',
+    'Dolandırılacağım sanırım, kaçıyorum!...',
+    'Seninle ortayı bulamıyoruz.',
+    'Bir dahaki sefere artık.',
+    'Yok yok, içime sinmedi.',
+    'Aklıma başka iş geldi, kaçtım!',
+    'Şöyle bir düşüneyim... düşündüm, olmadı.',
+    "Cüzdanım 'yürü' diyor.",
+    'Vazgeçtim, kusura bakma.',
+    'Bugün alışveriş yıldızım tutmadı.',
+    'Bir tur atıp geleyim... belki.',
+  ];
 
   PazarlikDurum _git() {
     durum = PazarlikDurum.gitti;
     final rng = Random();
-    if (_frustration > 0.6) {
-      const m = ['Sen şaşırmışsın, konuşmasak daha iyi!','Senin piyasadan hiç mi haberin yok!','Yok artık Lebron James!','Oldu paşam, Malkara Keşan!','Sen tok satıcısın, anlaşıldı!...','Beni aptal yerine koyamazsın!'];
-      mesaj = m[rng.nextInt(m.length)];
-    } else if (turSayisi >= maxTur) {
-      const m = ['Yok ya seninle anlaşamıyoruz...','Olmadı, olduramadık...','Pazarlık benim için bitmiştir!...','Biz bu işi unutalım bence.','Ne sen Leyla\'sın ne de ben Mecnun.','Tekliflerimiz ikimize de makul gelmedi.','Başka işlerim var, gitmeliyim...','Güzel pazarlıktı ama olmadı.'];
-      mesaj = m[rng.nextInt(m.length)];
-    } else {
-      const m = ['Dur ya, vazgeçtim!...','Şu teklifle anında vazgeçtim!','Dolandırılacağım sanırım, kaçıyorum!...','Seninle ortayı bulamıyoruz.'];
-      mesaj = m[rng.nextInt(m.length)];
-    }
+    final havuz = _frustration > 0.6
+        ? _gitOfkeli
+        : (turSayisi >= maxTur ? _gitTurBitti : _gitErken);
+    mesaj = havuz[rng.nextInt(havuz.length)];
     return durum;
   }
 }
@@ -1154,11 +1283,74 @@ class Customer {
 
   Customer({required this.name, required this.gorsel, required this.musteriSatiyor, required this.item, required this.ilkTeklif, required this.ozellik});
 
-  String get selamMesaji => musteriSatiyor
-      ? (item.id == 'kolonya'
-          ? 'Ben kolonya satıyorum, üreticiyim. İlgilenir misin?'
-          : 'Merhaba, ben $name. Elimde ${item.name} var, satmak istiyorum. İlgilenir misin?')
-      : 'Selam! Ben $name. Elinde ${item.name} olduğunu duydum, bana satar mısın?';
+  // ── SELAMLAMA HAVUZLARI ──
+  // {AD} = müşteri adı, {URUN} = ürün adı.
+  // DİKKAT: Tek harfli placeholder KULLANMA — "Arkadaşlar"daki A'yı da değiştirir.
+
+  static const List<String> _kolonyaSelam = [
+    'Ben kolonya satıyorum, üreticiyim. İlgilenir misin?',
+    'Kolonyacı geldi! Limon, tütün, lavanta... hepsi var. Bakar mısın?',
+    'Selam usta! Kolonya satıyorum, dükkâna misk gibi kokar.',
+    'Kolonyam var kolonya! Müşterinin gönlünü alır, deneyeceksin göreceksin.',
+    'Ben kolonyacı. Dükkânda kolonya olmazsa olmaz, bilirsin.',
+  ];
+
+  static const List<String> _saticiSelam = [
+    'Merhaba, ben {AD}. Elimde {URUN} var, satmak istiyorum. İlgilenir misin?',
+    'Selam! {AD} ben. Şu {URUN} elimde kaldı, alır mısın?',
+    'Kolay gelsin! {AD}. {URUN} satıyorum, bir bakar mısın?',
+    'Merhaba, adım {AD}. Evi toparlarken {URUN} çıktı, sana getirdim.',
+    '{AD} ben. {URUN} boşuna duruyordu, dedim satayım. İlgini çeker mi?',
+    'Selamlar! {AD}. {URUN} devretmek istiyorum, konuşalım mı?',
+    'Hayırlı işler! {AD} ben. {URUN} var bende, alıcısı sensin galiba.',
+    'Merhaba! {AD}. Şu {URUN} taşımaktan yoruldum, satalım gitsin.',
+    'Ben {AD}. {URUN} getirdim, hem de tertemiz. Bakar mısın?',
+    'Selam usta! {AD}. {URUN} satılık, ilgilenir misin?',
+    '{AD} ben. Anneme sormadan {URUN} satmaya geldim, aramızda kalsın.',
+    'İyi günler! {AD}. {URUN} elimde, paraya ihtiyacım var. Konuşalım mı?',
+    'Merhaba {AD} ben. {URUN} bu dükkâna yakıştırdım, alır mısın?',
+    'Selam! Ben {AD}. {URUN} satıyorum, fiyatı sen söyle.',
+    'Selam, {AD} ben. Elimde {URUN} var, sana özel fiyat yaparım.',
+    'Merhabalar! {AD} ben. Şu {URUN} için doğru yere mi geldim?',
+    'Selam patron! {AD}. {URUN} satmak istiyorum, vaktin var mı?',
+    'Ben {AD}. Bu {URUN} bende duruyor, sende değer bulur diye geldim.',
+    'Selam! {AD} ben. {URUN} getirdim, kıymetini bilene satarım.',
+    'Merhaba {AD}. Dolabın dibinden {URUN} çıktı, alıcısı var mı dedim.',
+  ];
+
+  static const List<String> _aliciSelam = [
+    'Selam! Ben {AD}. Elinde {URUN} olduğunu duydum, bana satar mısın?',
+    'Merhaba, {AD} ben. {URUN} arıyorum, sende var mı diye uğradım.',
+    'Kolay gelsin! {AD}. {URUN} için ta buraya geldim, satar mısın?',
+    'Selam! {AD}. Arkadaşlar "{URUN} ondadır" dedi, doğru mu?',
+    '{AD} ben. Çocukluğumdan beri {URUN} arıyorum. Sende varmış!',
+    'Merhaba! {AD}. {URUN} görünce dayanamadım, alabilir miyim?',
+    'Selamlar, {AD}. {URUN} lazım bana. Konuşalım mı?',
+    'Ben {AD}. {URUN} rüyamda gördüm, sabah soluğu burada aldım.',
+    'Hayırlı işler! {AD}. {URUN} talibim, fiyat nedir?',
+    '{AD} ben. Koleksiyonumda {URUN} eksik. Tamamlayalım mı?',
+    'Merhaba! {AD}. {URUN} varmış sende, gözüme kestirdim.',
+    'Selam usta! {AD}. Şu {URUN} bana ayırır mısın?',
+    'İyi günler, {AD}. {URUN} için pazarlığa hazır mısın?',
+    'Ben {AD}. {URUN} almadan bu dükkândan çıkmam.',
+    'Selam! {AD}. {URUN} yeğenime hediye alacağım, var mı?',
+    'Merhabalar, {AD} ben. {URUN} görürsem duramıyorum, kaça?',
+    'Kolay gelsin, {AD} ben. {URUN} için harçlığımı biriktirdim!',
+    'Selam! {AD}. {URUN} bulmak için üç dükkân gezdim, son duraksın.',
+    'Merhaba {AD} ben. Vitrinden {URUN} gördüm, içeri dalıverdim.',
+    'Selam! {AD}. Şu {URUN} bende olmalı, kader bizi buluşturdu.',
+  ];
+
+  String get selamMesaji {
+    final rng = Random();
+    if (musteriSatiyor && item.id == 'kolonya') {
+      return _kolonyaSelam[rng.nextInt(_kolonyaSelam.length)];
+    }
+    final havuz = musteriSatiyor ? _saticiSelam : _aliciSelam;
+    return havuz[rng.nextInt(havuz.length)]
+        .replaceAll('{AD}', name)
+        .replaceAll('{URUN}', item.name);
+  }
 }
 
 // ─── OYUN DURUMU ─────────────────────────────────────────────────────────────
@@ -2057,6 +2249,14 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   Timer? _kolonyaMesajTimer;
   Timer? _kuryeTimer;
   int _kolonyaSonrasiSonIdx = -1; // alıcı + kolonya sonrası tekrarlamasın diye son seçilen mesaj indeksi
+
+  // ── Animasyonlu bildirim (toast) ──
+  String? _toastMetin;
+  String _toastAltYazi = '';
+  String _toastEmoji = '🔥';
+  Color _toastRenk = const Color(0xFFFFD700);
+  int _toastId = 0; // her yeni toast'ta animasyon baştan başlasın
+  Timer? _toastTimer;
   bool _rozetPopupAcik = false;   // rozet popup'ları üst üste binmesin
 
   // ── Daire geri sayım animasyonu ──
@@ -2114,6 +2314,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   void dispose() {
     _kolonyaMesajTimer?.cancel();
     _kuryeTimer?.cancel();
+    _toastTimer?.cancel();
     _daireTicker.dispose();
     _state.removeListener(_daireHedefGuncelle);
     _slideController.dispose();
@@ -2277,8 +2478,8 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       )).toList());
   }
 
-  /// Seri bonusu ve günlük hedef tamamlanmasını kısa bir SnackBar ile duyurur.
-  /// Popup kullanmıyoruz — oyun akışını kesmesin, sadece dopamin dokunuşu.
+  /// Seri bonusu ve günlük hedef tamamlanmasını oyunun kendi temasında
+  /// animasyonlu bir toast ile duyurur. Popup/SnackBar yok — akış kesilmesin.
   void _anlikBildirimleriIsle() {
     if (_state.sonKomboBonusu > 0) {
       final b = _state.sonKomboBonusu;
@@ -2286,13 +2487,8 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       _state.sonKomboBonusu = 0; // tüket
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('🔥 $k\'lü seri!  +$b lira'),
-          duration: const Duration(milliseconds: 1600),
-          backgroundColor: const Color(0xFFB35A00),
-          behavior: SnackBarBehavior.floating,
-          margin: const EdgeInsets.fromLTRB(40, 0, 40, 130),
-        ));
+        _toastGoster('$k\'LÜ SERİ!', altYazi: '+$b lira', emoji: '🔥',
+          renk: const Color(0xFFFF9500));
       });
     }
     if (_state.hedefYeniTamamlandi) {
@@ -2301,16 +2497,92 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       if (h != null) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text('🎯 Günün hedefi tamam!  +${h.odul} lira'),
-            duration: const Duration(seconds: 2),
-            backgroundColor: const Color(0xFF1a6b32),
-            behavior: SnackBarBehavior.floating,
-            margin: const EdgeInsets.fromLTRB(28, 0, 28, 130),
-          ));
+          _toastGoster('GÜNÜN HEDEFİ TAMAM!', altYazi: '+${h.odul} lira', emoji: '🎯',
+            renk: const Color(0xFF3fb950));
         });
       }
     }
+  }
+
+  void _toastGoster(String metin, {required String altYazi, required String emoji, required Color renk}) {
+    _toastTimer?.cancel();
+    setState(() {
+      _toastId++;
+      _toastMetin = metin; _toastAltYazi = altYazi; _toastEmoji = emoji; _toastRenk = renk;
+    });
+    _toastTimer = Timer(const Duration(milliseconds: 2400), () {
+      if (mounted) setState(() => _toastMetin = null);
+    });
+  }
+
+  /// Oyun temasına uygun, animasyonlu bildirim kartı.
+  /// Aşağıdan yukarı süzülerek gelir, hafif zıplar, sonra kaybolur.
+  Widget _buildToast() {
+    final renk = _toastRenk;
+    return Positioned(
+      left: 24, right: 24,
+      bottom: MediaQuery.of(context).size.height * 0.26,
+      child: IgnorePointer(
+        child: TweenAnimationBuilder<double>(
+          key: ValueKey(_toastId),
+          tween: Tween(begin: 0.0, end: 1.0),
+          duration: const Duration(milliseconds: 420),
+          curve: Curves.elasticOut,
+          builder: (context, t, child) {
+            final opak = t.clamp(0.0, 1.0);
+            return Opacity(
+              opacity: opak,
+              child: Transform.translate(
+                offset: Offset(0, (1 - t) * 26),
+                child: Transform.scale(scale: 0.85 + 0.15 * t, child: child),
+              ),
+            );
+          },
+          child: Center(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 11),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft, end: Alignment.bottomRight,
+                  colors: [const Color(0xFF241a10), const Color(0xFF120c06)],
+                ),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: renk, width: 2),
+                boxShadow: [
+                  BoxShadow(color: renk.withValues(alpha: 0.45), blurRadius: 22, spreadRadius: 1),
+                  BoxShadow(color: Colors.black.withValues(alpha: 0.55), blurRadius: 10, offset: const Offset(0, 4)),
+                ],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(_toastEmoji, style: const TextStyle(fontSize: 30)),
+                  const SizedBox(width: 12),
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(_toastMetin ?? '',
+                        style: TextStyle(
+                          fontSize: 15, fontWeight: FontWeight.w900, color: renk,
+                          letterSpacing: 1.1,
+                          shadows: const [Shadow(color: Colors.black, blurRadius: 4, offset: Offset(0, 1))],
+                        )),
+                      const SizedBox(height: 2),
+                      Text(_toastAltYazi,
+                        style: const TextStyle(
+                          fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white,
+                          shadows: [Shadow(color: Colors.black, blurRadius: 4, offset: Offset(0, 1))],
+                        )),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   void _gunBitiKontrol() {
@@ -3890,6 +4162,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                 ),
               ),
               if (_envanterAcik) _buildEnvanterOverlay(),
+              if (_toastMetin != null) _buildToast(),
             ],
           ),
         );

@@ -63,6 +63,45 @@ SplashScreen (6 sn yasal metin)
 
 ---
 
+## 💬 DİYALOG HAVUZLARI (v99)
+
+Tüm replikler genişletildi. Tekrar hissi kalmasın diye her havuz 18-26 satır.
+
+| Havuz | Sınıf | Not |
+|---|---|---|
+| `_saticiSelam` / `_aliciSelam` | `Customer` | 20'şer selamlama, rol ayrı |
+| `_kolonyaSelam` | `Customer` | 5 kolonyacı repliği |
+| `_saticiKarsiTeklif` / `_aliciKarsiTeklif` | `PazarlikSeans` | 25'er karşı teklif, **rol ayrı** |
+| `_kabulSablonlari` | `PazarlikSeans` | 26 kabul repliği |
+| `_gitOfkeli` / `_gitTurBitti` / `_gitErken` | `PazarlikSeans` | 18 / 18 / 12 — ruh haline göre |
+
+### ⚠️ PLACEHOLDER KURALI — TEK HARF KULLANMA
+Şablonlarda `{AD}` ve `{URUN}` kullanılır. **Tek harfli placeholder (A, U) ASLA kullanma** —
+`replaceAll('A', ...)` "**A**rkadaşlar" kelimesindeki büyük A'yı da değiştirir ve cümleyi bozar.
+Fiyat için `X` güvenli (Türkçe'de büyük X geçen kelime yok) ama yeni şablon yazarken kontrol et.
+
+### Rol ayrımı neden önemli
+Malı **satan** müşteri "o para bu malı almaz" der, **alan** müşteri "o kadar para vermem" der.
+Aynı cümleyi ikisine de söyletmek karakteri bozuyordu.
+
+---
+
+## ✨ TOAST BİLDİRİMİ (v99)
+
+Seri ve günlük hedef bildirimleri Material SnackBar değil, oyunun kendi temasında
+özel bir kart. `_toastGoster(metin, altYazi:, emoji:, renk:)`.
+
+- Ana `Stack`'in en üstünde `_buildToast()` olarak render edilir
+- `TweenAnimationBuilder` + `Curves.elasticOut` → aşağıdan süzülüp hafif zıplar
+- Koyu gradient zemin (#241a10→#120c06), 2px renkli çerçeve, renkli glow gölge
+- Başlık accent renkte, alt yazı beyaz — ikisinde de siyah text shadow (okunabilirlik)
+- `_toastId` her gösterimde artar → animasyon baştan başlar
+- 2.4 sn sonra otomatik kaybolur, `IgnorePointer` ile dokunuşu engellemez
+
+> Material SnackBar kullanma — kahverengi zemin/okunmayan yazı sorunu bu yüzden çıkmıştı.
+
+---
+
 ## 🎣 BAĞLILIK MEKANİKLERİ (v98)
 
 Dört farklı zaman ölçeğinde tutundurma. Birbirini besleyecek şekilde tasarlandı.
@@ -872,6 +911,7 @@ Base ratio hâlâ `_clamp(0.18 - progress * 0.15, 0.02, 0.18)`.
 | Commit | Açıklama |
 |--------|----------|
 | v97 | **Büyük oynanış güncellemesi**: Toptancı Rıza (günlük stok, ucuz ürün), çürük ürün + CD tamir seti ekonomisi, kapalı kutu (lootbox), 8 rozetli Hedefler ekranı, 10 rastgele gün olayı. Tümü browser menüsünden erişilir — alt bar/sahne layout'una dokunulmadı |
+| v99 | Diyalog havuzları 5-10 katına çıkarıldı (selamlama 20+20, karşı teklif 25+25 **rol ayrı**, kabul 26, gitme 18/18/12); toast bildirimi Material SnackBar'dan oyun temasına uygun animasyonlu karta çevrildi (elasticOut, glow, okunabilir kontrast) |
 | v98 | Bağlılık mekanikleri: 🔥 seri/kombo (3+ anlaşmada bonus, kızgın müşteride sıfırlanır), 🎯 günlük hedef (6 tip, dükkan seviyesiyle ölçeklenir), ☀️ yarının olayı gün sonunda duyurulur ("bir gün daha" kancası, sabah popup'ı kaldırıldı), 📚 koleksiyon paneli (23 ürün, % tamamlanma) |
 | v97 | **Çözünürlükten bağımsız sahne** — `SahneMetrik` ile ürün/isim/müşteri masa görseline kilitlendi; sabit piksel kaldırıldı; 20:9 / 16:9 / 4:3'te doğrulandı |
 | v96 | App Store'da YAYINDA (id6778437262); iOS reklam ID TEST→PROD (1436676062); ATT dialog (Guideline 2.1 düzeltmesi, app_tracking_transparency); ürün/isim konumu yukarı (ürün -20, isim 338); sürüm 1.0.2+13 (AAB v13); MARKET BUILD ÖNCESİ test-ID kontrol kuralı; app-ads.txt doğrulama notları |
