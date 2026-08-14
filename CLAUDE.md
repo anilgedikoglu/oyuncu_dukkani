@@ -63,6 +63,54 @@ SplashScreen (6 sn yasal metin)
 
 ---
 
+## 🎣 BAĞLILIK MEKANİKLERİ (v98)
+
+Dört farklı zaman ölçeğinde tutundurma. Birbirini besleyecek şekilde tasarlandı.
+
+| Ölçek | Mekanik | Alan / Sınıf |
+|---|---|---|
+| **An** | 🔥 Seri (kombo) | `kombo`, `enUzunSeri`, `sonKomboBonusu` |
+| **Gün** | 🎯 Günlük hedef | `GunlukHedef`, `gunlukHedef` |
+| **Sonraki gün** | ☀️ Yarının önizlemesi | `yarinkiOlayId` |
+| **Uzun vade** | 📚 Koleksiyon | `satilanUrunIdleri` + `koleksiyonUrunleri` |
+
+### 🔥 Seri (kombo)
+- Üst üste **anlaşmayla biten** pazarlık sayısı. 3'ten itibaren her anlaşmada `kombo × 15` lira bonus.
+- **Sıfırlanma:** sadece müşteri kızıp giderse (`PazarlikDurum.gitti`).
+  Oyuncunun kendi reddi seriyi BOZMAZ — kötü teklifi reddetmek meşru strateji, cezalandırılmamalı.
+- Günler arası devam eder (seri değerli hissettirsin).
+- Bildirim: SnackBar (popup değil, akışı kesmesin).
+
+### 🎯 Günlük hedef
+`GunlukHedef.uret(dukkanSeviye)` her gün başında üretir. 6 tip:
+`satisAdedi`, `gelir`, `tamir`, `kutu`, `toptanciAlim`, `tekSatis`
+- Hedef büyüklüğü dükkan seviyesiyle ölçeklenir
+- İlerleme `_hedefIlerlet(tip, miktar)` ile ilgili noktalardan beslenir
+  (`_anlasmayiTamamla`, `tamirEt`, `kutuAc`, `toptanciSatinAl`)
+- `tekSatis` için `mutlak: true` → en yüksek tek satış tutulur
+- Tamamlanınca anında ödül + SnackBar; gün sonu popup'ında sonuç gösterilir
+
+### ☀️ Yarının önizlemesi — "bir gün daha" kancası
+Olaylar artık **bir gün önceden** belirlenir:
+```
+gunuBitir(): gunlukOlayId = yarinkiOlayId   (dün belirlenen olay bugün uygulanır)
+             yarinkiOlayId = yeni zar        (gün sonu popup'ında duyurulur)
+```
+- Gün sonu popup'ında "YARIN" bölümü: emoji, başlık, açıklama + etki çipleri
+- **Sabah olay popup'ı KALDIRILDI** — çift bildirim olmasın, popup yorgunluğu yaratmasın
+- Aktif olay Hedefler ekranındaki "bugün paneli"nde görünür
+
+### 📚 Koleksiyon
+- Hedefler ekranının altında 23 ürünlük ızgara (kolonya hariç)
+- Satılan ürün açılır (gerçek görsel), satılmayan "?" görünür
+- Yüzde göstergesi; `satilanUrunIdleri` zaten takip ediliyordu, ek maliyet yok
+
+### Hedefler ekranı yapısı
+`ListView` → `[bugün paneli] + [8 rozet] + [koleksiyon paneli]`
+- **Bugün paneli:** gün no, aktif seri, günlük hedef + ilerleme çubuğu, aktif olay + etki çipleri
+
+---
+
 ## 🎯 SAHNE METRİĞİ — Çözünürlükten Bağımsız Konumlandırma (v97)
 
 **Artık sahnede SABİT PİKSEL DEĞERİ YOK.** Ürün, isim etiketi ve müşteri, masa
@@ -824,6 +872,8 @@ Base ratio hâlâ `_clamp(0.18 - progress * 0.15, 0.02, 0.18)`.
 | Commit | Açıklama |
 |--------|----------|
 | v97 | **Büyük oynanış güncellemesi**: Toptancı Rıza (günlük stok, ucuz ürün), çürük ürün + CD tamir seti ekonomisi, kapalı kutu (lootbox), 8 rozetli Hedefler ekranı, 10 rastgele gün olayı. Tümü browser menüsünden erişilir — alt bar/sahne layout'una dokunulmadı |
+| v98 | Bağlılık mekanikleri: 🔥 seri/kombo (3+ anlaşmada bonus, kızgın müşteride sıfırlanır), 🎯 günlük hedef (6 tip, dükkan seviyesiyle ölçeklenir), ☀️ yarının olayı gün sonunda duyurulur ("bir gün daha" kancası, sabah popup'ı kaldırıldı), 📚 koleksiyon paneli (23 ürün, % tamamlanma) |
+| v97 | **Çözünürlükten bağımsız sahne** — `SahneMetrik` ile ürün/isim/müşteri masa görseline kilitlendi; sabit piksel kaldırıldı; 20:9 / 16:9 / 4:3'te doğrulandı |
 | v96 | App Store'da YAYINDA (id6778437262); iOS reklam ID TEST→PROD (1436676062); ATT dialog (Guideline 2.1 düzeltmesi, app_tracking_transparency); ürün/isim konumu yukarı (ürün -20, isim 338); sürüm 1.0.2+13 (AAB v13); MARKET BUILD ÖNCESİ test-ID kontrol kuralı; app-ads.txt doğrulama notları |
 | v95 | iOS TestFlight aktif: Codemagic pipeline tam çalışır durumda (10+ iterasyon sonrası signing/SwiftPM/build-number/icon hataları çözüldü); Magnus'tan paylaşımlı .p12 cert; CERTIFICATE_PRIVATE_KEY env var; iOS app icon (mavi Flutter üçgeni → gerçek ikon); ITSAppUsesNonExemptEncryption=false; App Privacy formu dolduruldu; support.html + marketing.html (TR/EN) GitHub Pages'te yayında; store/appstore_description_tr.txt yedeği |
 | v94 | iOS App Store hazırlığı: Bundle ID `com.oyuncudukkani.app`, deployment target 13.0, Info.plist'e AdMob iOS App ID + ATT izni + 43 SKAdNetwork ID, codemagic.yaml ile TestFlight'a otomatik gönderim |

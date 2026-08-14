@@ -1031,6 +1031,84 @@ class GunOlayi {
   }
 }
 
+// ─── GÜNLÜK HEDEF ────────────────────────────────────────────────────────────
+
+enum HedefTip { satisAdedi, gelir, tamir, kutu, toptanciAlim, tekSatis }
+
+/// Her günün başında üretilen küçük görev. Tamamlanınca anında ödül verir.
+/// Amaç: her güne "hayatta kal"ın ötesinde somut bir amaç koymak.
+class GunlukHedef {
+  final HedefTip tip;
+  final int hedef;
+  final int odul;
+  int ilerleme;
+  bool tamamlandi;
+
+  GunlukHedef({required this.tip, required this.hedef, required this.odul,
+    this.ilerleme = 0, this.tamamlandi = false});
+
+  String get emoji {
+    switch (tip) {
+      case HedefTip.satisAdedi:   return '🛍️';
+      case HedefTip.gelir:        return '💰';
+      case HedefTip.tamir:        return '🔧';
+      case HedefTip.kutu:         return '🎁';
+      case HedefTip.toptanciAlim: return '🚚';
+      case HedefTip.tekSatis:     return '💎';
+    }
+  }
+
+  String get baslik {
+    switch (tip) {
+      case HedefTip.satisAdedi:   return '$hedef ürün sat';
+      case HedefTip.gelir:        return '$hedef lira satış yap';
+      case HedefTip.tamir:        return '$hedef çürük ürün tamir et';
+      case HedefTip.kutu:         return '$hedef kapalı kutu aç';
+      case HedefTip.toptanciAlim: return 'Toptancıdan $hedef ürün al';
+      case HedefTip.tekSatis:     return 'Tek satışta $hedef lira kazan';
+    }
+  }
+
+  /// tekSatis'te ilerleme "en yüksek tek satış" olarak tutulur
+  double get oran => hedef == 0 ? 1 : (ilerleme / hedef).clamp(0.0, 1.0);
+
+  static GunlukHedef uret(int dukkanSeviye) {
+    final rng = Random();
+    final k = dukkanSeviye; // 1..5 — dükkan büyüdükçe hedef büyür
+    switch (HedefTip.values[rng.nextInt(HedefTip.values.length)]) {
+      case HedefTip.satisAdedi:
+        final h = 2 + rng.nextInt(2) + k;              // 3..7
+        return GunlukHedef(tip: HedefTip.satisAdedi, hedef: h, odul: 60 * h);
+      case HedefTip.gelir:
+        final h = (400 + rng.nextInt(300)) * k;        // 400..2100+
+        return GunlukHedef(tip: HedefTip.gelir, hedef: h, odul: (h * 0.28).round());
+      case HedefTip.tamir:
+        final h = 1 + (k > 2 ? 1 : 0);                 // 1..2
+        return GunlukHedef(tip: HedefTip.tamir, hedef: h, odul: 260 * h);
+      case HedefTip.kutu:
+        return GunlukHedef(tip: HedefTip.kutu, hedef: 1, odul: 200);
+      case HedefTip.toptanciAlim:
+        final h = 1 + rng.nextInt(2);                  // 1..2
+        return GunlukHedef(tip: HedefTip.toptanciAlim, hedef: h, odul: 130 * h);
+      case HedefTip.tekSatis:
+        final h = (250 + rng.nextInt(250)) * k;        // 250..1500+
+        return GunlukHedef(tip: HedefTip.tekSatis, hedef: h, odul: (h * 0.35).round());
+    }
+  }
+
+  Map<String, dynamic> toJson() => {
+    'tip': tip.name, 'hedef': hedef, 'odul': odul,
+    'ilerleme': ilerleme, 'tamamlandi': tamamlandi,
+  };
+
+  factory GunlukHedef.fromJson(Map<String, dynamic> j) => GunlukHedef(
+    tip: HedefTip.values.firstWhere((e) => e.name == j['tip'], orElse: () => HedefTip.satisAdedi),
+    hedef: j['hedef'] as int, odul: j['odul'] as int,
+    ilerleme: (j['ilerleme'] as int?) ?? 0,
+    tamamlandi: (j['tamamlandi'] as bool?) ?? false,
+  );
+}
+
 // ─── ROZETLER / HEDEFLER ─────────────────────────────────────────────────────
 
 /// Hedef tamamlanınca rozet kazanılır. Ödüller SADECE yeni sistemleri etkiler —
@@ -1136,8 +1214,20 @@ class GameState extends ChangeNotifier {
 
   // ── Günlük olay ──
   String? gunlukOlayId;
+  String? yarinkiOlayId;             // gün sonunda açıklanır → "bir gün daha" kancası
   double piyasaCarpani = 1.0;        // >1 cömert gün, <1 cimri gün
   double gunlukToptanciIndirim = 0.0;
+
+  // ── Seri (kombo) ──
+  // Üst üste anlaşmayla biten pazarlık. Müşteri kızıp giderse sıfırlanır.
+  // Oyuncunun kendi reddi seriyi BOZMAZ (kötü teklifi reddetmek meşru strateji).
+  int kombo = 0;
+  int enUzunSeri = 0;
+  int sonKomboBonusu = 0;            // UI mesajı için
+
+  // ── Günlük hedef ──
+  GunlukHedef? gunlukHedef;
+  bool hedefYeniTamamlandi = false;  // UI bunu görüp kutlama gösterir
 
   // ── İstatistikler (rozet ilerlemesi) ──
   int toplamSatis = 0;
@@ -1303,6 +1393,10 @@ class GameState extends ChangeNotifier {
 
   // ── TOPTANCI ──────────────────────────────────────────────────────────────
 
+  /// Koleksiyon ekranında gösterilecek ürünler (kolonya hariç — o bir sarf malzemesi)
+  static List<GameItem> get koleksiyonUrunleri =>
+      _baslangicUrunler.where((u) => u.id != 'kolonya').toList();
+
   /// Kapalı kutu ürünü (envanterde slot işgal eder, açılınca içinden ürün çıkar)
   static GameItem kapaliKutuUret() => GameItem(
     id: 'kapali_kutu', name: 'Kapalı Kutu', gorsel: 'assets/zarf.png',
@@ -1370,6 +1464,7 @@ class GameState extends ChangeNotifier {
     } else {
       if (!bosSlotVar) return 'Envanter dolu! Önce yer aç.';
       _slotaKoy(t.item!.kopyaWith(maliyet: t.fiyat));
+      _hedefIlerlet(HedefTip.toptanciAlim, 1);
     }
     para -= t.fiyat;
     t.satildi = true;
@@ -1389,6 +1484,7 @@ class GameState extends ChangeNotifier {
     slotlar[slotIndex] = item.kopyaWith(curuk: false, kondisyon: 4 + Random().nextInt(2));
     tamirSetiAdet--;
     tamirEdilenSayisi++;
+    _hedefIlerlet(HedefTip.tamir, 1);
     notifyListeners();
     return true;
   }
@@ -1411,6 +1507,7 @@ class GameState extends ChangeNotifier {
     );
     slotlar[slotIndex] = cikan;
     acilanKutuSayisi++;
+    _hedefIlerlet(HedefTip.kutu, 1);
     notifyListeners();
     return cikan;
   }
@@ -1427,6 +1524,36 @@ class GameState extends ChangeNotifier {
     final yeni = slotlar[idx]!.kopyaWith(curuk: true, kondisyon: 1);
     slotlar[idx] = yeni;
     return yeni;
+  }
+
+  // ── GÜNLÜK HEDEF İLERLEMESİ ───────────────────────────────────────────────
+
+  /// Hedefe ilerleme ekler. [mutlak] true ise en yüksek değer tutulur (tekSatis).
+  void _hedefIlerlet(HedefTip tip, int miktar, {bool mutlak = false}) {
+    final h = gunlukHedef;
+    if (h == null || h.tamamlandi || h.tip != tip) return;
+    h.ilerleme = mutlak ? max(h.ilerleme, miktar) : h.ilerleme + miktar;
+    if (h.ilerleme >= h.hedef) {
+      h.tamamlandi = true;
+      para += h.odul;
+      hedefYeniTamamlandi = true;
+    }
+  }
+
+  // ── SERİ (KOMBO) ──────────────────────────────────────────────────────────
+
+  /// Anlaşma tamamlandı → seriyi büyüt, 3'ten itibaren bonus ver.
+  void _komboArtir() {
+    kombo++;
+    if (kombo > enUzunSeri) enUzunSeri = kombo;
+    sonKomboBonusu = kombo >= 3 ? kombo * 15 : 0;
+    if (sonKomboBonusu > 0) para += sonKomboBonusu;
+  }
+
+  /// Müşteri kızıp gitti → seri bozuldu.
+  void _komboSifirla() {
+    kombo = 0;
+    sonKomboBonusu = 0;
   }
 
   /// Cömert/cimri gün etkisi. Alıcı daha çok öder, satıcı daha az ister.
@@ -1481,6 +1608,7 @@ class GameState extends ChangeNotifier {
     _ozelTipSirasi.shuffle(Random());
     _ozelMusteriSayaciniAyarla();
     _rizaGunuAyarla();
+    gunlukHedef = GunlukHedef.uret(1);
   }
 
   GameState.fromJson(Map<String, dynamic> j) {
@@ -1541,6 +1669,13 @@ class GameState extends ChangeNotifier {
     kazanilanRozetler      = ((j['kazanilanRozetler'] as List?) ?? []).map((e) => e as String).toSet();
     _rizaBugunGeldi        = (j['rizaBugunGeldi'] as bool?) ?? false;
     _rizaZiyaretSirasi     = (j['rizaZiyaretSirasi'] as int?) ?? 2;
+    yarinkiOlayId          = j['yarinkiOlayId'] as String?;
+    kombo                  = (j['kombo'] as int?) ?? 0;
+    enUzunSeri             = (j['enUzunSeri'] as int?) ?? 0;
+    final rawHedef         = j['gunlukHedef'] as Map<String, dynamic>?;
+    gunlukHedef = rawHedef != null
+        ? GunlukHedef.fromJson(rawHedef)
+        : GunlukHedef.uret(aktifDukkan.seviye); // eski kayıt → bugüne hedef üret
     mesaj = '$gun. gün devam ediyor...';
   }
 
@@ -1577,6 +1712,10 @@ class GameState extends ChangeNotifier {
     'kazanilanRozetler': kazanilanRozetler.toList(),
     'rizaBugunGeldi': _rizaBugunGeldi,
     'rizaZiyaretSirasi': _rizaZiyaretSirasi,
+    'yarinkiOlayId': yarinkiOlayId,
+    'kombo': kombo,
+    'enUzunSeri': enUzunSeri,
+    if (gunlukHedef != null) 'gunlukHedef': gunlukHedef!.toJson(),
   };
 
   @override
@@ -1736,6 +1875,7 @@ class GameState extends ChangeNotifier {
     if (durum == PazarlikDurum.anlasildi) {
       _anlasmayiTamamla();
     } else if (durum == PazarlikDurum.gitti) {
+      _komboSifirla(); // müşteri kızıp gitti → seri bozuldu
       mesaj = '${aktifMusteri!.name}: ${aktifPazarlik!.mesaj}';
       _musteriGonder();
     } else {
@@ -1770,8 +1910,13 @@ class GameState extends ChangeNotifier {
       toplamSatis++;
       satilanUrunIdleri.add(m.item.id);
       SesServisi.paraGirdi();
+      // Günlük hedef ilerlemesi (sadece SATIŞ sayılır)
+      _hedefIlerlet(HedefTip.satisAdedi, 1);
+      _hedefIlerlet(HedefTip.gelir, anlasilanFiyat);
+      _hedefIlerlet(HedefTip.tekSatis, anlasilanFiyat, mutlak: true);
     }
     basariliPazarlik++;
+    _komboArtir();
     // Kabul mesajını göster, göndermeyi UI'daki gecikme yönetir
     mesaj = p.mesaj;
     notifyListeners();
@@ -1839,20 +1984,26 @@ class GameState extends ChangeNotifier {
     }
     // ── Emektar rozeti: günlük destek ──
     if (gunlukDestek > 0) para += gunlukDestek;
-    // ── Günün olayı (3. günden itibaren, %55 ihtimalle) ──
-    gunlukOlayId = null;
+    // ── Bugünün olayı: DÜN AKŞAM açıklanmıştı (yarinkiOlayId) ──
+    gunlukOlayId = yarinkiOlayId;
     piyasaCarpani = 1.0;
     gunlukToptanciIndirim = 0.0;
     final rng = Random();
-    if (gun >= 3 && rng.nextDouble() < 0.55) {
-      final olay = GunOlayi.havuz[rng.nextInt(GunOlayi.havuz.length)];
-      gunlukOlayId          = olay.id;
-      piyasaCarpani         = olay.piyasaCarpani;
-      gunlukToptanciIndirim = olay.toptanciIndirim;
-      gunlukMusteriLimiti   = (gunlukMusteriLimiti + olay.musteriDelta).clamp(3, 99);
-      if (olay.paraDelta != 0) para += olay.paraDelta;
-      if (olay.fareIstilasi) _rastgeleUrunuCurut();
+    final bugunku = GunOlayi.bul(gunlukOlayId);
+    if (bugunku != null) {
+      piyasaCarpani         = bugunku.piyasaCarpani;
+      gunlukToptanciIndirim = bugunku.toptanciIndirim;
+      gunlukMusteriLimiti   = (gunlukMusteriLimiti + bugunku.musteriDelta).clamp(3, 99);
+      if (bugunku.paraDelta != 0) para += bugunku.paraDelta;
+      if (bugunku.fareIstilasi) _rastgeleUrunuCurut();
     }
+    // ── YARININ olayını şimdiden belirle (gün sonu popup'ında duyurulacak) ──
+    yarinkiOlayId = (gun >= 2 && rng.nextDouble() < 0.55)
+        ? GunOlayi.havuz[rng.nextInt(GunOlayi.havuz.length)].id
+        : null;
+    // ── Yeni günün hedefi ──
+    gunlukHedef = GunlukHedef.uret(aktifDukkan.seviye);
+    hedefYeniTamamlandi = false;
     // Yeni gün → toptancı stoğu tazelensin (indirim hesaba katılarak yeniden üretilir)
     toptanciStokGunu = 0;
     _rizaGunuAyarla(); // Rıza bugün hangi müşteri sırasında uğrayacak?
@@ -2100,8 +2251,9 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     );
   }
 
-  void _gunOlayiPopup(GunOlayi o) {
-    // Etkiyi kısa cümlelerle özetle
+  /// Bir gün olayının etkilerini renkli çipler halinde gösterir.
+  /// Hem gün sonu "yarın" önizlemesinde hem Hedefler ekranında kullanılır.
+  static Widget _olayEtkiCipleri(GunOlayi o) {
     final etkiler = <String>[];
     if (o.musteriDelta > 0) etkiler.add('+${o.musteriDelta} müşteri');
     if (o.musteriDelta < 0) etkiler.add('${o.musteriDelta} müşteri');
@@ -2109,47 +2261,61 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     if (o.piyasaCarpani < 1.0) etkiler.add('Müşteriler cimri');
     if (o.paraDelta != 0) etkiler.add('+${o.paraDelta} lira');
     if (o.toptanciIndirim > 0) etkiler.add('Toptancıda %${(o.toptanciIndirim * 100).round()} indirim');
-    if (o.fareIstilasi) etkiler.add('Bir ürün çürüdü!');
+    if (o.fareIstilasi) etkiler.add('Bir ürün çürüyecek');
+    if (etkiler.isEmpty) return const SizedBox.shrink();
     final iyi = o.musteriDelta > 0 || o.piyasaCarpani > 1.0 || o.paraDelta > 0 || o.toptanciIndirim > 0;
     final renk = iyi ? const Color(0xFF3fb950) : const Color(0xFFff7043);
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1a1008),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: renk, width: 2)),
-        title: Column(mainAxisSize: MainAxisSize.min, children: [
-          Text(o.emoji, style: const TextStyle(fontSize: 48)),
-          const SizedBox(height: 4),
-          Text(o.baslik, textAlign: TextAlign.center, style: TextStyle(color: renk, fontSize: 18)),
-        ]),
-        content: Column(mainAxisSize: MainAxisSize.min, children: [
-          Text(o.aciklama, textAlign: TextAlign.center,
-            style: const TextStyle(color: Colors.white70, fontSize: 14, height: 1.35)),
-          if (etkiler.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            Wrap(alignment: WrapAlignment.center, spacing: 6, runSpacing: 6,
-              children: etkiler.map((e) => Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: renk.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: renk.withValues(alpha: 0.45)),
-                ),
-                child: Text(e, style: TextStyle(color: renk, fontSize: 11, fontWeight: FontWeight.bold)),
-              )).toList()),
-          ],
-        ]),
-        actions: [Center(child: ElevatedButton(
-          onPressed: () => Navigator.pop(ctx),
-          style: ElevatedButton.styleFrom(backgroundColor: renk, foregroundColor: Colors.black),
-          child: const Text('Anladım', style: TextStyle(fontWeight: FontWeight.bold)),
-        ))],
-      ),
-    );
+    return Wrap(alignment: WrapAlignment.center, spacing: 6, runSpacing: 6,
+      children: etkiler.map((e) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+          color: renk.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: renk.withValues(alpha: 0.45)),
+        ),
+        child: Text(e, style: TextStyle(color: renk, fontSize: 10, fontWeight: FontWeight.bold)),
+      )).toList());
+  }
+
+  /// Seri bonusu ve günlük hedef tamamlanmasını kısa bir SnackBar ile duyurur.
+  /// Popup kullanmıyoruz — oyun akışını kesmesin, sadece dopamin dokunuşu.
+  void _anlikBildirimleriIsle() {
+    if (_state.sonKomboBonusu > 0) {
+      final b = _state.sonKomboBonusu;
+      final k = _state.kombo;
+      _state.sonKomboBonusu = 0; // tüket
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('🔥 $k\'lü seri!  +$b lira'),
+          duration: const Duration(milliseconds: 1600),
+          backgroundColor: const Color(0xFFB35A00),
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.fromLTRB(40, 0, 40, 130),
+        ));
+      });
+    }
+    if (_state.hedefYeniTamamlandi) {
+      final h = _state.gunlukHedef;
+      _state.hedefYeniTamamlandi = false; // tüket
+      if (h != null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('🎯 Günün hedefi tamam!  +${h.odul} lira'),
+            duration: const Duration(seconds: 2),
+            backgroundColor: const Color(0xFF1a6b32),
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.fromLTRB(28, 0, 28, 130),
+          ));
+        });
+      }
+    }
   }
 
   void _gunBitiKontrol() {
     if (_gameOverGosterildi) return; // game over zaten işlendi, başka popup tetikleme
+    _anlikBildirimleriIsle();
     _rozetKuyrugunuIsle();
     if (_state.oyunBitti) {
       _gameOverGosterildi = true;
@@ -2250,6 +2416,62 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
               style: TextStyle(
                 color: (paraOncesi - toplamKesinti) < 0 ? Colors.redAccent : const Color(0xFF00FF88),
                 fontSize: 18, fontWeight: FontWeight.bold)),
+            // ── Günün hedefi sonucu ──
+            if (_state.gunlukHedef != null) ...[
+              const SizedBox(height: 10),
+              Builder(builder: (_) {
+                final h = _state.gunlukHedef!;
+                return Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: (h.tamamlandi ? const Color(0xFF3fb950) : Colors.white24).withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: (h.tamamlandi ? const Color(0xFF3fb950) : Colors.white30).withValues(alpha: 0.5)),
+                  ),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    Text(h.tamamlandi ? '✅' : '${h.emoji} ', style: const TextStyle(fontSize: 13)),
+                    const SizedBox(width: 5),
+                    Flexible(child: Text(
+                      h.tamamlandi ? 'Günün hedefi tamam! +${h.odul}' : 'Hedef kaçtı: ${h.baslik}',
+                      style: TextStyle(fontSize: 11,
+                        color: h.tamamlandi ? const Color(0xFF3fb950) : Colors.white38))),
+                  ]),
+                );
+              }),
+            ],
+            // ── Seri ──
+            if (_state.kombo >= 2) ...[
+              const SizedBox(height: 6),
+              Text('🔥 ${_state.kombo}\'lü seri devam ediyor!',
+                style: const TextStyle(fontSize: 11, color: Color(0xFFFF8C00), fontWeight: FontWeight.bold)),
+            ],
+            // ── YARIN NE OLACAK? — "bir gün daha" kancası ──
+            if (paraOncesi - toplamKesinti >= 0) ...[
+              const SizedBox(height: 12),
+              const Divider(color: Colors.white12, height: 1),
+              const SizedBox(height: 10),
+              Builder(builder: (_) {
+                final o = GunOlayi.bul(_state.yarinkiOlayId);
+                if (o == null) {
+                  return const Text('☀️ Yarın sıradan bir gün görünüyor.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 12, color: Colors.white38));
+                }
+                final iyi = o.musteriDelta > 0 || o.piyasaCarpani > 1.0 || o.paraDelta > 0 || o.toptanciIndirim > 0;
+                final renk = iyi ? const Color(0xFF3fb950) : const Color(0xFFff7043);
+                return Column(children: [
+                  const Text('YARIN', style: TextStyle(fontSize: 10, color: Colors.white38, letterSpacing: 2)),
+                  const SizedBox(height: 4),
+                  Text('${o.emoji}  ${o.baslik}', textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 14, color: renk, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 3),
+                  Text(o.aciklama, textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: 11, color: Colors.white54, height: 1.25)),
+                  const SizedBox(height: 8),
+                  _olayEtkiCipleri(o),
+                ]);
+              }),
+            ],
           ],
         ),
         actions: [Center(child: ElevatedButton(
@@ -2271,13 +2493,8 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                 if (!mounted) return;
                 _state.gunuBitir();
                 setState(() => _gunBitiPopupGosterildi = false);
-                // Günün olayı varsa tanıt
-                final olay = GunOlayi.bul(_state.gunlukOlayId);
-                if (olay != null) {
-                  Future.delayed(const Duration(milliseconds: 400), () {
-                    if (mounted) _gunOlayiPopup(olay);
-                  });
-                }
+                // Olay dün akşam duyuruldu — sabah tekrar popup açmıyoruz.
+                // Aktif olay gün boyu header mesajında ve Hedefler ekranında görünür.
               });
             }
           },
@@ -2624,8 +2841,103 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     );
   }
 
+  /// Hedefler ekranının tepesi: bugünün hedefi + aktif olay + seri
+  Widget _bugunPaneli() {
+    final h = _state.gunlukHedef;
+    final olay = GunOlayi.bul(_state.gunlukOlayId);
+    return Container(
+      padding: const EdgeInsets.all(11),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1a1226),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFFFD700).withValues(alpha: 0.45), width: 1.2),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Text('${_state.gun}. GÜN', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFFFFD700), letterSpacing: 1)),
+          const Spacer(),
+          if (_state.kombo >= 2)
+            Text('🔥 ${_state.kombo}\'lü seri', style: const TextStyle(fontSize: 11, color: Color(0xFFFF8C00), fontWeight: FontWeight.bold)),
+        ]),
+        if (h != null) ...[
+          const SizedBox(height: 8),
+          Row(children: [
+            Text(h.emoji, style: const TextStyle(fontSize: 18)),
+            const SizedBox(width: 8),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(h.baslik, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold,
+                color: h.tamamlandi ? const Color(0xFF3fb950) : Colors.white70)),
+              const SizedBox(height: 4),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(3),
+                child: LinearProgressIndicator(
+                  value: h.oran, minHeight: 5, backgroundColor: Colors.white10,
+                  valueColor: AlwaysStoppedAnimation(h.tamamlandi ? const Color(0xFF3fb950) : const Color(0xFFFFD700)),
+                ),
+              ),
+              const SizedBox(height: 3),
+              Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                Text('${h.ilerleme} / ${h.hedef}', style: const TextStyle(fontSize: 9, color: Colors.white30)),
+                Text(h.tamamlandi ? '✅ +${h.odul} alındı' : '🎁 +${h.odul}',
+                  style: TextStyle(fontSize: 9, color: h.tamamlandi ? const Color(0xFF3fb950) : Colors.white38)),
+              ]),
+            ])),
+          ]),
+        ],
+        if (olay != null) ...[
+          const SizedBox(height: 9),
+          const Divider(color: Colors.white12, height: 1),
+          const SizedBox(height: 7),
+          Text('${olay.emoji}  ${olay.baslik}',
+            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white70)),
+          const SizedBox(height: 5),
+          _olayEtkiCipleri(olay),
+        ],
+      ]),
+    );
+  }
+
+  /// Koleksiyon: hangi ürünleri en az bir kez sattın?
+  Widget _koleksiyonPaneli() {
+    final tum = GameState.koleksiyonUrunleri;
+    final satilan = _state.satilanUrunIdleri;
+    final yuzde = tum.isEmpty ? 0 : (satilan.where((id) => tum.any((u) => u.id == id)).length * 100 / tum.length).round();
+    return Container(
+      padding: const EdgeInsets.all(11),
+      decoration: BoxDecoration(
+        color: const Color(0xFF16131c),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFF58a6ff).withValues(alpha: 0.4), width: 1.2),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          const Text('📚 KOLEKSİYON', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF58a6ff), letterSpacing: 1)),
+          const Spacer(),
+          Text('%$yuzde', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF58a6ff))),
+        ]),
+        const SizedBox(height: 3),
+        const Text('Sattığın her ürün burada açılır', style: TextStyle(fontSize: 9, color: Colors.white30)),
+        const SizedBox(height: 8),
+        Wrap(spacing: 5, runSpacing: 5, children: tum.map((u) {
+          final acik = satilan.contains(u.id);
+          return Container(
+            width: 34, height: 34,
+            decoration: BoxDecoration(
+              color: acik ? const Color(0xFF0d2137) : Colors.black38,
+              borderRadius: BorderRadius.circular(5),
+              border: Border.all(color: acik ? const Color(0xFF58a6ff).withValues(alpha: 0.7) : Colors.white12),
+            ),
+            child: acik
+              ? Padding(padding: const EdgeInsets.all(2), child: Image.asset(u.gorsel, fit: BoxFit.contain))
+              : const Icon(Icons.question_mark, size: 13, color: Colors.white24),
+          );
+        }).toList()),
+      ]),
+    );
+  }
+
   // ═══════════════════════════════════════════════════════════════════════════
-  //  HEDEFLER — rozet listesi ve ilerleme
+  //  HEDEFLER — bugünün hedefi, rozetler, koleksiyon
   // ═══════════════════════════════════════════════════════════════════════════
   void _hedeflerPopup() {
     showDialog(
@@ -2665,10 +2977,12 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                   child: ListView.separated(
                     shrinkWrap: true,
                     padding: const EdgeInsets.fromLTRB(14, 12, 14, 4),
-                    itemCount: Rozet.tumu.length,
+                    itemCount: Rozet.tumu.length + 2, // +bugün paneli +koleksiyon
                     separatorBuilder: (_, __) => const SizedBox(height: 8),
                     itemBuilder: (c, i) {
-                      final r = Rozet.tumu[i];
+                      if (i == 0) return _bugunPaneli();
+                      if (i == Rozet.tumu.length + 1) return _koleksiyonPaneli();
+                      final r = Rozet.tumu[i - 1];
                       final kazanildi = _state.rozetVar(r.id);
                       final ilerleme = _state.rozetIlerleme(r.id).clamp(0, r.hedefDeger);
                       final oran = r.hedefDeger == 0 ? 1.0 : ilerleme / r.hedefDeger;
