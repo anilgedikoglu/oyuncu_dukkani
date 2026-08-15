@@ -602,6 +602,10 @@ class OzelMusteri {
 
 enum PazarlikDurum { devamEdiyor, anlasildi, gitti }
 
+/// Oyuncunun bir turdaki hamlesinin büyüklüğü/yönü.
+/// Müşteri buna göre tepki verir — pazarlığı gerçekçi kılan şey bu okuma.
+enum Hamle { geri, ayni, kucuk, orta, buyuk }
+
 class PazarlikSeans {
   final bool musteriSatiyor;
   final int piyasaFiyati;
@@ -617,6 +621,8 @@ class PazarlikSeans {
   double _frustration = 0;
   final List<int> _oyuncuGecmisi = [];
   final List<int> _musteriGecmisi = [];
+  bool sonTeklifMi = false;        // son tura girildi mi (UI vurgulayabilir)
+  bool _sikistirmaKullanildi = false; // "az daha gayret" hamlesi bir kez kullanılır
 
   PazarlikSeans({
     required this.musteriSatiyor,
@@ -634,6 +640,63 @@ class PazarlikSeans {
   static double _clamp(double v, double lo, double hi) => v < lo ? lo : v > hi ? hi : v;
   static double _rnd(double a, double b) => a + Random().nextDouble() * (b - a);
 
+  // ── HAMLEYE TEPKİ REPLİKLERİ ──────────────────────────────────────────────
+
+  /// Oyuncu geri adım attı (önceki teklifinden daha kötü bir teklif verdi)
+  static const List<String> _tepkiGeri = [
+    'Dur dur! Az önce daha iyi bir rakam söylemiştin, geri mi gidiyorsun?',
+    'Yanlış duymadıysam teklifin kötüleşti. X, ben buradayım.',
+    'Bu ne şimdi? Pazarlık ileri gider, geri değil! X.',
+    'Sen benimle dalga mı geçiyorsun? X diyorum, düşün.',
+    'Geri adım attın diye ben de fiyatımı kırmıyorum: X.',
+    'Ters yöne gidiyorsun dostum. X, aynen duruyor.',
+    'Hop! Cebine geri mi koydun parayı? X.',
+    'Böyle pazarlık olmaz ki. Fiyatım X, sabit.',
+  ];
+
+  /// Oyuncu aynı teklifi tekrarladı
+  static const List<String> _tepkiAyni = [
+    'Aynı rakamı tekrar söyledin. İnatçıymışsın. X.',
+    'Değişen bir şey yok sende, bende de yok pek: X.',
+    'Kaset mi takıldı? X diyorum ben de.',
+    'Sen kımıldamazsan ben de kımıldamam. X.',
+    'Israrcısın, kabul. Ama X.',
+    'Bak ben biraz indirdim, sen hiç. X.',
+    'Aynı yerde sayıyoruz. X, bir adım at.',
+  ];
+
+  /// Oyuncu büyük bir jest yaptı (ciddi bir sıçrama)
+  static const List<String> _tepkiBuyuk = [
+    'Ooo, işte bu adamlık! Ben de X diyeyim.',
+    'Büyük adım attın, saygı duydum. X.',
+    'Ciddi olduğunu anladım. Gel X\'te buluşalım.',
+    'Bu jestin karşılıksız kalmaz: X.',
+    'Vay be, hiç beklemiyordum. X olsun.',
+    'Böyle pazarlık severim işte! X.',
+    'Sen adam gibi davrandın, ben de X.',
+    'Yaklaştık! X, neredeyse bitti bu iş.',
+  ];
+
+  /// Bir kereye mahsus "az daha sıkıştırma" (teklif kabul edilebilir olsa bile)
+  static const List<String> _tepkiSikistirma = [
+    'Neredeyse tamam... Bir tık daha, X olsun bitsin.',
+    'Az kaldı! X yaparsan hemen tokalaşırız.',
+    'Elini biraz daha gevşet: X. Sonra anlaştık.',
+    'Buraya kadar geldik, X\'e yuvarlayalım.',
+    'Son bir gayret, X. Sonra çayları ben söylerim.',
+    'X desen, hiç düşünmem. Hadi.',
+  ];
+
+  /// Son tur uyarısı — oyuncu bunun son şans olduğunu bilsin
+  static const List<String> _sonTeklifMesajlari = [
+    'SON TEKLİFİM: X. Ya alırsın ya küserim.',
+    'Bak bu son: X. Ötesi yok, bitti.',
+    'X. Son sözüm bu, düşün taşın karar ver.',
+    'Daha fazla uzatmam: X, ya evet ya hoşça kal.',
+    'Son teklif X. Kabul edersen anlaştık, etmezsen eyvallah.',
+    'Bitiriyorum: X. Kararı sen ver.',
+  ];
+
   PazarlikDurum oyuncuTeklifVer(int yeniOyuncuTeklif) {
     oyuncuTeklif = yeniOyuncuTeklif;
     turSayisi++;
@@ -649,22 +712,84 @@ class PazarlikSeans {
     if (musteriSatiyor  && oyuncuTeklif >= musteriTeklif) return _kabul(musteriTeklif.toDouble());
     if (!musteriSatiyor && oyuncuTeklif <= musteriTeklif) return _kabul(musteriTeklif.toDouble());
 
-    // ── 2. Rezervasyon sınırı aşıldıysa → kabul ──
-    if (musteriSatiyor  && oyuncuTeklif >= _reservationPrice) return _kabul(oyuncuTeklif.toDouble());
-    if (!musteriSatiyor && oyuncuTeklif <= _reservationPrice) return _kabul(oyuncuTeklif.toDouble());
+    final rng = Random();
 
-    // ── 3. Goodwill: oyuncunun bu turki konsesyonu ──
-    double goodwill = 0;
+    // ── 2. Rezervasyon sınırı aşıldıysa → kabul ──
+    // AMA: pazarcı refleksi — bir kereye mahsus "az daha gayret" deyip sıkıştırabilir.
+    // Anlaşmayı kaybettirmez: oyuncu aynı teklifi tekrarlarsa bu sefer kabul edilir.
+    final sinirAsildi = musteriSatiyor
+        ? oyuncuTeklif >= _reservationPrice
+        : oyuncuTeklif <= _reservationPrice;
+    if (sinirAsildi) {
+      if (!_sikistirmaKullanildi && turSayisi <= maxTur - 2 && rng.nextDouble() < 0.30) {
+        _sikistirmaKullanildi = true;
+        // Oyuncunun teklifiyle kendi teklifi arasında ufak bir yere çekil
+        final ortaNokta = ((oyuncuTeklif + musteriTeklif) / 2).round();
+        musteriTeklif = musteriSatiyor
+            ? ortaNokta.clamp(oyuncuTeklif + 1, musteriTeklif)
+            : ortaNokta.clamp(musteriTeklif, oyuncuTeklif - 1);
+        mesaj = _tepkiSikistirma[rng.nextInt(_tepkiSikistirma.length)]
+            .replaceAll('X', '$musteriTeklif');
+        durum = PazarlikDurum.devamEdiyor;
+        return durum;
+      }
+      return _kabul(oyuncuTeklif.toDouble());
+    }
+
+    // ── 3. HAMLE ANALİZİ: oyuncu bu turda ne yaptı? ──
+    // Pazarlığın gerçekçi hissetmesi bu okumaya bağlı. Geri adım atmakla
+    // büyük jest yapmak aynı tepkiyi almamalı.
+    double myMove = 0;
     if (_oyuncuGecmisi.length >= 2) {
       final prev = _oyuncuGecmisi[_oyuncuGecmisi.length - 2];
-      final myMove = musteriSatiyor
-          ? (oyuncuTeklif - prev).toDouble()
-          : (prev - oyuncuTeklif).toDouble();
-      goodwill = _clamp(myMove / (mp * 0.08), 0, 1);
+      myMove = musteriSatiyor
+          ? (oyuncuTeklif - prev).toDouble()   // alıcı olarak daha çok veriyor
+          : (prev - oyuncuTeklif).toDouble();  // satıcı olarak daha az istiyor
+    }
+    final hamleOran = myMove / mp;
+    final ilkTur = _oyuncuGecmisi.length < 2;
+    final hamle = ilkTur
+        ? Hamle.orta
+        : (hamleOran < -0.005
+            ? Hamle.geri
+            : (hamleOran <= 0.005
+                ? Hamle.ayni
+                : (hamleOran < 0.05 ? Hamle.kucuk : (hamleOran < 0.14 ? Hamle.orta : Hamle.buyuk))));
+
+    double goodwill = _clamp(myMove / (mp * 0.08), 0, 1);
+
+    // Oyuncunun teklifi müşterinin sınırını ne kadar aşıyor (0 = sınırda)
+    final rezervAsim = musteriSatiyor
+        ? (_reservationPrice - oyuncuTeklif) / mp   // az para veriyor
+        : (oyuncuTeklif - _reservationPrice) / mp;  // çok para istiyor
+
+    // ── 3a. GERİ ADIM: müşteri sinirlenir, fiyatını KIRMAZ ──
+    if (hamle == Hamle.geri) {
+      _frustration = _clamp(_frustration + 0.30, 0, 1);
+      if (rng.nextDouble() < 0.22 + (1 - pat) * 0.28) return _git();
+      mesaj = _tepkiGeri[rng.nextInt(_tepkiGeri.length)].replaceAll('X', '$musteriTeklif');
+      durum = PazarlikDurum.devamEdiyor;
+      return durum;
+    }
+
+    // ── 3b. KAPRİSLİ EVET: nadiren mantıksız bir teklifi bile kabul eder ──
+    // Unutulmaz "vay be" anları yaratır. Sınırlı: en fazla %25 aşım.
+    if (rezervAsim > 0 && rezervAsim < 0.25 && rng.nextDouble() < 0.05) {
+      return _kabulKaprisli(oyuncuTeklif.toDouble());
+    }
+
+    // ── 3c. BÜYÜK JEST: ciddi bir adım attıysan karşılıksız kalmasın ──
+    if (hamle == Hamle.buyuk) {
+      _frustration = _clamp(_frustration - 0.10, 0, 1);
+      // Teklif ulaşılabilir mesafedeyse jesti onurlandırıp kabul edebilir
+      if (rezervAsim < 0.10 && rng.nextDouble() < 0.35 + pat * 0.20) {
+        return _kabulJest(oyuncuTeklif.toDouble());
+      }
     }
 
     // ── 4. Frustration ──
-    final frustrationGrowth = (1 - pat) * 0.18 + (1 - intel) * 0.04;
+    var frustrationGrowth = (1 - pat) * 0.18 + (1 - intel) * 0.04;
+    if (hamle == Hamle.ayni) frustrationGrowth += 0.14; // inatçılık yorar
     _frustration = _clamp(_frustration + frustrationGrowth, 0, 1);
 
     // ── 5. Müşteri karşı teklif miktarını hesapla ──
@@ -674,7 +799,6 @@ class PazarlikSeans {
         ? (musteriTeklif - _reservationPrice).abs()
         : (_reservationPrice - musteriTeklif).abs();
     final baseRatio = _clamp(0.18 - progress * 0.15, 0.02, 0.18);
-    final rng = Random();
     final stepRoll = rng.nextDouble();
     double concessionRatio;
     if (stepRoll < 0.10) {
@@ -687,6 +811,8 @@ class PazarlikSeans {
       // normal aralık: 0.5–1.3x — sürekli gıdım olmasın
       concessionRatio = baseRatio * (0.5 + rng.nextDouble() * 0.8);
     }
+    // Aynı teklifi tekrarladıysan müşteri de kılını kıpırdatmaz
+    if (hamle == Hamle.ayni) concessionRatio *= 0.25;
     final move = (gapToReserv * concessionRatio + goodwill * mp * 0.03)
         .clamp(1, double.infinity)
         .round();
@@ -743,11 +869,29 @@ class PazarlikSeans {
         currentGap * (1 - pat) * 0.20 +
         (turSayisi == 1 ? -0.30 : 0);
     walkChance = _clamp(walkChance, 0, 0.40);
-    if (turSayisi > 1 && Random().nextDouble() < walkChance) return _git();
+    if (turSayisi > 1 && rng.nextDouble() < walkChance) return _git();
 
-    // ── 9. Karşı teklifi uygula ve devam et ──
+    // ── 9. Karşı teklifi uygula ──
     musteriTeklif = yeniMusteriTeklif;
-    _karsiTeklifMesaj();
+
+    // ── 10. SON TEKLİF UYARISI: son tura girerken açıkça söyle ──
+    // Oyuncu "bu son şans" olduğunu bilsin — pazarlığa doruk noktası katar.
+    if (turSayisi >= maxTur - 1) {
+      sonTeklifMi = true;
+      mesaj = _sonTeklifMesajlari[rng.nextInt(_sonTeklifMesajlari.length)]
+          .replaceAll('X', '$musteriTeklif');
+      durum = PazarlikDurum.devamEdiyor;
+      return durum;
+    }
+
+    // ── 11. Hamleye göre tepki mesajı ──
+    if (hamle == Hamle.ayni) {
+      mesaj = _tepkiAyni[rng.nextInt(_tepkiAyni.length)].replaceAll('X', '$musteriTeklif');
+    } else if (hamle == Hamle.buyuk) {
+      mesaj = _tepkiBuyuk[rng.nextInt(_tepkiBuyuk.length)].replaceAll('X', '$musteriTeklif');
+    } else {
+      _karsiTeklifMesaj();
+    }
     durum = PazarlikDurum.devamEdiyor;
     return durum;
   }
@@ -880,6 +1024,45 @@ class PazarlikSeans {
     durum = PazarlikDurum.anlasildi;
     mesaj = _kabulSablonlari[Random().nextInt(_kabulSablonlari.length)]
         .replaceAll('X', '$musteriTeklif');
+    return durum;
+  }
+
+  /// Kaprisli evet: mantıken kabul etmemesi gereken bir teklifi kabul eder.
+  /// Nadir (%5) ve sınırlı (en fazla %25 aşım) — "vay be" anı yaratsın diye.
+  static const List<String> _kaprisliKabul = [
+    'Ya boşver, kafam iyi bugün. Kabul!',
+    'Normalde asla vermezdim ama seni sevdim. Tamam!',
+    'Bugün doğum günüm, hediyem olsun. Anlaştık!',
+    'Acelem var, kabul, ver şunu.',
+    'Bu kadar ısrar edene hayır denmez. Oldu!',
+    'İçimden bir ses "ver gitsin" dedi. Kabul!',
+    'Zarar mı ediyorum? Ediyorum. Kabul mü? Kabul!',
+    'Yıldızların dizilimi iyi bugün. Anlaştık!',
+    'Bu hikâyeyi arkadaşlara anlatacağım. Kabul!',
+    'Dur dur, düşünmeyeyim, fikrim değişmeden kabul!',
+  ];
+
+  PazarlikDurum _kabulKaprisli(double fiyat) {
+    musteriTeklif = fiyat.round();
+    durum = PazarlikDurum.anlasildi;
+    mesaj = _kaprisliKabul[Random().nextInt(_kaprisliKabul.length)];
+    return durum;
+  }
+
+  /// Büyük jesti onurlandıran kabul
+  static const List<String> _jestKabul = [
+    'Bu kadar büyük adım attıktan sonra hayır diyemem. Anlaştık!',
+    'Mertlik bozulmasın, kabul!',
+    'Sen adam gibi davrandın, ben de kabul ediyorum.',
+    'İşte pazarlık böyle biter! Anlaştık.',
+    'Bu jestin hatırına: kabul.',
+    'Elini sıkayım, hak ettin. Anlaştık!',
+  ];
+
+  PazarlikDurum _kabulJest(double fiyat) {
+    musteriTeklif = fiyat.round();
+    durum = PazarlikDurum.anlasildi;
+    mesaj = _jestKabul[Random().nextInt(_jestKabul.length)];
     return durum;
   }
 

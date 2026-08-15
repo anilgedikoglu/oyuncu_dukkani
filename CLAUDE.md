@@ -63,6 +63,49 @@ SplashScreen (6 sn yasal metin)
 
 ---
 
+## 🤝 PAZARLIK MOTORU — Hamle Okuma (v100)
+
+Eskiden motor oyuncunun **ne yaptığını** okumuyordu: 500'den 900'e çıksan da,
+500'de ısrar etsen de, hatta geri gitsen de müşteri aynı tepkiyi veriyordu.
+Artık her turda hamle sınıflandırılıp ona göre davranılıyor.
+
+### `enum Hamle { geri, ayni, kucuk, orta, buyuk }`
+`hamleOran = (bu tur verilen taviz) / piyasaFiyati`
+
+| Hamle | Eşik | Müşterinin tepkisi |
+|---|---|---|
+| `geri` | < −0.5% | **Fiyatını KIRMAZ**, frustration +0.30, %22-50 çekip gider, kızgın replik |
+| `ayni` | ±0.5% | frustration +0.14, konsesyon ×0.25, "inatçısın" repliği |
+| `kucuk` | < 5% | normal |
+| `orta` | < 14% | normal |
+| `buyuk` | ≥ 14% | frustration −0.10, **%35-55 anında kabul** (teklif yakınsa), takdir repliği |
+
+### Dört yeni davranış
+
+**1. Kaprisli evet (%5)** — Mantıken kabul etmemesi gereken teklifi kabul eder.
+Sınırlı: rezervasyonu en fazla %25 aşan teklifler. *"Ya boşver, kafam iyi bugün. Kabul!"*
+Amaç: unutulmaz "vay be" anları.
+
+**2. Bir kez daha sıkıştırma (%30)** — Teklif kabul edilebilir olsa bile pazarcı refleksiyle
+"az daha gayret" der, orta noktaya çekilir. **Anlaşmayı kaybettirmez:** oyuncu aynı teklifi
+tekrarlarsa kabul edilir (`_sikistirmaKullanildi` bir kez). Tur limiti güvenliği:
+sadece `turSayisi <= maxTur - 2` iken. Sabırsız müşteride (maxTur=2) hiç tetiklenmez.
+
+**3. Son teklif uyarısı** — `turSayisi >= maxTur - 1` olunca açıkça
+*"SON TEKLİFİM: X. Ya alırsın ya küserim."* der. Oyuncu son şansı bilir, pazarlığa doruk katar.
+
+**4. Büyük jest kabulü** — Ciddi bir sıçrama yapıldıysa ve teklif ulaşılabilirse
+(`rezervAsim < 0.10`) jesti onurlandırıp kabul eder.
+
+### Tepki replik havuzları (`PazarlikSeans`)
+`_tepkiGeri` (8) · `_tepkiAyni` (7) · `_tepkiBuyuk` (8) · `_tepkiSikistirma` (6) ·
+`_sonTeklifMesajlari` (6) · `_kaprisliKabul` (10) · `_jestKabul` (6)
+
+> ⚠️ Sıkıştırma clamp'i yön duyarlıdır: satıcı müşteride `clamp(oyuncuTeklif+1, musteriTeklif)`,
+> alıcı müşteride `clamp(musteriTeklif, oyuncuTeklif-1)`. Ters çevirme, clamp hatası verir.
+
+---
+
 ## 💬 DİYALOG HAVUZLARI (v99)
 
 Tüm replikler genişletildi. Tekrar hissi kalmasın diye her havuz 18-26 satır.
@@ -911,6 +954,7 @@ Base ratio hâlâ `_clamp(0.18 - progress * 0.15, 0.02, 0.18)`.
 | Commit | Açıklama |
 |--------|----------|
 | v97 | **Büyük oynanış güncellemesi**: Toptancı Rıza (günlük stok, ucuz ürün), çürük ürün + CD tamir seti ekonomisi, kapalı kutu (lootbox), 8 rozetli Hedefler ekranı, 10 rastgele gün olayı. Tümü browser menüsünden erişilir — alt bar/sahne layout'una dokunulmadı |
+| v100 | **Pazarlık motoru hamle okuma**: `enum Hamle` ile oyuncunun tavizi sınıflandırılıyor (geri/aynı/küçük/orta/büyük); geri adımda müşteri fiyat kırmaz + gidebilir, ısrar yorar, büyük jest ödüllendirilir; kaprisli evet (%5), bir kez sıkıştırma (%30), son teklif uyarısı, jest kabulü |
 | v99 | Diyalog havuzları 5-10 katına çıkarıldı (selamlama 20+20, karşı teklif 25+25 **rol ayrı**, kabul 26, gitme 18/18/12); toast bildirimi Material SnackBar'dan oyun temasına uygun animasyonlu karta çevrildi (elasticOut, glow, okunabilir kontrast) |
 | v98 | Bağlılık mekanikleri: 🔥 seri/kombo (3+ anlaşmada bonus, kızgın müşteride sıfırlanır), 🎯 günlük hedef (6 tip, dükkan seviyesiyle ölçeklenir), ☀️ yarının olayı gün sonunda duyurulur ("bir gün daha" kancası, sabah popup'ı kaldırıldı), 📚 koleksiyon paneli (23 ürün, % tamamlanma) |
 | v97 | **Çözünürlükten bağımsız sahne** — `SahneMetrik` ile ürün/isim/müşteri masa görseline kilitlendi; sabit piksel kaldırıldı; 20:9 / 16:9 / 4:3'te doğrulandı |
