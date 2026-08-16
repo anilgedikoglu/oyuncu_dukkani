@@ -1,477 +1,519 @@
-# Oyuncu Dükkanı — Claude Bağlamı
+﻿# Oyuncu DÃ¼kkanÄ± â€” Claude BaÄŸlamÄ±
 
-## 🚨 MARKET BUILD ÖNCESİ ZORUNLU KONTROL (KULLANICI KURALI)
-**Herhangi bir market çıktısı (AAB / IPA / appbundle / App Store / Play Store build) hazırlamadan ÖNCE:**
-1. Kodda Google TEST reklam ID'si (`ca-app-pub-3940256099942544/...`) kaldı mı KONTROL ET
+## ğŸš¨ MARKET BUILD Ã–NCESÄ° ZORUNLU KONTROL (KULLANICI KURALI)
+**Herhangi bir market Ã§Ä±ktÄ±sÄ± (AAB / IPA / appbundle / App Store / Play Store build) hazÄ±rlamadan Ã–NCE:**
+1. Kodda Google TEST reklam ID'si (`ca-app-pub-3940256099942544/...`) kaldÄ± mÄ± KONTROL ET
    - `grep "3940256099942544" lib/main.dart` ile bak
-2. Test ID kaldıysa → **MARKET BUILD VERME**, önce kullanıcıdan gerçek (prod) AdMob ID'lerini iste ve değiştir
-3. Bu kural TÜM uygulamalar için geçerli (oyuncu_dukkani, snapiq, matematikcik, magnus...)
+2. Test ID kaldÄ±ysa â†’ **MARKET BUILD VERME**, Ã¶nce kullanÄ±cÄ±dan gerÃ§ek (prod) AdMob ID'lerini iste ve deÄŸiÅŸtir
+3. Bu kural TÃœM uygulamalar iÃ§in geÃ§erli (oyuncu_dukkani, snapiq, matematikcik, magnus...)
 
 **Mevcut PROD reklam ID'leri (oyuncu_dukkani):**
-- iOS geçiş: `ca-app-pub-6470338276121414/1436676062`
-- Android geçiş: `ca-app-pub-6470338276121414/4138047986`
-- iOS ödüllü (henüz kullanılmıyor): `ca-app-pub-6470338276121414/2648809677`
+- iOS geÃ§iÅŸ: `ca-app-pub-6470338276121414/1436676062`
+- Android geÃ§iÅŸ: `ca-app-pub-6470338276121414/4138047986`
+- iOS Ã¶dÃ¼llÃ¼ (henÃ¼z kullanÄ±lmÄ±yor): `ca-app-pub-6470338276121414/2648809677`
 
 ---
 
-## Proje Özeti
-Flutter ile geliştirilmiş bir mobil oyun. Oyuncu bir oyun dükkanı yönetir: müşteri kabul eder, pazarlık yapar, envanter yönetir, dükkanını büyütür.
+## Proje Ã–zeti
+Flutter ile geliÅŸtirilmiÅŸ bir mobil oyun. Oyuncu bir oyun dÃ¼kkanÄ± yÃ¶netir: mÃ¼ÅŸteri kabul eder, pazarlÄ±k yapar, envanter yÃ¶netir, dÃ¼kkanÄ±nÄ± bÃ¼yÃ¼tÃ¼r.
 
-## Teknik Yığın
-- **Flutter** (Dart) — tek dosya mimarisi: `lib/main.dart`
-- **Android** — paket adı: `com.oyuncudukkani.app`
-- **pubspec.yaml** — versiyon: `1.0.2+13`
+## Teknik YÄ±ÄŸÄ±n
+- **Flutter** (Dart) â€” tek dosya mimarisi: `lib/main.dart`
+- **Android** â€” paket adÄ±: `com.oyuncudukkani.app`
+- **pubspec.yaml** â€” versiyon: `1.0.2+13`
 - Paketler: `audioplayers`, `shared_preferences`, `google_mobile_ads`, `device_info_plus`, `app_tracking_transparency`, `device_preview` (dev), `flutter_launcher_icons` (dev)
 - **Kotlin**: 2.1.0 (Android `settings.gradle.kts`)
-- **App Store**: YAYINDA → https://apps.apple.com/us/app/oyuncu-dükkanı/id6778437262
+- **App Store**: YAYINDA â†’ https://apps.apple.com/us/app/oyuncu-dÃ¼kkanÄ±/id6778437262
 
-## Dosya Yapısı
+## Dosya YapÄ±sÄ±
 ```
-lib/main.dart          — tüm oyun mantığı tek dosyada
-assets/                — görseller ve sesler
-  bg1.png              — masa (bilgisayarsız)
-  bg2.png              — masa (bilgisayarlı / iMac alındıktan sonra)
-  bgbos.png            — sabit arka plan
-  bgbosmasa.png        — masa (3. günden önce)
-  biri.png             — kapı gölgesi (müşteri yokken görünür)
-  musteri_1..11.png    — müşteri karakterleri
-  hirsiz/polis/vergici/kurye.png — özel müşteri karakterleri
-  CD_1..14.png         — 14 farklı CD ürünü
-  konsol_1..7.png      — konsol ürünleri (PlayStatyon, Ninetendo, Ateri, El Konsolu x3, son sistem)
-  durum.png            — kurye'nin getirdiği yemek görseli
-  kolonya.png          — kolonya görseli (envanter + buton ikonu)
-  oyuncu_dukkani_icon.png  — uygulama ikonu kaynağı
-  anamenu.png          — ana menü arka planı
-  oyuncudireksiyonu, joypad, gamepad, lokum, browser, zarf, 3dgozluk — aksesuar/CD
-android/               — native Android yapılandırması
+lib/main.dart          â€” tÃ¼m oyun mantÄ±ÄŸÄ± tek dosyada
+assets/                â€” gÃ¶rseller ve sesler
+  bg1.png              â€” masa (bilgisayarsÄ±z)
+  bg2.png              â€” masa (bilgisayarlÄ± / iMac alÄ±ndÄ±ktan sonra)
+  bgbos.png            â€” sabit arka plan
+  bgbosmasa.png        â€” masa (3. gÃ¼nden Ã¶nce)
+  biri.png             â€” kapÄ± gÃ¶lgesi (mÃ¼ÅŸteri yokken gÃ¶rÃ¼nÃ¼r)
+  musteri_1..11.png    â€” mÃ¼ÅŸteri karakterleri
+  hirsiz/polis/vergici/kurye.png â€” Ã¶zel mÃ¼ÅŸteri karakterleri
+  CD_1..14.png         â€” 14 farklÄ± CD Ã¼rÃ¼nÃ¼
+  konsol_1..7.png      â€” konsol Ã¼rÃ¼nleri (PlayStatyon, Ninetendo, Ateri, El Konsolu x3, son sistem)
+  durum.png            â€” kurye'nin getirdiÄŸi yemek gÃ¶rseli
+  kolonya.png          â€” kolonya gÃ¶rseli (envanter + buton ikonu)
+  oyuncu_dukkani_icon.png  â€” uygulama ikonu kaynaÄŸÄ±
+  anamenu.png          â€” ana menÃ¼ arka planÄ±
+  oyuncudireksiyonu, joypad, gamepad, lokum, browser, zarf, 3dgozluk â€” aksesuar/CD
+android/               â€” native Android yapÄ±landÄ±rmasÄ±
 ```
 
 ## Oyun Mimarisi (main.dart)
 
-### Akış
+### AkÄ±ÅŸ
 ```
 SplashScreen (6 sn yasal metin)
-  → AnaMenuEkrani (başla / devam)
-    → GameScreen (ana oyun döngüsü)
+  â†’ AnaMenuEkrani (baÅŸla / devam)
+    â†’ GameScreen (ana oyun dÃ¶ngÃ¼sÃ¼)
 ```
 
-### Temel Sınıflar
-- `GameState` — tüm oyun durumu (ChangeNotifier), SharedPreferences ile kayıt
-- `GameScreen` / `_GameScreenState` — UI ve animasyonlar
-- `Musteri` / `OzelMusteri` — müşteri modeli
-- `DukkanSeviye` — dükkan seviyeleri (1-5, farklı kira ve müşteri sayısı)
+### Temel SÄ±nÄ±flar
+- `GameState` â€” tÃ¼m oyun durumu (ChangeNotifier), SharedPreferences ile kayÄ±t
+- `GameScreen` / `_GameScreenState` â€” UI ve animasyonlar
+- `Musteri` / `OzelMusteri` â€” mÃ¼ÅŸteri modeli
+- `DukkanSeviye` â€” dÃ¼kkan seviyeleri (1-5, farklÄ± kira ve mÃ¼ÅŸteri sayÄ±sÄ±)
 
 ---
 
-## 🤝 PAZARLIK MOTORU — Hamle Okuma (v100)
+## ğŸ”Š SES SÄ°STEMÄ° (v101)
 
-Eskiden motor oyuncunun **ne yaptığını** okumuyordu: 500'den 900'e çıksan da,
-500'de ısrar etsen de, hatta geri gitsen de müşteri aynı tepkiyi veriyordu.
-Artık her turda hamle sınıflandırılıp ona göre davranılıyor.
+### Dosya ekleme â€” pubspec'e DOKUNMA
+`pubspec.yaml` klasÃ¶rÃ¼ toptan listeliyor: `- assets/sounds/`
+Yani **klasÃ¶re atÄ±lan her dosya otomatik pakete girer**, tek tek eklemek gerekmez.
+`SesServisi._cal` try/catch'li â†’ **dosya yoksa sessizce geÃ§er, Ã§Ã¶kmez.**
+Bu sayede tÃ¼m tetikleyiciler Ã¶nceden baÄŸlandÄ±; dosyalar sonradan doldurulabilir.
+
+### Beklenen dosyalar (`assets/sounds/`)
+| Dosya | Tetikleyici | Durum |
+|---|---|---|
+| `kapi.mp3` | mÃ¼ÅŸteri geldi | âœ… var |
+| `paragirdi.mp3` | para deÄŸiÅŸti | âœ… var |
+| `anlasma.mp3` | pazarlÄ±k anlaÅŸmayla bitti | â¬œ |
+| `basarisiz.mp3` | mÃ¼ÅŸteri kÄ±zÄ±p gitti | â¬œ |
+| `rozet.mp3` | rozet kazanÄ±ldÄ± | â¬œ |
+| `seri.mp3` | kombo bonusu | â¬œ |
+| `hedef.mp3` | gÃ¼nlÃ¼k hedef tamam | â¬œ |
+| `kutu.mp3` | kapalÄ± kutu aÃ§Ä±ldÄ± | â¬œ |
+| `tamir.mp3` | Ã§Ã¼rÃ¼k Ã¼rÃ¼n tamir edildi | â¬œ |
+| `gunsonu.mp3` | gÃ¼n bitti | â¬œ |
+| `hata.mp3` | yetersiz para / envanter dolu | â¬œ |
+| `envanter.mp3` | envanter aÃ§Ä±ldÄ± | â¬œ |
+| `tik.mp3` | genel buton (seyrek kullanÄ±lÄ±yor) | â¬œ |
+
+### Dokunsal geri bildirim (haptik) â€” ses dosyasÄ± gerektirmez
+`import 'package:flutter/services.dart' show HapticFeedback;` **aÃ§Ä±kÃ§a gerekli** â€”
+`material.dart` bunu re-export etmiyor, eklemezsen `undefined_identifier` hatasÄ± alÄ±rsÄ±n.
+
+Her ses metodu uygun titreÅŸimle eÅŸleÅŸtirildi: anlaÅŸmaâ†’medium, rozetâ†’heavy,
+hataâ†’heavy, kapÄ±/seri/tamirâ†’light, envanter/tÄ±kâ†’selectionClick.
+`sesAcik` kapalÄ±ysa titreÅŸim de kapanÄ±r (tek ayar, tek beklenti).
+
+### Ãœcretsiz ses kaynaklarÄ±
+`freesound.org` (CC0 filtresi) Â· `pixabay.com/sound-effects` Â· `opengameart.org` Â·
+`kenney.nl/assets` (oyun UI ses paketleri, tamamen CC0)
+
+> Arka plan mÃ¼ziÄŸi henÃ¼z YOK. Eklenirse ayrÄ± bir `muzikAcik` ayarÄ± ve
+> `ReleaseMode.loop`'lu kalÄ±cÄ± bir AudioPlayer gerekir â€” SFX'ten ayrÄ± toggle ÅŸart.
+
+---
+
+## ğŸ¤ PAZARLIK MOTORU â€” Hamle Okuma (v100)
+
+Eskiden motor oyuncunun **ne yaptÄ±ÄŸÄ±nÄ±** okumuyordu: 500'den 900'e Ã§Ä±ksan da,
+500'de Ä±srar etsen de, hatta geri gitsen de mÃ¼ÅŸteri aynÄ± tepkiyi veriyordu.
+ArtÄ±k her turda hamle sÄ±nÄ±flandÄ±rÄ±lÄ±p ona gÃ¶re davranÄ±lÄ±yor.
 
 ### `enum Hamle { geri, ayni, kucuk, orta, buyuk }`
 `hamleOran = (bu tur verilen taviz) / piyasaFiyati`
 
-| Hamle | Eşik | Müşterinin tepkisi |
+| Hamle | EÅŸik | MÃ¼ÅŸterinin tepkisi |
 |---|---|---|
-| `geri` | < −0.5% | **Fiyatını KIRMAZ**, frustration +0.30, %22-50 çekip gider, kızgın replik |
-| `ayni` | ±0.5% | frustration +0.14, konsesyon ×0.25, "inatçısın" repliği |
+| `geri` | < âˆ’0.5% | **FiyatÄ±nÄ± KIRMAZ**, frustration +0.30, %22-50 Ã§ekip gider, kÄ±zgÄ±n replik |
+| `ayni` | Â±0.5% | frustration +0.14, konsesyon Ã—0.25, "inatÃ§Ä±sÄ±n" repliÄŸi |
 | `kucuk` | < 5% | normal |
 | `orta` | < 14% | normal |
-| `buyuk` | ≥ 14% | frustration −0.10, **%35-55 anında kabul** (teklif yakınsa), takdir repliği |
+| `buyuk` | â‰¥ 14% | frustration âˆ’0.10, **%35-55 anÄ±nda kabul** (teklif yakÄ±nsa), takdir repliÄŸi |
 
-### Dört yeni davranış
+### DÃ¶rt yeni davranÄ±ÅŸ
 
-**1. Kaprisli evet (%5)** — Mantıken kabul etmemesi gereken teklifi kabul eder.
-Sınırlı: rezervasyonu en fazla %25 aşan teklifler. *"Ya boşver, kafam iyi bugün. Kabul!"*
-Amaç: unutulmaz "vay be" anları.
+**1. Kaprisli evet (%5)** â€” MantÄ±ken kabul etmemesi gereken teklifi kabul eder.
+SÄ±nÄ±rlÄ±: rezervasyonu en fazla %25 aÅŸan teklifler. *"Ya boÅŸver, kafam iyi bugÃ¼n. Kabul!"*
+AmaÃ§: unutulmaz "vay be" anlarÄ±.
 
-**2. Bir kez daha sıkıştırma (%30)** — Teklif kabul edilebilir olsa bile pazarcı refleksiyle
-"az daha gayret" der, orta noktaya çekilir. **Anlaşmayı kaybettirmez:** oyuncu aynı teklifi
-tekrarlarsa kabul edilir (`_sikistirmaKullanildi` bir kez). Tur limiti güvenliği:
-sadece `turSayisi <= maxTur - 2` iken. Sabırsız müşteride (maxTur=2) hiç tetiklenmez.
+**2. Bir kez daha sÄ±kÄ±ÅŸtÄ±rma (%30)** â€” Teklif kabul edilebilir olsa bile pazarcÄ± refleksiyle
+"az daha gayret" der, orta noktaya Ã§ekilir. **AnlaÅŸmayÄ± kaybettirmez:** oyuncu aynÄ± teklifi
+tekrarlarsa kabul edilir (`_sikistirmaKullanildi` bir kez). Tur limiti gÃ¼venliÄŸi:
+sadece `turSayisi <= maxTur - 2` iken. SabÄ±rsÄ±z mÃ¼ÅŸteride (maxTur=2) hiÃ§ tetiklenmez.
 
-**3. Son teklif uyarısı** — `turSayisi >= maxTur - 1` olunca açıkça
-*"SON TEKLİFİM: X. Ya alırsın ya küserim."* der. Oyuncu son şansı bilir, pazarlığa doruk katar.
+**3. Son teklif uyarÄ±sÄ±** â€” `turSayisi >= maxTur - 1` olunca aÃ§Ä±kÃ§a
+*"SON TEKLÄ°FÄ°M: X. Ya alÄ±rsÄ±n ya kÃ¼serim."* der. Oyuncu son ÅŸansÄ± bilir, pazarlÄ±ÄŸa doruk katar.
 
-**4. Büyük jest kabulü** — Ciddi bir sıçrama yapıldıysa ve teklif ulaşılabilirse
-(`rezervAsim < 0.10`) jesti onurlandırıp kabul eder.
+**4. BÃ¼yÃ¼k jest kabulÃ¼** â€” Ciddi bir sÄ±Ã§rama yapÄ±ldÄ±ysa ve teklif ulaÅŸÄ±labilirse
+(`rezervAsim < 0.10`) jesti onurlandÄ±rÄ±p kabul eder.
 
-### Tepki replik havuzları (`PazarlikSeans`)
-`_tepkiGeri` (8) · `_tepkiAyni` (7) · `_tepkiBuyuk` (8) · `_tepkiSikistirma` (6) ·
-`_sonTeklifMesajlari` (6) · `_kaprisliKabul` (10) · `_jestKabul` (6)
+### Tepki replik havuzlarÄ± (`PazarlikSeans`)
+`_tepkiGeri` (8) Â· `_tepkiAyni` (7) Â· `_tepkiBuyuk` (8) Â· `_tepkiSikistirma` (6) Â·
+`_sonTeklifMesajlari` (6) Â· `_kaprisliKabul` (10) Â· `_jestKabul` (6)
 
-> ⚠️ Sıkıştırma clamp'i yön duyarlıdır: satıcı müşteride `clamp(oyuncuTeklif+1, musteriTeklif)`,
-> alıcı müşteride `clamp(musteriTeklif, oyuncuTeklif-1)`. Ters çevirme, clamp hatası verir.
+> âš ï¸ SÄ±kÄ±ÅŸtÄ±rma clamp'i yÃ¶n duyarlÄ±dÄ±r: satÄ±cÄ± mÃ¼ÅŸteride `clamp(oyuncuTeklif+1, musteriTeklif)`,
+> alÄ±cÄ± mÃ¼ÅŸteride `clamp(musteriTeklif, oyuncuTeklif-1)`. Ters Ã§evirme, clamp hatasÄ± verir.
 
 ---
 
-## 💬 DİYALOG HAVUZLARI (v99)
+## ğŸ’¬ DÄ°YALOG HAVUZLARI (v99)
 
-Tüm replikler genişletildi. Tekrar hissi kalmasın diye her havuz 18-26 satır.
+TÃ¼m replikler geniÅŸletildi. Tekrar hissi kalmasÄ±n diye her havuz 18-26 satÄ±r.
 
-| Havuz | Sınıf | Not |
+| Havuz | SÄ±nÄ±f | Not |
 |---|---|---|
-| `_saticiSelam` / `_aliciSelam` | `Customer` | 20'şer selamlama, rol ayrı |
-| `_kolonyaSelam` | `Customer` | 5 kolonyacı repliği |
-| `_saticiKarsiTeklif` / `_aliciKarsiTeklif` | `PazarlikSeans` | 25'er karşı teklif, **rol ayrı** |
-| `_kabulSablonlari` | `PazarlikSeans` | 26 kabul repliği |
-| `_gitOfkeli` / `_gitTurBitti` / `_gitErken` | `PazarlikSeans` | 18 / 18 / 12 — ruh haline göre |
+| `_saticiSelam` / `_aliciSelam` | `Customer` | 20'ÅŸer selamlama, rol ayrÄ± |
+| `_kolonyaSelam` | `Customer` | 5 kolonyacÄ± repliÄŸi |
+| `_saticiKarsiTeklif` / `_aliciKarsiTeklif` | `PazarlikSeans` | 25'er karÅŸÄ± teklif, **rol ayrÄ±** |
+| `_kabulSablonlari` | `PazarlikSeans` | 26 kabul repliÄŸi |
+| `_gitOfkeli` / `_gitTurBitti` / `_gitErken` | `PazarlikSeans` | 18 / 18 / 12 â€” ruh haline gÃ¶re |
 
-### ⚠️ PLACEHOLDER KURALI — TEK HARF KULLANMA
-Şablonlarda `{AD}` ve `{URUN}` kullanılır. **Tek harfli placeholder (A, U) ASLA kullanma** —
-`replaceAll('A', ...)` "**A**rkadaşlar" kelimesindeki büyük A'yı da değiştirir ve cümleyi bozar.
-Fiyat için `X` güvenli (Türkçe'de büyük X geçen kelime yok) ama yeni şablon yazarken kontrol et.
+### âš ï¸ PLACEHOLDER KURALI â€” TEK HARF KULLANMA
+Åablonlarda `{AD}` ve `{URUN}` kullanÄ±lÄ±r. **Tek harfli placeholder (A, U) ASLA kullanma** â€”
+`replaceAll('A', ...)` "**A**rkadaÅŸlar" kelimesindeki bÃ¼yÃ¼k A'yÄ± da deÄŸiÅŸtirir ve cÃ¼mleyi bozar.
+Fiyat iÃ§in `X` gÃ¼venli (TÃ¼rkÃ§e'de bÃ¼yÃ¼k X geÃ§en kelime yok) ama yeni ÅŸablon yazarken kontrol et.
 
-### Rol ayrımı neden önemli
-Malı **satan** müşteri "o para bu malı almaz" der, **alan** müşteri "o kadar para vermem" der.
-Aynı cümleyi ikisine de söyletmek karakteri bozuyordu.
-
----
-
-## ✨ TOAST BİLDİRİMİ (v99)
-
-Seri ve günlük hedef bildirimleri Material SnackBar değil, oyunun kendi temasında
-özel bir kart. `_toastGoster(metin, altYazi:, emoji:, renk:)`.
-
-- Ana `Stack`'in en üstünde `_buildToast()` olarak render edilir
-- `TweenAnimationBuilder` + `Curves.elasticOut` → aşağıdan süzülüp hafif zıplar
-- Koyu gradient zemin (#241a10→#120c06), 2px renkli çerçeve, renkli glow gölge
-- Başlık accent renkte, alt yazı beyaz — ikisinde de siyah text shadow (okunabilirlik)
-- `_toastId` her gösterimde artar → animasyon baştan başlar
-- 2.4 sn sonra otomatik kaybolur, `IgnorePointer` ile dokunuşu engellemez
-
-> Material SnackBar kullanma — kahverengi zemin/okunmayan yazı sorunu bu yüzden çıkmıştı.
+### Rol ayrÄ±mÄ± neden Ã¶nemli
+MalÄ± **satan** mÃ¼ÅŸteri "o para bu malÄ± almaz" der, **alan** mÃ¼ÅŸteri "o kadar para vermem" der.
+AynÄ± cÃ¼mleyi ikisine de sÃ¶yletmek karakteri bozuyordu.
 
 ---
 
-## 🎣 BAĞLILIK MEKANİKLERİ (v98)
+## âœ¨ TOAST BÄ°LDÄ°RÄ°MÄ° (v99)
 
-Dört farklı zaman ölçeğinde tutundurma. Birbirini besleyecek şekilde tasarlandı.
+Seri ve gÃ¼nlÃ¼k hedef bildirimleri Material SnackBar deÄŸil, oyunun kendi temasÄ±nda
+Ã¶zel bir kart. `_toastGoster(metin, altYazi:, emoji:, renk:)`.
 
-| Ölçek | Mekanik | Alan / Sınıf |
+- Ana `Stack`'in en Ã¼stÃ¼nde `_buildToast()` olarak render edilir
+- `TweenAnimationBuilder` + `Curves.elasticOut` â†’ aÅŸaÄŸÄ±dan sÃ¼zÃ¼lÃ¼p hafif zÄ±plar
+- Koyu gradient zemin (#241a10â†’#120c06), 2px renkli Ã§erÃ§eve, renkli glow gÃ¶lge
+- BaÅŸlÄ±k accent renkte, alt yazÄ± beyaz â€” ikisinde de siyah text shadow (okunabilirlik)
+- `_toastId` her gÃ¶sterimde artar â†’ animasyon baÅŸtan baÅŸlar
+- 2.4 sn sonra otomatik kaybolur, `IgnorePointer` ile dokunuÅŸu engellemez
+
+> Material SnackBar kullanma â€” kahverengi zemin/okunmayan yazÄ± sorunu bu yÃ¼zden Ã§Ä±kmÄ±ÅŸtÄ±.
+
+---
+
+## ğŸ£ BAÄLILIK MEKANÄ°KLERÄ° (v98)
+
+DÃ¶rt farklÄ± zaman Ã¶lÃ§eÄŸinde tutundurma. Birbirini besleyecek ÅŸekilde tasarlandÄ±.
+
+| Ã–lÃ§ek | Mekanik | Alan / SÄ±nÄ±f |
 |---|---|---|
-| **An** | 🔥 Seri (kombo) | `kombo`, `enUzunSeri`, `sonKomboBonusu` |
-| **Gün** | 🎯 Günlük hedef | `GunlukHedef`, `gunlukHedef` |
-| **Sonraki gün** | ☀️ Yarının önizlemesi | `yarinkiOlayId` |
-| **Uzun vade** | 📚 Koleksiyon | `satilanUrunIdleri` + `koleksiyonUrunleri` |
+| **An** | ğŸ”¥ Seri (kombo) | `kombo`, `enUzunSeri`, `sonKomboBonusu` |
+| **GÃ¼n** | ğŸ¯ GÃ¼nlÃ¼k hedef | `GunlukHedef`, `gunlukHedef` |
+| **Sonraki gÃ¼n** | â˜€ï¸ YarÄ±nÄ±n Ã¶nizlemesi | `yarinkiOlayId` |
+| **Uzun vade** | ğŸ“š Koleksiyon | `satilanUrunIdleri` + `koleksiyonUrunleri` |
 
-### 🔥 Seri (kombo)
-- Üst üste **anlaşmayla biten** pazarlık sayısı. 3'ten itibaren her anlaşmada `kombo × 15` lira bonus.
-- **Sıfırlanma:** sadece müşteri kızıp giderse (`PazarlikDurum.gitti`).
-  Oyuncunun kendi reddi seriyi BOZMAZ — kötü teklifi reddetmek meşru strateji, cezalandırılmamalı.
-- Günler arası devam eder (seri değerli hissettirsin).
-- Bildirim: SnackBar (popup değil, akışı kesmesin).
+### ğŸ”¥ Seri (kombo)
+- Ãœst Ã¼ste **anlaÅŸmayla biten** pazarlÄ±k sayÄ±sÄ±. 3'ten itibaren her anlaÅŸmada `kombo Ã— 15` lira bonus.
+- **SÄ±fÄ±rlanma:** sadece mÃ¼ÅŸteri kÄ±zÄ±p giderse (`PazarlikDurum.gitti`).
+  Oyuncunun kendi reddi seriyi BOZMAZ â€” kÃ¶tÃ¼ teklifi reddetmek meÅŸru strateji, cezalandÄ±rÄ±lmamalÄ±.
+- GÃ¼nler arasÄ± devam eder (seri deÄŸerli hissettirsin).
+- Bildirim: SnackBar (popup deÄŸil, akÄ±ÅŸÄ± kesmesin).
 
-### 🎯 Günlük hedef
-`GunlukHedef.uret(dukkanSeviye)` her gün başında üretir. 6 tip:
+### ğŸ¯ GÃ¼nlÃ¼k hedef
+`GunlukHedef.uret(dukkanSeviye)` her gÃ¼n baÅŸÄ±nda Ã¼retir. 6 tip:
 `satisAdedi`, `gelir`, `tamir`, `kutu`, `toptanciAlim`, `tekSatis`
-- Hedef büyüklüğü dükkan seviyesiyle ölçeklenir
-- İlerleme `_hedefIlerlet(tip, miktar)` ile ilgili noktalardan beslenir
+- Hedef bÃ¼yÃ¼klÃ¼ÄŸÃ¼ dÃ¼kkan seviyesiyle Ã¶lÃ§eklenir
+- Ä°lerleme `_hedefIlerlet(tip, miktar)` ile ilgili noktalardan beslenir
   (`_anlasmayiTamamla`, `tamirEt`, `kutuAc`, `toptanciSatinAl`)
-- `tekSatis` için `mutlak: true` → en yüksek tek satış tutulur
-- Tamamlanınca anında ödül + SnackBar; gün sonu popup'ında sonuç gösterilir
+- `tekSatis` iÃ§in `mutlak: true` â†’ en yÃ¼ksek tek satÄ±ÅŸ tutulur
+- TamamlanÄ±nca anÄ±nda Ã¶dÃ¼l + SnackBar; gÃ¼n sonu popup'Ä±nda sonuÃ§ gÃ¶sterilir
 
-### ☀️ Yarının önizlemesi — "bir gün daha" kancası
-Olaylar artık **bir gün önceden** belirlenir:
+### â˜€ï¸ YarÄ±nÄ±n Ã¶nizlemesi â€” "bir gÃ¼n daha" kancasÄ±
+Olaylar artÄ±k **bir gÃ¼n Ã¶nceden** belirlenir:
 ```
-gunuBitir(): gunlukOlayId = yarinkiOlayId   (dün belirlenen olay bugün uygulanır)
-             yarinkiOlayId = yeni zar        (gün sonu popup'ında duyurulur)
+gunuBitir(): gunlukOlayId = yarinkiOlayId   (dÃ¼n belirlenen olay bugÃ¼n uygulanÄ±r)
+             yarinkiOlayId = yeni zar        (gÃ¼n sonu popup'Ä±nda duyurulur)
 ```
-- Gün sonu popup'ında "YARIN" bölümü: emoji, başlık, açıklama + etki çipleri
-- **Sabah olay popup'ı KALDIRILDI** — çift bildirim olmasın, popup yorgunluğu yaratmasın
-- Aktif olay Hedefler ekranındaki "bugün paneli"nde görünür
+- GÃ¼n sonu popup'Ä±nda "YARIN" bÃ¶lÃ¼mÃ¼: emoji, baÅŸlÄ±k, aÃ§Ä±klama + etki Ã§ipleri
+- **Sabah olay popup'Ä± KALDIRILDI** â€” Ã§ift bildirim olmasÄ±n, popup yorgunluÄŸu yaratmasÄ±n
+- Aktif olay Hedefler ekranÄ±ndaki "bugÃ¼n paneli"nde gÃ¶rÃ¼nÃ¼r
 
-### 📚 Koleksiyon
-- Hedefler ekranının altında 23 ürünlük ızgara (kolonya hariç)
-- Satılan ürün açılır (gerçek görsel), satılmayan "?" görünür
-- Yüzde göstergesi; `satilanUrunIdleri` zaten takip ediliyordu, ek maliyet yok
+### ğŸ“š Koleksiyon
+- Hedefler ekranÄ±nÄ±n altÄ±nda 23 Ã¼rÃ¼nlÃ¼k Ä±zgara (kolonya hariÃ§)
+- SatÄ±lan Ã¼rÃ¼n aÃ§Ä±lÄ±r (gerÃ§ek gÃ¶rsel), satÄ±lmayan "?" gÃ¶rÃ¼nÃ¼r
+- YÃ¼zde gÃ¶stergesi; `satilanUrunIdleri` zaten takip ediliyordu, ek maliyet yok
 
-### Hedefler ekranı yapısı
-`ListView` → `[bugün paneli] + [8 rozet] + [koleksiyon paneli]`
-- **Bugün paneli:** gün no, aktif seri, günlük hedef + ilerleme çubuğu, aktif olay + etki çipleri
+### Hedefler ekranÄ± yapÄ±sÄ±
+`ListView` â†’ `[bugÃ¼n paneli] + [8 rozet] + [koleksiyon paneli]`
+- **BugÃ¼n paneli:** gÃ¼n no, aktif seri, gÃ¼nlÃ¼k hedef + ilerleme Ã§ubuÄŸu, aktif olay + etki Ã§ipleri
 
 ---
 
-## 🎯 SAHNE METRİĞİ — Çözünürlükten Bağımsız Konumlandırma (v97)
+## ğŸ¯ SAHNE METRÄ°ÄÄ° â€” Ã‡Ã¶zÃ¼nÃ¼rlÃ¼kten BaÄŸÄ±msÄ±z KonumlandÄ±rma (v97)
 
-**Artık sahnede SABİT PİKSEL DEĞERİ YOK.** Ürün, isim etiketi ve müşteri, masa
-görselinin ekrandaki kutusuna kilitlidir. Her çözünürlük/en-boy oranında masa
+**ArtÄ±k sahnede SABÄ°T PÄ°KSEL DEÄERÄ° YOK.** ÃœrÃ¼n, isim etiketi ve mÃ¼ÅŸteri, masa
+gÃ¶rselinin ekrandaki kutusuna kilitlidir. Her Ã§Ã¶zÃ¼nÃ¼rlÃ¼k/en-boy oranÄ±nda masa
 nereye giderse onlar da oraya gider.
 
 ### Neden gerekti
-Eskiden masa görseli ekran **genişliğine** göre ölçekleniyordu (`fitWidth` + `scale 1.4`),
-ürün ise ekran **yüksekliğine** göre konumlanıyordu (`screenH * 0.57 + sabit`). En-boy
-oranı değişince ikisi ayrışıyordu → her cihazda elle ayar → sonsuz yama döngüsü.
+Eskiden masa gÃ¶rseli ekran **geniÅŸliÄŸine** gÃ¶re Ã¶lÃ§ekleniyordu (`fitWidth` + `scale 1.4`),
+Ã¼rÃ¼n ise ekran **yÃ¼ksekliÄŸine** gÃ¶re konumlanÄ±yordu (`screenH * 0.57 + sabit`). En-boy
+oranÄ± deÄŸiÅŸince ikisi ayrÄ±ÅŸÄ±yordu â†’ her cihazda elle ayar â†’ sonsuz yama dÃ¶ngÃ¼sÃ¼.
 
-### Nasıl çalışıyor
-`SahneMetrik` sınıfı, masa görselinin render zincirini birebir modelleyip ekrandaki
-kutusunu (üst kenar + yükseklik) hesaplar:
+### NasÄ±l Ã§alÄ±ÅŸÄ±yor
+`SahneMetrik` sÄ±nÄ±fÄ±, masa gÃ¶rselinin render zincirini birebir modelleyip ekrandaki
+kutusunu (Ã¼st kenar + yÃ¼kseklik) hesaplar:
 ```
-Align(bottomCenter) → translate(0, 6) → scale(1.4, bottomCenter) → fitWidth
+Align(bottomCenter) â†’ translate(0, 6) â†’ scale(1.4, bottomCenter) â†’ fitWidth
 ```
-Konumlar görselin içindeki **0..1 oranlarıyla** ifade edilir:
+Konumlar gÃ¶rselin iÃ§indeki **0..1 oranlarÄ±yla** ifade edilir:
 
-| Sabit | Değer | Anlamı |
+| Sabit | DeÄŸer | AnlamÄ± |
 |---|---|---|
-| `kMasaYuzeyi` | 0.4833 | Masa arka kenarı — **sanat eserinden ölçüldü** (bg1.png y=522/1080) |
-| `kUrunTabani` | 0.5680 | Ürünün oturduğu çizgi (mousepad/klavye derinliği) |
-| `kUrunBoyu` | 0.1745 | Ürün yüksekliği (masa boyuna oranla) |
-| `kUrunSagKaydir` | 0.3537 | Ürünün müşteriye göre yatay kayması |
-| `kIsimAlti` | 0.4920 | İsim etiketi alt kenarı (masa çizgisinin hemen altı) |
-| `kMusteriUstu` | 0.2183 | Müşteri görseli üst kenarı |
-| `kMusteriBoyu` | 0.6519 | Müşteri görseli boyu |
+| `kMasaYuzeyi` | 0.4833 | Masa arka kenarÄ± â€” **sanat eserinden Ã¶lÃ§Ã¼ldÃ¼** (bg1.png y=522/1080) |
+| `kUrunTabani` | 0.5680 | ÃœrÃ¼nÃ¼n oturduÄŸu Ã§izgi (mousepad/klavye derinliÄŸi) |
+| `kUrunBoyu` | 0.1745 | ÃœrÃ¼n yÃ¼ksekliÄŸi (masa boyuna oranla) |
+| `kUrunSagKaydir` | 0.3537 | ÃœrÃ¼nÃ¼n mÃ¼ÅŸteriye gÃ¶re yatay kaymasÄ± |
+| `kIsimAlti` | 0.4920 | Ä°sim etiketi alt kenarÄ± (masa Ã§izgisinin hemen altÄ±) |
+| `kMusteriUstu` | 0.2183 | MÃ¼ÅŸteri gÃ¶rseli Ã¼st kenarÄ± |
+| `kMusteriBoyu` | 0.6519 | MÃ¼ÅŸteri gÃ¶rseli boyu |
 
-Kullanım: `m.y(oran)` → ekranda mutlak y, `m.u(oran)` → dp uzunluk (boyutlar da ölçeklenir).
+KullanÄ±m: `m.y(oran)` â†’ ekranda mutlak y, `m.u(oran)` â†’ dp uzunluk (boyutlar da Ã¶lÃ§eklenir).
 
-> `_buildSahne()` içindeki konumlar yerel koordinatta olduğu için
-> `ofs = mq.padding.top + 48.0` çıkarılır.
+> `_buildSahne()` iÃ§indeki konumlar yerel koordinatta olduÄŸu iÃ§in
+> `ofs = mq.padding.top + 48.0` Ã§Ä±karÄ±lÄ±r.
 
-### Masa görselleri (üçü de aynı — doğrulandı)
-`bgbosmasa.png` / `bg1.png` / `bg2.png` → hepsi **719×1080**, masa kenarı y=522/523.
-Bilgisayar alınınca veya dükkan değişince ürün kaymaz.
+### Masa gÃ¶rselleri (Ã¼Ã§Ã¼ de aynÄ± â€” doÄŸrulandÄ±)
+`bgbosmasa.png` / `bg1.png` / `bg2.png` â†’ hepsi **719Ã—1080**, masa kenarÄ± y=522/523.
+Bilgisayar alÄ±nÄ±nca veya dÃ¼kkan deÄŸiÅŸince Ã¼rÃ¼n kaymaz.
 
-### Test edildi (gerçek cihaz ölçümüyle)
-| Çözünürlük | Oran | Sonuç |
+### Test edildi (gerÃ§ek cihaz Ã¶lÃ§Ã¼mÃ¼yle)
+| Ã‡Ã¶zÃ¼nÃ¼rlÃ¼k | Oran | SonuÃ§ |
 |---|---|---|
-| 1080×2400 | 20:9 | ✅ ürün mousepad hizasında, isim masada |
-| 1080×1920 | 16:9 | ✅ birebir aynı bağıl konum |
-| 1200×1600 | 4:3 | ✅ birebir aynı bağıl konum |
+| 1080Ã—2400 | 20:9 | âœ… Ã¼rÃ¼n mousepad hizasÄ±nda, isim masada |
+| 1080Ã—1920 | 16:9 | âœ… birebir aynÄ± baÄŸÄ±l konum |
+| 1200Ã—1600 | 4:3 | âœ… birebir aynÄ± baÄŸÄ±l konum |
 
-**Yeni bir konum ayarlamak gerekirse:** sabit px ekleme — yukarıdaki oran sabitlerini
-değiştir. Ölçüm için: `adb shell screencap` ile ekran görüntüsü al, masa kenarını bul,
-`(hedefY - m.ust) / m.boy` ile oranı hesapla.
+**Yeni bir konum ayarlamak gerekirse:** sabit px ekleme â€” yukarÄ±daki oran sabitlerini
+deÄŸiÅŸtir. Ã–lÃ§Ã¼m iÃ§in: `adb shell screencap` ile ekran gÃ¶rÃ¼ntÃ¼sÃ¼ al, masa kenarÄ±nÄ± bul,
+`(hedefY - m.ust) / m.boy` ile oranÄ± hesapla.
 
 ---
 
-## ⚠️ Görsel Katman Sistemi (Z-order)
+## âš ï¸ GÃ¶rsel Katman Sistemi (Z-order)
 
-### Stack Z-order (arkadan öne) — GameScreen build()
+### Stack Z-order (arkadan Ã¶ne) â€” GameScreen build()
 
-| # | Widget | Açıklama |
+| # | Widget | AÃ§Ä±klama |
 |---|--------|----------|
-| 1 | `bgbos.png` | Sabit dükkan arkaplanı (Positioned.fill) |
-| 2 | `biri.png` | Kapı gölgesi — müşteri yokken AnimatedOpacity ile görünür |
-| 3 | **MÜŞTERİ görseli** | Masanın ALTINDA — bu katmanda olmalı! |
+| 1 | `bgbos.png` | Sabit dÃ¼kkan arkaplanÄ± (Positioned.fill) |
+| 2 | `biri.png` | KapÄ± gÃ¶lgesi â€” mÃ¼ÅŸteri yokken AnimatedOpacity ile gÃ¶rÃ¼nÃ¼r |
+| 3 | **MÃœÅTERÄ° gÃ¶rseli** | MasanÄ±n ALTINDA â€” bu katmanda olmalÄ±! |
 | 4 | **Masa layer** | AnimatedSwitcher: bgbosmasa/bg1/bg2, scale:1.4 bottomCenter |
 | 5 | **SafeArea** | header + `_buildSahne()` + altbar |
-| 6 | Dükkan butonu | gun >= 3'te sol altta görünür |
+| 6 | DÃ¼kkan butonu | gun >= 3'te sol altta gÃ¶rÃ¼nÃ¼r |
 
 ---
 
-### MÜŞTERİ BOYUTU VE KONUMU (Outer Stack — katman 3)
+### MÃœÅTERÄ° BOYUTU VE KONUMU (Outer Stack â€” katman 3)
 
 ```
-width:  564 px  ← DOKUNMA!
-height: 564 px  ← DOKUNMA!
+width:  564 px  â† DOKUNMA!
+height: 564 px  â† DOKUNMA!
 
 hedef     = (screenW - 564) / 2
-dx        = hedef + (screenW - hedef) * slideAnim.value   ← sağdan giriş
+dx        = hedef + (screenW - hedef) * slideAnim.value   â† saÄŸdan giriÅŸ
 musteriTop = statusBar + 48.0 + screenH * 0.14 + 44
-              └─ statusBar = mq.padding.top
-              └─ 48.0      = header yüksekliği
-              └─ 0.14      = ekranın %14'ü
-              └─ 44        = ince ayar ← DOKUNMA! (SON DEĞER)
+              â””â”€ statusBar = mq.padding.top
+              â””â”€ 48.0      = header yÃ¼ksekliÄŸi
+              â””â”€ 0.14      = ekranÄ±n %14'Ã¼
+              â””â”€ 44        = ince ayar â† DOKUNMA! (SON DEÄER)
 ```
 
 ---
 
-### _buildSahne() — MÜŞTERİ PLACEHOLDER
+### _buildSahne() â€” MÃœÅTERÄ° PLACEHOLDER
 
-`_buildSahne()` Stack'indeki müşteri widget'ı gerçek görseli değil, Z-order'ı korumak için **boş 564×564 SizedBox** içerir. Gerçek görsel dış Stack katman 3'tedir.
+`_buildSahne()` Stack'indeki mÃ¼ÅŸteri widget'Ä± gerÃ§ek gÃ¶rseli deÄŸil, Z-order'Ä± korumak iÃ§in **boÅŸ 564Ã—564 SizedBox** iÃ§erir. GerÃ§ek gÃ¶rsel dÄ±ÅŸ Stack katman 3'tedir.
 
 ```
 hedef     = (screenW - 564) / 2
 dx        = hedef + (screenW - hedef) * slideAnim.value
-musteriTop = screenH * 0.14 + 44   ← SafeArea içi (statusBar yok)
-              └─ 44 = ince ayar ← DOKUNMA! (SON DEĞER)
+musteriTop = screenH * 0.14 + 44   â† SafeArea iÃ§i (statusBar yok)
+              â””â”€ 44 = ince ayar â† DOKUNMA! (SON DEÄER)
 ```
 
 ---
 
-### İSİM ETİKETİ KONUMU
+### Ä°SÄ°M ETÄ°KETÄ° KONUMU
 
-Normal müşteri (Stack içi Positioned):
+Normal mÃ¼ÅŸteri (Stack iÃ§i Positioned):
 ```dart
 Positioned(
-  bottom: 338,   // ← SON DEĞER (306→318→328→338, toplam 32px yukarı çekildi)
+  bottom: 338,   // â† SON DEÄER (306â†’318â†’328â†’338, toplam 32px yukarÄ± Ã§ekildi)
   left: 0, right: 0,
   child: Center(child: ...isim container...),
 )
 ```
 
-Özel müşteri — `_buildOzelMusteriWidget()` içinde **AYNI** yapı:
+Ã–zel mÃ¼ÅŸteri â€” `_buildOzelMusteriWidget()` iÃ§inde **AYNI** yapÄ±:
 ```dart
 Positioned(
-  bottom: 338,   // ← SON DEĞER, normal müşteriyle eşleşmeli
+  bottom: 338,   // â† SON DEÄER, normal mÃ¼ÅŸteriyle eÅŸleÅŸmeli
   left: 0, right: 0,
   child: Center(child: ...isim container...),
 )
 ```
 
-> **Neden left:0/right:0 + Center?** dx negatif değer alabilir (geniş müşteri görseli ekrandan taşar). Eğer Stack içinde dx'e göre Positioned konulsaydı isim ekran dışına çıkardı.
+> **Neden left:0/right:0 + Center?** dx negatif deÄŸer alabilir (geniÅŸ mÃ¼ÅŸteri gÃ¶rseli ekrandan taÅŸar). EÄŸer Stack iÃ§inde dx'e gÃ¶re Positioned konulsaydÄ± isim ekran dÄ±ÅŸÄ±na Ã§Ä±kardÄ±.
 
 ---
 
-### ÜRÜN KONUMU (_buildSahne içi AnimatedBuilder)
+### ÃœRÃœN KONUMU (_buildSahne iÃ§i AnimatedBuilder)
 
-Gösterilme koşulu (alıcı müşteri ürün almak istediğinde **değil**, satıcı veya kurye iken):
+GÃ¶sterilme koÅŸulu (alÄ±cÄ± mÃ¼ÅŸteri Ã¼rÃ¼n almak istediÄŸinde **deÄŸil**, satÄ±cÄ± veya kurye iken):
 ```dart
 if (_state.aktifMusteri != null && _state.aktifMusteri!.musteriSatiyor ||
     _state.aktifOzelMusteri?.tip == OzelMusteriTip.kurye)
 ```
 
-**Görsel seçimi:**
-- Kurye ise `assets/durum.png` (dürüm/yemek)
-- Normal satıcı ise `_state.aktifMusteri!.item.gorsel`
+**GÃ¶rsel seÃ§imi:**
+- Kurye ise `assets/durum.png` (dÃ¼rÃ¼m/yemek)
+- Normal satÄ±cÄ± ise `_state.aktifMusteri!.item.gorsel`
 
 **Boyut:**
 ```
-Standart ürünler              : productSize = 151.0 px
-konsol_3/4/5/6.png + joypad   : productSize = 151.0 * 0.85 ≈ 128px  (%15 küçük)
-oyuncudireksiyonu.png         : productSize = 151.0 * 0.85 ≈ 128px  (%15 küçük)
-durum.png (kurye)             : productSize = 151.0 * 0.80 ≈ 121px  (%20 küçük)
+Standart Ã¼rÃ¼nler              : productSize = 151.0 px
+konsol_3/4/5/6.png + joypad   : productSize = 151.0 * 0.85 â‰ˆ 128px  (%15 kÃ¼Ã§Ã¼k)
+oyuncudireksiyonu.png         : productSize = 151.0 * 0.85 â‰ˆ 128px  (%15 kÃ¼Ã§Ã¼k)
+durum.png (kurye)             : productSize = 151.0 * 0.80 â‰ˆ 121px  (%20 kÃ¼Ã§Ã¼k)
 ```
 
 **Yatay (productLeft):**
 ```
-Tüm ürünler           : dx + 306
-oyuncudireksiyonu.png : dx + 313 (+7 sağa)
-konsol_2.png          : dx + 311 (+5 sağa)
-konsol_3.png          : dx + 311 (+5 sağa)
+TÃ¼m Ã¼rÃ¼nler           : dx + 306
+oyuncudireksiyonu.png : dx + 313 (+7 saÄŸa)
+konsol_2.png          : dx + 311 (+5 saÄŸa)
+konsol_3.png          : dx + 311 (+5 saÄŸa)
 ```
 
 **Dikey (productTop):**
 ```
 screenH * 0.57 - productSize - st - hh - 20
-  └─ 0.57       = ürün ALT kenarı ekranın %57'sinde (masa yüzeyi hizası)
-  └─ productSize = 151 / 128 / 121 (ürüne göre)
-  └─ st         = viewPadding.top (status bar)
-  └─ hh         = 48.0 (header yüksekliği)
-  └─ -20        = ince ayar ← SON DEĞER (+32→+20→0→-20, toplam 52px yukarı çekildi)
+  â””â”€ 0.57       = Ã¼rÃ¼n ALT kenarÄ± ekranÄ±n %57'sinde (masa yÃ¼zeyi hizasÄ±)
+  â””â”€ productSize = 151 / 128 / 121 (Ã¼rÃ¼ne gÃ¶re)
+  â””â”€ st         = viewPadding.top (status bar)
+  â””â”€ hh         = 48.0 (header yÃ¼ksekliÄŸi)
+  â””â”€ -20        = ince ayar â† SON DEÄER (+32â†’+20â†’0â†’-20, toplam 52px yukarÄ± Ã§ekildi)
 ```
 
-> Koordinatlar `_buildSahne()` Stack'ine göreli — SafeArea içinde, header altında başlar.
+> Koordinatlar `_buildSahne()` Stack'ine gÃ¶reli â€” SafeArea iÃ§inde, header altÄ±nda baÅŸlar.
 
 ---
 
-### KONUŞMA BALONU (mesaj kutusu)
+### KONUÅMA BALONU (mesaj kutusu)
 
 ```dart
-Positioned(top: 6, left: 6, right: 6)   // ← dış kenar boşlukları (SON DEĞER)
-Container(padding: EdgeInsets.all(6))    // ← iç dolgu (SON DEĞER)
+Positioned(top: 6, left: 6, right: 6)   // â† dÄ±ÅŸ kenar boÅŸluklarÄ± (SON DEÄER)
+Container(padding: EdgeInsets.all(6))    // â† iÃ§ dolgu (SON DEÄER)
 ```
 
-**Müşteri SATICI ise** (`musteriSatiyor == true`):
+**MÃ¼ÅŸteri SATICI ise** (`musteriSatiyor == true`):
 ```
-→ Sadece TypewriterText (metin, renkli border)
+â†’ Sadece TypewriterText (metin, renkli border)
 ```
 
-**Müşteri ALICI ise** (`musteriSatiyor == false`):
+**MÃ¼ÅŸteri ALICI ise** (`musteriSatiyor == false`):
 ```
-→ Row layout:
-   Sol : Image.asset(item.gorsel, width:100, height:100)  ← ürün görseli
+â†’ Row layout:
+   Sol : Image.asset(item.gorsel, width:100, height:100)  â† Ã¼rÃ¼n gÃ¶rseli
    Ara : SizedBox(width: 8)
-   Sağ : Expanded
-           └─ Transform.translate(offset: Offset(-15, 0))  ← -15px sola ← DOKUNMA!
-                └─ Center
-                     └─ TypewriterText(textAlign: center)
+   SaÄŸ : Expanded
+           â””â”€ Transform.translate(offset: Offset(-15, 0))  â† -15px sola â† DOKUNMA!
+                â””â”€ Center
+                     â””â”€ TypewriterText(textAlign: center)
 ```
 
 ---
 
-## 🆕 Toptancı / Çürük-Tamir / Kapalı Kutu / Hedefler / Gün Olayları (v97)
+## ğŸ†• ToptancÄ± / Ã‡Ã¼rÃ¼k-Tamir / KapalÄ± Kutu / Hedefler / GÃ¼n OlaylarÄ± (v97)
 
-Dört yeni sistem eklendi. **Hepsi mevcut mekanikleri KİLİTLEMEZ, sadece ekler** — bu bilinçli bir tasarım kararı (eski akış hiç bozulmadı).
+DÃ¶rt yeni sistem eklendi. **Hepsi mevcut mekanikleri KÄ°LÄ°TLEMEZ, sadece ekler** â€” bu bilinÃ§li bir tasarÄ±m kararÄ± (eski akÄ±ÅŸ hiÃ§ bozulmadÄ±).
 
-### Erişim noktası
-Hepsi **browser popup'ı** (`_browserPopup`, 🖥️ butonu, `gun >= 2`) üzerinden. Alt bara hiç dokunulmadı → layout riski sıfır.
+### EriÅŸim noktasÄ±
+Hepsi **browser popup'Ä±** (`_browserPopup`, ğŸ–¥ï¸ butonu, `gun >= 2`) Ã¼zerinden. Alt bara hiÃ§ dokunulmadÄ± â†’ layout riski sÄ±fÄ±r.
 ```
-🖥️ Browser → 🏠 Kiralık Dükkanlar / 🏦 Banka / 🚚 Toptancı Rıza / 🏆 Hedefler / 🛒 Market / ⚙️ Ayarlar
+ğŸ–¥ï¸ Browser â†’ ğŸ  KiralÄ±k DÃ¼kkanlar / ğŸ¦ Banka / ğŸšš ToptancÄ± RÄ±za / ğŸ† Hedefler / ğŸ›’ Market / âš™ï¸ Ayarlar
 ```
 
-### 1. Çürük ürün (`GameItem.curuk`)
+### 1. Ã‡Ã¼rÃ¼k Ã¼rÃ¼n (`GameItem.curuk`)
 - `etkinFiyat` getter: `curuk ? basePrice * 0.35 : basePrice`
-- **Tüm pazarlık hesapları `etkinFiyat` kullanır** (`basePrice` DEĞİL): `yeniMusteriGonder`, `musteriKabul`, `PazarlikSeans.piyasaFiyati`, envanter kartı, pazarlık dialogu
-- Kaynakları: toptancı, kapalı kutu, fare olayı. **Müşteriler çürük ürün satmaz** (mesaj tutarlılığı için bilinçli)
-- Envanterde: kırmızı çerçeve + `ÇÜRÜK` rozeti + %50 opaklık, tıklanınca tamir popup'ı
+- **TÃ¼m pazarlÄ±k hesaplarÄ± `etkinFiyat` kullanÄ±r** (`basePrice` DEÄÄ°L): `yeniMusteriGonder`, `musteriKabul`, `PazarlikSeans.piyasaFiyati`, envanter kartÄ±, pazarlÄ±k dialogu
+- KaynaklarÄ±: toptancÄ±, kapalÄ± kutu, fare olayÄ±. **MÃ¼ÅŸteriler Ã§Ã¼rÃ¼k Ã¼rÃ¼n satmaz** (mesaj tutarlÄ±lÄ±ÄŸÄ± iÃ§in bilinÃ§li)
+- Envanterde: kÄ±rmÄ±zÄ± Ã§erÃ§eve + `Ã‡ÃœRÃœK` rozeti + %50 opaklÄ±k, tÄ±klanÄ±nca tamir popup'Ä±
 
 ### 2. Tamir Seti (`tamirSetiAdet`)
-- Kolonyanın **birebir aynı deseni**: slot işgal etmez, sayaç, envanterde ek kart
-- Toptancıdan 450'ye alınır → **5 kullanım** (≈90/kullanım)
+- KolonyanÄ±n **birebir aynÄ± deseni**: slot iÅŸgal etmez, sayaÃ§, envanterde ek kart
+- ToptancÄ±dan 450'ye alÄ±nÄ±r â†’ **5 kullanÄ±m** (â‰ˆ90/kullanÄ±m)
 - `tamirEt(slotIndex)`: `curuk=false`, kondisyon 4-5 rastgele
-- Ekonomi: pahalı ürünü tamir kârlı (2.3-3.2x), ucuz CD'yi tamir zararlı — **kasıtlı karar noktası**
+- Ekonomi: pahalÄ± Ã¼rÃ¼nÃ¼ tamir kÃ¢rlÄ± (2.3-3.2x), ucuz CD'yi tamir zararlÄ± â€” **kasÄ±tlÄ± karar noktasÄ±**
 
-### 3. Kapalı Kutu (`GameItem.kapaliKutu`)
-- `GameState.kapaliKutuUret()` — görseli `assets/zarf.png`, slot işgal EDER
-- Toptancıdan 300'e, envanterde tıkla → onay → `kutuAc()` → aynı slota rastgele ürün
-- %25 çürük çıkma şansı (kutu_avcisi rozetiyle %12.5)
-- **Alıcı müşteriler açılmamış kutuyu isteyemez** (`!u.kapaliKutu` filtresi) — kilitlenme yok, kutu açmak bedava
+### 3. KapalÄ± Kutu (`GameItem.kapaliKutu`)
+- `GameState.kapaliKutuUret()` â€” gÃ¶rseli `assets/zarf.png`, slot iÅŸgal EDER
+- ToptancÄ±dan 300'e, envanterde tÄ±kla â†’ onay â†’ `kutuAc()` â†’ aynÄ± slota rastgele Ã¼rÃ¼n
+- %25 Ã§Ã¼rÃ¼k Ã§Ä±kma ÅŸansÄ± (kutu_avcisi rozetiyle %12.5)
+- **AlÄ±cÄ± mÃ¼ÅŸteriler aÃ§Ä±lmamÄ±ÅŸ kutuyu isteyemez** (`!u.kapaliKutu` filtresi) â€” kilitlenme yok, kutu aÃ§mak bedava
 
-### 4. Toptancı (`ToptanciUrun`, `ToptanciTip`)
-- Stok **günlük**, `toptanciStokGunu != gun` ise yeniden üretilir (`gunuBitir` içinde 0'lanır)
-- 5 tezgâh (tuccar rozetiyle 6): 1 tamir seti + %70 kapalı kutu + kalanı ürün
-- Fiyatlar: sağlam %55-75, çürük %28-40 (piyasa fiyatının)
-- İndirimler toplanır: günlük olay + `zengin` rozeti (%10) + `pazarlikci` rozeti (çürükte %20)
-- Görsel: `assets/toptanci.png` (400×400, kullanıcı üretti)
+### 4. ToptancÄ± (`ToptanciUrun`, `ToptanciTip`)
+- Stok **gÃ¼nlÃ¼k**, `toptanciStokGunu != gun` ise yeniden Ã¼retilir (`gunuBitir` iÃ§inde 0'lanÄ±r)
+- 5 tezgÃ¢h (tuccar rozetiyle 6): 1 tamir seti + %70 kapalÄ± kutu + kalanÄ± Ã¼rÃ¼n
+- Fiyatlar: saÄŸlam %55-75, Ã§Ã¼rÃ¼k %28-40 (piyasa fiyatÄ±nÄ±n)
+- Ä°ndirimler toplanÄ±r: gÃ¼nlÃ¼k olay + `zengin` rozeti (%10) + `pazarlikci` rozeti (Ã§Ã¼rÃ¼kte %20)
+- GÃ¶rsel: `assets/toptanci.png` (400Ã—400, kullanÄ±cÄ± Ã¼retti)
 
 ### 5. Hedefler & Rozetler (`Rozet`)
-8 rozet. `_rozetleriDenetle()` **`notifyListeners()` içinde** çalışır (kendisi notify çağırmaz → döngü yok).
-Kazanılanlar `yeniKazanilanRozetler` kuyruğuna girer, UI `_rozetKuyrugunuIsle()` ile **ekran müsaitken** gösterir (müşteri/pazarlık/envanter/gün-sonu yokken → dialog çakışması olmaz).
+8 rozet. `_rozetleriDenetle()` **`notifyListeners()` iÃ§inde** Ã§alÄ±ÅŸÄ±r (kendisi notify Ã§aÄŸÄ±rmaz â†’ dÃ¶ngÃ¼ yok).
+KazanÄ±lanlar `yeniKazanilanRozetler` kuyruÄŸuna girer, UI `_rozetKuyrugunuIsle()` ile **ekran mÃ¼saitken** gÃ¶sterir (mÃ¼ÅŸteri/pazarlÄ±k/envanter/gÃ¼n-sonu yokken â†’ dialog Ã§akÄ±ÅŸmasÄ± olmaz).
 
-| Rozet | Hedef | Ödül (sadece yeni sistemleri etkiler) |
+| Rozet | Hedef | Ã–dÃ¼l (sadece yeni sistemleri etkiler) |
 |---|---|---|
-| 🏪 İlk Satış | 1 satış | +100 lira |
-| 💼 Tüccar | 10 satış | Toptancıda 6. tezgâh |
-| 🔧 Tamirci | 5 tamir | Tamir seti %30 indirimli |
-| 🎁 Kutu Avcısı | 10 kutu | Kutuda çürük şansı yarıya iner |
-| 💎 Koleksiyoncu | 10 farklı ürün sat | Toptancı ürünleri iyi kondisyonda |
-| 💰 Zengin | 10.000 lira | Toptancıda kalıcı %10 indirim |
-| 🤝 Pazarlık Ustası | 30 anlaşma | Çürükler %20 daha ucuz |
-| 📅 Emektar | 15. gün | Her gün +200 lira destek |
+| ğŸª Ä°lk SatÄ±ÅŸ | 1 satÄ±ÅŸ | +100 lira |
+| ğŸ’¼ TÃ¼ccar | 10 satÄ±ÅŸ | ToptancÄ±da 6. tezgÃ¢h |
+| ğŸ”§ Tamirci | 5 tamir | Tamir seti %30 indirimli |
+| ğŸ Kutu AvcÄ±sÄ± | 10 kutu | Kutuda Ã§Ã¼rÃ¼k ÅŸansÄ± yarÄ±ya iner |
+| ğŸ’ Koleksiyoncu | 10 farklÄ± Ã¼rÃ¼n sat | ToptancÄ± Ã¼rÃ¼nleri iyi kondisyonda |
+| ğŸ’° Zengin | 10.000 lira | ToptancÄ±da kalÄ±cÄ± %10 indirim |
+| ğŸ¤ PazarlÄ±k UstasÄ± | 30 anlaÅŸma | Ã‡Ã¼rÃ¼kler %20 daha ucuz |
+| ğŸ“… Emektar | 15. gÃ¼n | Her gÃ¼n +200 lira destek |
 
-### 6. Gün Olayları (`GunOlayi`)
-- `gunuBitir()` içinde, **3. günden itibaren %55 ihtimalle** biri seçilir
+### 6. GÃ¼n OlaylarÄ± (`GunOlayi`)
+- `gunuBitir()` iÃ§inde, **3. gÃ¼nden itibaren %55 ihtimalle** biri seÃ§ilir
 - Etkiler: `musteriDelta`, `piyasaCarpani`, `paraDelta`, `toptanciIndirim`, `fareIstilasi`
-- `piyasaCarpani` `_piyasaEtkisi()` ile uygulanır: **alıcı daha çok öder, satıcı daha az ister** (`musteriSatiyor ? reserv/c : reserv*c`)
-- 10 olay: TikTok viral, elektrik kesintisi, retro fuar, ekonomik kriz, kaldırım kazısı, sürpriz zarf, fare istilası, toptancı kampanyası, sağanak yağmur, gazete övgüsü
-- Reklamdan sonra popup ile tanıtılır
+- `piyasaCarpani` `_piyasaEtkisi()` ile uygulanÄ±r: **alÄ±cÄ± daha Ã§ok Ã¶der, satÄ±cÄ± daha az ister** (`musteriSatiyor ? reserv/c : reserv*c`)
+- 10 olay: TikTok viral, elektrik kesintisi, retro fuar, ekonomik kriz, kaldÄ±rÄ±m kazÄ±sÄ±, sÃ¼rpriz zarf, fare istilasÄ±, toptancÄ± kampanyasÄ±, saÄŸanak yaÄŸmur, gazete Ã¶vgÃ¼sÃ¼
+- Reklamdan sonra popup ile tanÄ±tÄ±lÄ±r
 
-### Kritik uygulama notları
-- **`urunCikarOrnek(GameItem)`** eklendi: aynı id'den çürük + sağlam iki kopya varsa `identical` ile doğru örneği çıkarır (eski `urunCikar(id)` yanlışını satabilirdi)
-- `GameItem.kopyaWith()` — alan bazlı kopya (final alanlar için)
-- `_slotaKoy()` sessiz ekleme (çift kayıt önler), `_slotlariSikistir()` ortak sıkıştırma
-- Tüm yeni alanlar `toJson`/`fromJson`'da **null-safe default** → eski kayıtlar bozulmaz
-
----
-
-## Önemli Oyun Mekanikleri
-- **Gün sistemi**: Her gün N müşteri, gün sonunda kira düşülür
-- **Pazarlık**: Müşteri teklif verir, oyuncu kabul/reddeder
-- **Envanter slot sistemi**: Ürün alım/satım
-- **Dükkan seviyeleri**: Kira ödeyerek büyütme
-- **Özel müşteriler**: Hırsız, polis, vergici, **kurye** (YeSekSepeti)
-- **iMac satın alma**: 3. günden sonra görünür buton, alındıktan sonra masa değişir
-- **Bilgisayar Geldi popup**: 3. günde tetiklenir (tek seferlik, `_bilgisayarGeldiGosterildi` flag'i)
-- **Oyun sonu**: Para bitti + envanter boş → iflas popup
-- **Devam Et butonu**: `_kayitVar` flag'i ile kontrol edilir — kayıt yoksa pasif
-- **Başlangıç parası**: 1000 (eskiden 500)
-- **Ardışık aynı ürün engeli**: `_sonUrunId` field'ı; bir önceki müşterinin ürünü havuzdan çıkarılır (birden fazla seçenek varsa)
+### Kritik uygulama notlarÄ±
+- **`urunCikarOrnek(GameItem)`** eklendi: aynÄ± id'den Ã§Ã¼rÃ¼k + saÄŸlam iki kopya varsa `identical` ile doÄŸru Ã¶rneÄŸi Ã§Ä±karÄ±r (eski `urunCikar(id)` yanlÄ±ÅŸÄ±nÄ± satabilirdi)
+- `GameItem.kopyaWith()` â€” alan bazlÄ± kopya (final alanlar iÃ§in)
+- `_slotaKoy()` sessiz ekleme (Ã§ift kayÄ±t Ã¶nler), `_slotlariSikistir()` ortak sÄ±kÄ±ÅŸtÄ±rma
+- TÃ¼m yeni alanlar `toJson`/`fromJson`'da **null-safe default** â†’ eski kayÄ±tlar bozulmaz
 
 ---
 
-## Kolonya Sistemi (v78 → v90 sürümleri)
+## Ã–nemli Oyun Mekanikleri
+- **GÃ¼n sistemi**: Her gÃ¼n N mÃ¼ÅŸteri, gÃ¼n sonunda kira dÃ¼ÅŸÃ¼lÃ¼r
+- **PazarlÄ±k**: MÃ¼ÅŸteri teklif verir, oyuncu kabul/reddeder
+- **Envanter slot sistemi**: ÃœrÃ¼n alÄ±m/satÄ±m
+- **DÃ¼kkan seviyeleri**: Kira Ã¶deyerek bÃ¼yÃ¼tme
+- **Ã–zel mÃ¼ÅŸteriler**: HÄ±rsÄ±z, polis, vergici, **kurye** (YeSekSepeti)
+- **iMac satÄ±n alma**: 3. gÃ¼nden sonra gÃ¶rÃ¼nÃ¼r buton, alÄ±ndÄ±ktan sonra masa deÄŸiÅŸir
+- **Bilgisayar Geldi popup**: 3. gÃ¼nde tetiklenir (tek seferlik, `_bilgisayarGeldiGosterildi` flag'i)
+- **Oyun sonu**: Para bitti + envanter boÅŸ â†’ iflas popup
+- **Devam Et butonu**: `_kayitVar` flag'i ile kontrol edilir â€” kayÄ±t yoksa pasif
+- **BaÅŸlangÄ±Ã§ parasÄ±**: 1000 (eskiden 500)
+- **ArdÄ±ÅŸÄ±k aynÄ± Ã¼rÃ¼n engeli**: `_sonUrunId` field'Ä±; bir Ã¶nceki mÃ¼ÅŸterinin Ã¼rÃ¼nÃ¼ havuzdan Ã§Ä±karÄ±lÄ±r (birden fazla seÃ§enek varsa)
 
-### Kolonya Özellikleri
-- Satıcı müşteri 1. günden itibaren kolonya satabilir (10 kullanım, slot dışı tutulur — +1 ilave)
-- `kolonyaKullanim`: 0-10 arası, müşteriye ikram başına 1 düşer
-- `kolonyaIkramEdildi`: aynı müşteriye 2 kez ikram engellenir
-- `_kolonyaPendingBonus`: pazarlık başlamadan ikram edilirse bekleyen bonus
-- Özel müşteriye kolonya: parasız gönderir (hırsız/polis/vergici/kurye)
+---
 
-### "Kolonya Tut" Butonu (_buildAltBar) — v89
+## Kolonya Sistemi (v78 â†’ v90 sÃ¼rÃ¼mleri)
 
-Eski yerleşik kolonya görseli (Stack içinde Positioned) **kaldırıldı**. Yerine `_buildAltBar`'da Müşteri Çağır/Envanter satırının altında:
+### Kolonya Ã–zellikleri
+- SatÄ±cÄ± mÃ¼ÅŸteri 1. gÃ¼nden itibaren kolonya satabilir (10 kullanÄ±m, slot dÄ±ÅŸÄ± tutulur â€” +1 ilave)
+- `kolonyaKullanim`: 0-10 arasÄ±, mÃ¼ÅŸteriye ikram baÅŸÄ±na 1 dÃ¼ÅŸer
+- `kolonyaIkramEdildi`: aynÄ± mÃ¼ÅŸteriye 2 kez ikram engellenir
+- `_kolonyaPendingBonus`: pazarlÄ±k baÅŸlamadan ikram edilirse bekleyen bonus
+- Ã–zel mÃ¼ÅŸteriye kolonya: parasÄ±z gÃ¶nderir (hÄ±rsÄ±z/polis/vergici/kurye)
+
+### "Kolonya Tut" Butonu (_buildAltBar) â€” v89
+
+Eski yerleÅŸik kolonya gÃ¶rseli (Stack iÃ§inde Positioned) **kaldÄ±rÄ±ldÄ±**. Yerine `_buildAltBar`'da MÃ¼ÅŸteri Ã‡aÄŸÄ±r/Envanter satÄ±rÄ±nÄ±n altÄ±nda:
 
 ```dart
 if (_state.kolonyaKullanim > 0) ...[
@@ -486,7 +528,7 @@ if (_state.kolonyaKullanim > 0) ...[
         child: SizedBox(
           height: 50,
           ...
-          // İkon (Image.asset 'kolonya.png' 22×22) + "Kolonya Tut" (white w900) + "X/10" (white70)
+          // Ä°kon (Image.asset 'kolonya.png' 22Ã—22) + "Kolonya Tut" (white w900) + "X/10" (white70)
         ),
       ),
     );
@@ -495,65 +537,65 @@ if (_state.kolonyaKullanim > 0) ...[
 ```
 
 - Renk: `0xFFE6A800` (parlak amber)
-- Yazı: beyaz (önceki siyah/altın değildi)
-- Müşteri yokken pasif (white38/white24 + opacity 0.35)
+- YazÄ±: beyaz (Ã¶nceki siyah/altÄ±n deÄŸildi)
+- MÃ¼ÅŸteri yokken pasif (white38/white24 + opacity 0.35)
 - `kolonyaKullanim == 0` ise buton tamamen kaybolur
 
-### Kolonya Sonrası Alıcı Mesajı (v90)
+### Kolonya SonrasÄ± AlÄ±cÄ± MesajÄ± (v90)
 
-Alıcı müşteriye (`!musteriSatiyor`) kolonya tutulunca:
-1. 3 sn "Kolonya ikramın için teşekkürler! :)" gösterilir
-2. Sonra `_state.mesaj` 6 random mesajdan biriyle güncellenir
-3. Önceki mesaj tekrar gelmez — `_kolonyaSonrasiSonIdx` field'ı
+AlÄ±cÄ± mÃ¼ÅŸteriye (`!musteriSatiyor`) kolonya tutulunca:
+1. 3 sn "Kolonya ikramÄ±n iÃ§in teÅŸekkÃ¼rler! :)" gÃ¶sterilir
+2. Sonra `_state.mesaj` 6 random mesajdan biriyle gÃ¼ncellenir
+3. Ã–nceki mesaj tekrar gelmez â€” `_kolonyaSonrasiSonIdx` field'Ä±
 
 ```
-1) "Ne diyorduk? Elinde X olduğunu duydum, bana satar mısın?"
-2) "En son X cd'sini bana satmanı rica ediyordum. Mümkün mü?"
-3) "Nerede kalmıştık... Evet. X cd'ni bana satar mısın?"
-4) "Hah ne diyordum; X cd'ni alabilir miyim mümkünse?"
+1) "Ne diyorduk? Elinde X olduÄŸunu duydum, bana satar mÄ±sÄ±n?"
+2) "En son X cd'sini bana satmanÄ± rica ediyordum. MÃ¼mkÃ¼n mÃ¼?"
+3) "Nerede kalmÄ±ÅŸtÄ±k... Evet. X cd'ni bana satar mÄ±sÄ±n?"
+4) "Hah ne diyordum; X cd'ni alabilir miyim mÃ¼mkÃ¼nse?"
 5) "X cd'n hala duruyorsa ben alabilir miyim?"
-6) "Ferahladığıma göre tekrar sorayım, X satılık mı halen?"
+6) "FerahladÄ±ÄŸÄ±ma gÃ¶re tekrar sorayÄ±m, X satÄ±lÄ±k mÄ± halen?"
 ```
-X = `_state.aktifMusteri!.item.name` (orijinal balondaki ürün)
+X = `_state.aktifMusteri!.item.name` (orijinal balondaki Ã¼rÃ¼n)
 
 ---
 
-## iOS Yapılandırması
+## iOS YapÄ±landÄ±rmasÄ±
 
 ### Temel Bilgiler
-- **Bundle ID**: `com.oyuncudukkani.app` (Android ile aynı)
-- **Display Name**: `Oyuncu Dükkanı` (Info.plist `CFBundleDisplayName`)
-- **Deployment Target**: 13.0 (AdMob için minimum)
+- **Bundle ID**: `com.oyuncudukkani.app` (Android ile aynÄ±)
+- **Display Name**: `Oyuncu DÃ¼kkanÄ±` (Info.plist `CFBundleDisplayName`)
+- **Deployment Target**: 13.0 (AdMob iÃ§in minimum)
 - **Team ID**: `SN5Y726ZKF` (FUTURASTIC TEKNOLOJI URUNLERI VE DANISMANLIGI ORGANIZASYON TICARET LIMITED SIRKETI)
 - **AdMob iOS App ID**: `ca-app-pub-6470338276121414~7413384913` (Info.plist `GADApplicationIdentifier`)
 - **AdMob iOS Interstitial Unit ID**: `ca-app-pub-6470338276121414/1436676062` (oyuncudukkanigecis, PROD)
-- **AdMob iOS Ödüllü (Rewarded) Unit ID**: `ca-app-pub-6470338276121414/2648809677` (oyuncudukkaniodullu, OLUŞTURULDU ama oyunda henüz KULLANILMIYOR)
+- **AdMob iOS Ã–dÃ¼llÃ¼ (Rewarded) Unit ID**: `ca-app-pub-6470338276121414/2648809677` (oyuncudukkaniodullu, OLUÅTURULDU ama oyunda henÃ¼z KULLANILMIYOR)
 - **AdMob Android Interstitial Unit ID**: `ca-app-pub-6470338276121414/4138047986` (PROD)
 - **App Store Connect App ID** (numerik): `6778437262`
-- **NSUserTrackingUsageDescription**: ATT (App Tracking Transparency) izni için
-- **SKAdNetworkItems**: AdMob 12.x için Google'ın güncel SKAN ID listesi (43 ağ)
-- **ITSAppUsesNonExemptEncryption**: `false` (sadece HTTPS, custom crypto yok — Apple muaf)
-- **iOS App Icon**: `flutter_launcher_icons` ile `assets/oyuncu_dukkani_icon.png`'den üretildi
+- **NSUserTrackingUsageDescription**: ATT (App Tracking Transparency) izni iÃ§in
+- **SKAdNetworkItems**: AdMob 12.x iÃ§in Google'Ä±n gÃ¼ncel SKAN ID listesi (43 aÄŸ)
+- **ITSAppUsesNonExemptEncryption**: `false` (sadece HTTPS, custom crypto yok â€” Apple muaf)
+- **iOS App Icon**: `flutter_launcher_icons` ile `assets/oyuncu_dukkani_icon.png`'den Ã¼retildi
   - `ios: true`, `remove_alpha_ios: true` (Apple alpha kanal kabul etmiyor)
 
-### Apple Developer Portal Setup (BİR KEZ)
+### Apple Developer Portal Setup (BÄ°R KEZ)
 1. https://developer.apple.com/account/resources/identifiers/list
-2. **+** (Add) → App IDs → App
+2. **+** (Add) â†’ App IDs â†’ App
 3. Description: `Oyuncu Dukkani` (ASCII), Bundle ID: `com.oyuncudukkani.app` (Explicit)
-4. Capabilities: hiçbir şey işaretleme
+4. Capabilities: hiÃ§bir ÅŸey iÅŸaretleme
 5. Register
 
-### App Store Connect Setup (BİR KEZ)
-1. https://appstoreconnect.apple.com → My Apps → **"+"** → New App
-2. Platforms: iOS, Name: **Oyuncu Dükkanı**, Bundle ID: dropdown'dan seç
+### App Store Connect Setup (BÄ°R KEZ)
+1. https://appstoreconnect.apple.com â†’ My Apps â†’ **"+"** â†’ New App
+2. Platforms: iOS, Name: **Oyuncu DÃ¼kkanÄ±**, Bundle ID: dropdown'dan seÃ§
 3. SKU: **OYUNCUDUKKANI001**, User Access: **Full Access**
-4. Create → URL'deki numerik App ID'yi al (örn. `6778437262`)
+4. Create â†’ URL'deki numerik App ID'yi al (Ã¶rn. `6778437262`)
 
 ---
 
-## 🚀 Codemagic CI/CD — iOS TestFlight Pipeline
+## ğŸš€ Codemagic CI/CD â€” iOS TestFlight Pipeline
 
-`codemagic.yaml` git tag `v*` push edilince tetiklenir, otomatik TestFlight yükleme yapar.
+`codemagic.yaml` git tag `v*` push edilince tetiklenir, otomatik TestFlight yÃ¼kleme yapar.
 
 ### Workflow tetikleme
 ```bash
@@ -561,25 +603,25 @@ X = `_state.aktifMusteri!.item.name` (orijinal balondaki ürün)
 git tag v1.0.x-iosN
 git push origin v1.0.x-iosN
 
-# YA Codemagic UI'dan manuel: Applications → oyuncu_dukkani → Start new build → main → ios-testflight
+# YA Codemagic UI'dan manuel: Applications â†’ oyuncu_dukkani â†’ Start new build â†’ main â†’ ios-testflight
 ```
 
-### Codemagic UI Kurulum (BİR KEZ tamamlandı)
+### Codemagic UI Kurulum (BÄ°R KEZ tamamlandÄ±)
 
-**1. Repo bağlantısı**
-- https://codemagic.io → Sign in with GitHub → "Add application" → oyuncu_dukkani repo
+**1. Repo baÄŸlantÄ±sÄ±**
+- https://codemagic.io â†’ Sign in with GitHub â†’ "Add application" â†’ oyuncu_dukkani repo
 
 **2. App Store Connect API Key entegrasyonu**
-- Codemagic UI → Personal Account → **Settings** → Integrations → **Developer Portal** → "Connect"
-- App Store Connect → Users and Access → Integrations / Keys → "+" → App Manager rolünde key oluştur
-- Key ID, Issuer ID, .p8 dosyasını Codemagic'e gir
+- Codemagic UI â†’ Personal Account â†’ **Settings** â†’ Integrations â†’ **Developer Portal** â†’ "Connect"
+- App Store Connect â†’ Users and Access â†’ Integrations / Keys â†’ "+" â†’ App Manager rolÃ¼nde key oluÅŸtur
+- Key ID, Issuer ID, .p8 dosyasÄ±nÄ± Codemagic'e gir
 - Name: **`Codemagic`** (YAML'da `integrations.app_store_connect: Codemagic` ile referans veriliyor)
-- **Mevcut Key ID:** `2M84B256CL` (Magnus ile paylaşımlı)
+- **Mevcut Key ID:** `2M84B256CL` (Magnus ile paylaÅŸÄ±mlÄ±)
 
 **3. iOS Distribution Certificate (Code signing identity)**
-- Personal Account → **Settings** → "Code signing identities" → "iOS certificates"
-- **Upload a certificate file**: `.p12` dosyası sürükle
-- Şifre boş olabilmesi için yerel olarak yeniden üretildi:
+- Personal Account â†’ **Settings** â†’ "Code signing identities" â†’ "iOS certificates"
+- **Upload a certificate file**: `.p12` dosyasÄ± sÃ¼rÃ¼kle
+- Åifre boÅŸ olabilmesi iÃ§in yerel olarak yeniden Ã¼retildi:
   ```bash
   openssl pkcs12 -export -legacy \
     -out ios_distribution_nopass.p12 \
@@ -588,18 +630,18 @@ git push origin v1.0.x-iosN
     -passout pass:
   ```
 - Reference name: `ios_distribution`
-- ⚠️ NOT: Magnus için yapılmış cert'ten türetildi, **aynı Apple Developer Team** olduğu için oyuncu_dukkani için de geçerli
+- âš ï¸ NOT: Magnus iÃ§in yapÄ±lmÄ±ÅŸ cert'ten tÃ¼retildi, **aynÄ± Apple Developer Team** olduÄŸu iÃ§in oyuncu_dukkani iÃ§in de geÃ§erli
 
 **4. Private Key Environment Variable**
-- Codemagic Personal Account → Settings → Global vars **deprecated** → Applications → oyuncu_dukkani → **Environment variables**
-- `CERTIFICATE_PRIVATE_KEY` (Secret ✅, group: `signing_credentials`)
-- Değer: `ios_distribution.key`'in **base64 encoded** içeriği:
+- Codemagic Personal Account â†’ Settings â†’ Global vars **deprecated** â†’ Applications â†’ oyuncu_dukkani â†’ **Environment variables**
+- `CERTIFICATE_PRIVATE_KEY` (Secret âœ…, group: `signing_credentials`)
+- DeÄŸer: `ios_distribution.key`'in **base64 encoded** iÃ§eriÄŸi:
   ```bash
   cat ios_distribution.key | base64 -w 0 > cert_key_base64.txt
   ```
-- YAML'da `signing_credentials` group referansı zorunlu
+- YAML'da `signing_credentials` group referansÄ± zorunlu
 
-### codemagic.yaml Yapısı
+### codemagic.yaml YapÄ±sÄ±
 
 ```yaml
 workflows:
@@ -607,7 +649,7 @@ workflows:
     name: iOS TestFlight (Otomatik)
     instance_type: mac_mini_m2
     integrations:
-      app_store_connect: Codemagic   # UI'daki integration adı
+      app_store_connect: Codemagic   # UI'daki integration adÄ±
     environment:
       flutter: stable
       xcode: latest
@@ -636,7 +678,7 @@ workflows:
         script: xcode-project use-profiles
       - name: Flutter packages + disable SwiftPM
         script: |
-          # google_mobile_ads CocoaPods, webview_flutter SwiftPM — çakışıyor
+          # google_mobile_ads CocoaPods, webview_flutter SwiftPM â€” Ã§akÄ±ÅŸÄ±yor
           flutter config --no-enable-swift-package-manager
           flutter packages pub get
       - name: Pod install
@@ -661,83 +703,83 @@ workflows:
         submit_to_app_store: false
 ```
 
-### ⚠️ Çözülen Codemagic Sorunları (referans)
+### âš ï¸ Ã‡Ã¶zÃ¼len Codemagic SorunlarÄ± (referans)
 
-| Hata | Sebep | Çözüm |
+| Hata | Sebep | Ã‡Ã¶zÃ¼m |
 |------|-------|-------|
-| `auth: integration requires workflow → integrations → app_store_connect` | YAML'da integrations bloğu eksik | `integrations.app_store_connect: Codemagic` eklendi |
-| `No matching profiles found for bundle identifier` | `ios_signing` env block profil yoksa hata fırlatır | Env block kaldırıldı, script ile `--create` |
-| `Cannot save Signing Certificates without certificate private key` | Cert auto-create için private key gerekli | `CERTIFICATE_PRIVATE_KEY` env var + `--certificate-key=@file:` |
-| `Provided value "" is not valid` (cert key) | Env var boş veya group bağlanmamış | YAML'a `groups: [signing_credentials]` eklendi |
-| `google_mobile_ads uses CocoaPods while webview_flutter_wkwebview uses Swift Package Manager` | SDK çakışması | `flutter config --no-enable-swift-package-manager` |
+| `auth: integration requires workflow â†’ integrations â†’ app_store_connect` | YAML'da integrations bloÄŸu eksik | `integrations.app_store_connect: Codemagic` eklendi |
+| `No matching profiles found for bundle identifier` | `ios_signing` env block profil yoksa hata fÄ±rlatÄ±r | Env block kaldÄ±rÄ±ldÄ±, script ile `--create` |
+| `Cannot save Signing Certificates without certificate private key` | Cert auto-create iÃ§in private key gerekli | `CERTIFICATE_PRIVATE_KEY` env var + `--certificate-key=@file:` |
+| `Provided value "" is not valid` (cert key) | Env var boÅŸ veya group baÄŸlanmamÄ±ÅŸ | YAML'a `groups: [signing_credentials]` eklendi |
+| `google_mobile_ads uses CocoaPods while webview_flutter_wkwebview uses Swift Package Manager` | SDK Ã§akÄ±ÅŸmasÄ± | `flutter config --no-enable-swift-package-manager` |
 | `The bundle version must be higher than the previously uploaded version` | Build number unique olmuyor | Timestamp fallback (`date +%s | tail -c 7`) |
-| Mavi Flutter üçgeni ikon | `flutter_launcher_icons` ios:false | `ios: true` + `flutter pub run flutter_launcher_icons` |
+| Mavi Flutter Ã¼Ã§geni ikon | `flutter_launcher_icons` ios:false | `ios: true` + `flutter pub run flutter_launcher_icons` |
 | Encryption sorusu her build'de soruluyor | Info.plist'te bildirim yok | `ITSAppUsesNonExemptEncryption=false` eklendi |
-| App Privacy formu doldurulmamış | NSUserTrackingUsageDescription ATT istiyor | App Privacy → Publish → Tracking yapılandır |
+| App Privacy formu doldurulmamÄ±ÅŸ | NSUserTrackingUsageDescription ATT istiyor | App Privacy â†’ Publish â†’ Tracking yapÄ±landÄ±r |
 
 ### TestFlight Test Etme
-1. iPhone'a **TestFlight** uygulamasını App Store'dan kur
-2. App Store Connect'teki Apple ID ile giriş yap
-3. App Store Connect → Oyuncu Dükkanı → TestFlight → **Internal Testing** → "+" Group oluştur
-4. Group → Testers → kendi Apple ID'ni ekle
-5. Group → Builds → "+ Add Build" → son build seç
-6. iPhone'a mail gelir (5-15 dk) veya doğrudan TestFlight uygulamasında belirir
+1. iPhone'a **TestFlight** uygulamasÄ±nÄ± App Store'dan kur
+2. App Store Connect'teki Apple ID ile giriÅŸ yap
+3. App Store Connect â†’ Oyuncu DÃ¼kkanÄ± â†’ TestFlight â†’ **Internal Testing** â†’ "+" Group oluÅŸtur
+4. Group â†’ Testers â†’ kendi Apple ID'ni ekle
+5. Group â†’ Builds â†’ "+ Add Build" â†’ son build seÃ§
+6. iPhone'a mail gelir (5-15 dk) veya doÄŸrudan TestFlight uygulamasÄ±nda belirir
 
-### App Privacy Formu (NSUserTrackingUsageDescription kullanılırsa)
-App Store Connect → Oyuncu Dükkanı → **App Privacy** → Get Started:
+### App Privacy Formu (NSUserTrackingUsageDescription kullanÄ±lÄ±rsa)
+App Store Connect â†’ Oyuncu DÃ¼kkanÄ± â†’ **App Privacy** â†’ Get Started:
 
-**Data Types collected** (AdMob için):
-- **Identifiers → Device ID**: Linked=Yes, Tracking=Yes, Purpose=Third-Party Advertising
-- **Diagnostics → Crash Data**: Linked=No, Tracking=No, Purpose=App Functionality
-- **Diagnostics → Performance Data**: Linked=No, Tracking=No, Purpose=App Functionality
+**Data Types collected** (AdMob iÃ§in):
+- **Identifiers â†’ Device ID**: Linked=Yes, Tracking=Yes, Purpose=Third-Party Advertising
+- **Diagnostics â†’ Crash Data**: Linked=No, Tracking=No, Purpose=App Functionality
+- **Diagnostics â†’ Performance Data**: Linked=No, Tracking=No, Purpose=App Functionality
 
 **Privacy Policy URL**: `https://anilgedikoglu.github.io/oyuncu_dukkani/privacy-policy.html`
 
-⚠️ Form doldurulunca **"Publish"** butonuna tıklamak ZORUNLU (Save yetmiyor).
+âš ï¸ Form doldurulunca **"Publish"** butonuna tÄ±klamak ZORUNLU (Save yetmiyor).
 
-### Versiyon Kontrolü
+### Versiyon KontrolÃ¼
 - pubspec.yaml: `1.0.2+13`
-- iOS build number Codemagic tarafından OTOMATİK timestamp ile atanıyor, pubspec'teki +13 ile çakışmaz
-- Android AAB: pubspec'teki versionCode kullanılır → Play'e her yüklemede ARTTIR (12→13→14...)
-- Yeni release için: `pubspec.yaml` version arttır → commit + push → Codemagic UI'dan manuel build başlat veya `git tag v1.0.x-iosN`
+- iOS build number Codemagic tarafÄ±ndan OTOMATÄ°K timestamp ile atanÄ±yor, pubspec'teki +13 ile Ã§akÄ±ÅŸmaz
+- Android AAB: pubspec'teki versionCode kullanÄ±lÄ±r â†’ Play'e her yÃ¼klemede ARTTIR (12â†’13â†’14...)
+- Yeni release iÃ§in: `pubspec.yaml` version arttÄ±r â†’ commit + push â†’ Codemagic UI'dan manuel build baÅŸlat veya `git tag v1.0.x-iosN`
 
 ---
 
-## app-ads.txt (AdMob Doğrulama)
+## app-ads.txt (AdMob DoÄŸrulama)
 
-AdMob'un yetkisiz reklam envanteri satışını önlemek için kullandığı doğrulama dosyası.
+AdMob'un yetkisiz reklam envanteri satÄ±ÅŸÄ±nÄ± Ã¶nlemek iÃ§in kullandÄ±ÄŸÄ± doÄŸrulama dosyasÄ±.
 
-**Dosya konumu (KRİTİK):** Domain KÖKÜNDE olmalı, alt-path'te DEĞİL.
-- ✅ Doğru: `anilgedikoglu.github.io/app-ads.txt` (ayrı `anilgedikoglu.github.io` repo'sunda)
-- ❌ Yanlış: `anilgedikoglu.github.io/oyuncu_dukkani/app-ads.txt` (proje alt-path'i — AdMob bakmaz)
+**Dosya konumu (KRÄ°TÄ°K):** Domain KÃ–KÃœNDE olmalÄ±, alt-path'te DEÄÄ°L.
+- âœ… DoÄŸru: `anilgedikoglu.github.io/app-ads.txt` (ayrÄ± `anilgedikoglu.github.io` repo'sunda)
+- âŒ YanlÄ±ÅŸ: `anilgedikoglu.github.io/oyuncu_dukkani/app-ads.txt` (proje alt-path'i â€” AdMob bakmaz)
 
-**İçerik (tüm app'ler için ortak, aynı pub ID):**
+**Ä°Ã§erik (tÃ¼m app'ler iÃ§in ortak, aynÄ± pub ID):**
 ```
 google.com, pub-6470338276121414, DIRECT, f08c47fec0942fa0
 ```
 
-**AdMob doğrulama zinciri:** AdMob app kaydı → bağlı App Store/Play URL → store'daki "Developer Website" domaini → o domainin kökündeki app-ads.txt → pub ID eşleşmesi.
+**AdMob doÄŸrulama zinciri:** AdMob app kaydÄ± â†’ baÄŸlÄ± App Store/Play URL â†’ store'daki "Developer Website" domaini â†’ o domainin kÃ¶kÃ¼ndeki app-ads.txt â†’ pub ID eÅŸleÅŸmesi.
 
-**Oyuncu Dükkanı için zincir (hepsi doğru):**
+**Oyuncu DÃ¼kkanÄ± iÃ§in zincir (hepsi doÄŸru):**
 - App Store Developer Website: `https://anilgedikoglu.github.io/oyuncu_dukkani/marketing.html`
-- Domain: `anilgedikoglu.github.io` → app-ads.txt orada mevcut ✅
+- Domain: `anilgedikoglu.github.io` â†’ app-ads.txt orada mevcut âœ…
 
-**"Doğrulanamadı" hatası çözümü:**
-1. Dosya/içerik genelde DOĞRUDUR — panik yapma, önce zinciri kontrol et
-2. AdMob'daki app kaydı App Store/Play'e BAĞLI olmalı (manuel oluşturulduysa bağlanmamış olabilir)
-3. AdMob tarama günde ~1 kez → "yeniden tara" deyip 24 saat bekle
-4. Doğrulama hatası reklam gelirini ENGELLEMEZ, reklamlar yine gösterilir — acil değil
+**"DoÄŸrulanamadÄ±" hatasÄ± Ã§Ã¶zÃ¼mÃ¼:**
+1. Dosya/iÃ§erik genelde DOÄRUDUR â€” panik yapma, Ã¶nce zinciri kontrol et
+2. AdMob'daki app kaydÄ± App Store/Play'e BAÄLI olmalÄ± (manuel oluÅŸturulduysa baÄŸlanmamÄ±ÅŸ olabilir)
+3. AdMob tarama gÃ¼nde ~1 kez â†’ "yeniden tara" deyip 24 saat bekle
+4. DoÄŸrulama hatasÄ± reklam gelirini ENGELLEMEZ, reklamlar yine gÃ¶sterilir â€” acil deÄŸil
 
-⚠️ App Store/Play'de "Marketing/Developer Website" alanı domaini `anilgedikoglu.github.io` olmalı (app-ads.txt orada).
+âš ï¸ App Store/Play'de "Marketing/Developer Website" alanÄ± domaini `anilgedikoglu.github.io` olmalÄ± (app-ads.txt orada).
 
 ---
 
-## Android Yapılandırması
-- **Paket adı**: `com.oyuncudukkani.app` (eski: `com.example.oyuncu_dukkani`)
-- **Uygulama ikonu**: `flutter_launcher_icons` ile `oyuncu_dukkani_icon.png`'den üretildi, adaptive icon destekli
-- **Splash**: Android native splash kaldırıldı, Flutter tarafında `SplashScreen` widget'ı kullanılıyor
+## Android YapÄ±landÄ±rmasÄ±
+- **Paket adÄ±**: `com.oyuncudukkani.app` (eski: `com.example.oyuncu_dukkani`)
+- **Uygulama ikonu**: `flutter_launcher_icons` ile `oyuncu_dukkani_icon.png`'den Ã¼retildi, adaptive icon destekli
+- **Splash**: Android native splash kaldÄ±rÄ±ldÄ±, Flutter tarafÄ±nda `SplashScreen` widget'Ä± kullanÄ±lÄ±yor
 
-### ⚠️ EnableImpeller=false (Skia)
+### âš ï¸ EnableImpeller=false (Skia)
 
 **AndroidManifest.xml**'de:
 ```xml
@@ -746,32 +788,32 @@ google.com, pub-6470338276121414, DIRECT, f08c47fec0942fa0
     android:value="false" />
 ```
 
-**Neden:** Impeller emülatörün yazılımsal GPU'sunu (`ranchu`/SwiftShader) boğuyor — raster thread %92 CPU + %90 kernel, composer3 %100, surfaceflinger %48 → ANR ("Application does not have a focused window"). Skia ile composer3 %100 → %3.4. Gerçek cihazda Impeller (Vulkan) hızlı, sorun yok, ama emülatör test için Skia zorunlu.
+**Neden:** Impeller emÃ¼latÃ¶rÃ¼n yazÄ±lÄ±msal GPU'sunu (`ranchu`/SwiftShader) boÄŸuyor â€” raster thread %92 CPU + %90 kernel, composer3 %100, surfaceflinger %48 â†’ ANR ("Application does not have a focused window"). Skia ile composer3 %100 â†’ %3.4. GerÃ§ek cihazda Impeller (Vulkan) hÄ±zlÄ±, sorun yok, ama emÃ¼latÃ¶r test iÃ§in Skia zorunlu.
 
-Bu flag deprecated uyarısı verir ama hâlâ çalışır.
+Bu flag deprecated uyarÄ±sÄ± verir ama hÃ¢lÃ¢ Ã§alÄ±ÅŸÄ±r.
 
 ---
 
-## ⚠️ ANR Sorunları & Emülatör Yönetimi
+## âš ï¸ ANR SorunlarÄ± & EmÃ¼latÃ¶r YÃ¶netimi
 
 ### Tetikleyiciler
-1. **Impeller + software GPU**: Yukarıdaki Skia çözümü
-2. **Emülatör state degradation**: Uzun süreli install/uninstall/force-stop döngüleri Android system_server'ı bozar. Belirtisi: "Process system isn't responding" + Windows tarafında "Yanıt Vermiyor"
-3. **Büyük APK + AOT cold start**: İlk install + ART derleme önbelleği oluşturma >5 sn → startup ANR
+1. **Impeller + software GPU**: YukarÄ±daki Skia Ã§Ã¶zÃ¼mÃ¼
+2. **EmÃ¼latÃ¶r state degradation**: Uzun sÃ¼reli install/uninstall/force-stop dÃ¶ngÃ¼leri Android system_server'Ä± bozar. Belirtisi: "Process system isn't responding" + Windows tarafÄ±nda "YanÄ±t Vermiyor"
+3. **BÃ¼yÃ¼k APK + AOT cold start**: Ä°lk install + ART derleme Ã¶nbelleÄŸi oluÅŸturma >5 sn â†’ startup ANR
 
-### Geliştirme Akışı
-- **Yeni APK kurarken** her zaman: `adb install -r` (kaldırmadan üstüne) — ART önbelleği korunur
-- **İmza değişikliğinde** (debug↔release): mecbur uninstall
-- **Emülatör sıkışırsa**: Tamamen kapat → Cold Boot (`-wipe-data` veya AVD Manager'dan "Wipe Data")
-- **Gerçek cihazda** ANR olmaz; emülatör spesifik
+### GeliÅŸtirme AkÄ±ÅŸÄ±
+- **Yeni APK kurarken** her zaman: `adb install -r` (kaldÄ±rmadan Ã¼stÃ¼ne) â€” ART Ã¶nbelleÄŸi korunur
+- **Ä°mza deÄŸiÅŸikliÄŸinde** (debugâ†”release): mecbur uninstall
+- **EmÃ¼latÃ¶r sÄ±kÄ±ÅŸÄ±rsa**: Tamamen kapat â†’ Cold Boot (`-wipe-data` veya AVD Manager'dan "Wipe Data")
+- **GerÃ§ek cihazda** ANR olmaz; emÃ¼latÃ¶r spesifik
 
-### Build Çıktıları (post-optimizasyon)
+### Build Ã‡Ä±ktÄ±larÄ± (post-optimizasyon)
 ```
 app-armeabi-v7a-release.apk : 32.4MB
 app-arm64-v8a-release.apk    : 34.7MB
 app-x86_64-release.apk       : 36.1MB
 ```
-v87 fat APK 70.8MB idi — assets optimizasyonu ile dramatik azalma.
+v87 fat APK 70.8MB idi â€” assets optimizasyonu ile dramatik azalma.
 
 ---
 
@@ -779,70 +821,70 @@ v87 fat APK 70.8MB idi — assets optimizasyonu ile dramatik azalma.
 
 ### Optimize Edilen (PowerShell + System.Drawing ile resize + recompress)
 
-| Dosya | Önce | Sonra | Yöntem |
+| Dosya | Ã–nce | Sonra | YÃ¶ntem |
 |-------|------|-------|--------|
-| bgbos.png | 7.1 MB | 2.1 MB | 1684×2528 → 719×1080 |
-| anamenu.png | 7.3 MB | 1.3 MB | 1408×3062 → 497×1080 |
-| bg1.png | 3.6 MB | 1.1 MB | 1684×2528 → 719×1080 |
-| bg2.png | 3.6 MB | 1.2 MB | 1684×2528 → 719×1080 |
-| bgbosmasa.png | 3.2 MB | 1.1 MB | 1684×2528 → 719×1080 |
-| browser.png | 0.9 MB | 0.15 MB | 775×1298 → 306×512 |
-| biri.png | 7 MB (eskiden) | 11 KB | 1684×2528 → 341×512 |
-| CD_1..6 | ~440KB her | ~390KB her | 437×571 → 392×512 |
+| bgbos.png | 7.1 MB | 2.1 MB | 1684Ã—2528 â†’ 719Ã—1080 |
+| anamenu.png | 7.3 MB | 1.3 MB | 1408Ã—3062 â†’ 497Ã—1080 |
+| bg1.png | 3.6 MB | 1.1 MB | 1684Ã—2528 â†’ 719Ã—1080 |
+| bg2.png | 3.6 MB | 1.2 MB | 1684Ã—2528 â†’ 719Ã—1080 |
+| bgbosmasa.png | 3.2 MB | 1.1 MB | 1684Ã—2528 â†’ 719Ã—1080 |
+| browser.png | 0.9 MB | 0.15 MB | 775Ã—1298 â†’ 306Ã—512 |
+| biri.png | 7 MB (eskiden) | 11 KB | 1684Ã—2528 â†’ 341Ã—512 |
+| CD_1..6 | ~440KB her | ~390KB her | 437Ã—571 â†’ 392Ã—512 |
 | konsol_1..5 | ~200KB | ~190KB | re-encode |
-| kurye.png | 185KB | 144KB | 408×612 → 341×512 |
+| kurye.png | 185KB | 144KB | 408Ã—612 â†’ 341Ã—512 |
 
-### pubspec.yaml — Asset Listesi (Wildcard → Explicit)
+### pubspec.yaml â€” Asset Listesi (Wildcard â†’ Explicit)
 
-Önceden `assets/` wildcard tüm dosyaları paketliyordu. Şimdi explicit liste:
-- Hariç tutulanlar: `anamenu1.png` (7.1MB), `anamenu2.png` (7.2MB), `oyuncu_dukkani_market.png` (7.4MB) → 21MB kazanç
-- Her CD ve müşteri ayrı satır
+Ã–nceden `assets/` wildcard tÃ¼m dosyalarÄ± paketliyordu. Åimdi explicit liste:
+- HariÃ§ tutulanlar: `anamenu1.png` (7.1MB), `anamenu2.png` (7.2MB), `oyuncu_dukkani_market.png` (7.4MB) â†’ 21MB kazanÃ§
+- Her CD ve mÃ¼ÅŸteri ayrÄ± satÄ±r
 
 ---
 
 ## DevicePreview
-`device_preview` paketi şu an **disabled** (`enabled: false`). Test sırasında ekranı küçülttüğü için kapatıldı. Açmak için `enabled: kDebugMode` yap.
+`device_preview` paketi ÅŸu an **disabled** (`enabled: false`). Test sÄ±rasÄ±nda ekranÄ± kÃ¼Ã§Ã¼lttÃ¼ÄŸÃ¼ iÃ§in kapatÄ±ldÄ±. AÃ§mak iÃ§in `enabled: kDebugMode` yap.
 
-## Header — Daire Sayaç Animasyonu
+## Header â€” Daire SayaÃ§ Animasyonu
 
-Gün/para kutuları eşit genişlik. Aralarında sarı daire (Ticker tabanlı sürekli animasyon):
+GÃ¼n/para kutularÄ± eÅŸit geniÅŸlik. AralarÄ±nda sarÄ± daire (Ticker tabanlÄ± sÃ¼rekli animasyon):
 
 ```dart
-// _GameScreenState alanları:
+// _GameScreenState alanlarÄ±:
 late Ticker _daireTicker;
 Duration _dairePrevTick = Duration.zero;
-double _daireGosterilen = 0.0;  // 0.0..1.0 ekranda görünen
-double _daireHedef     = 0.0;   // müşteri sayısına göre hedef
-double _daireHiz       = 0.3;   // rassal hız (bazen hızlanır/yavaşlar)
+double _daireGosterilen = 0.0;  // 0.0..1.0 ekranda gÃ¶rÃ¼nen
+double _daireHedef     = 0.0;   // mÃ¼ÅŸteri sayÄ±sÄ±na gÃ¶re hedef
+double _daireHiz       = 0.3;   // rassal hÄ±z (bazen hÄ±zlanÄ±r/yavaÅŸlar)
 final _daireRng = Random();
 ```
 
-`_DairePainter` → sarı dolmuş dilim (clockwise), siyah ince çerçeve, beyaz yarı şeffaf arka plan.
+`_DairePainter` â†’ sarÄ± dolmuÅŸ dilim (clockwise), siyah ince Ã§erÃ§eve, beyaz yarÄ± ÅŸeffaf arka plan.
 
 ---
 
-## Butonlar — Pixel Art Çerçeve
+## Butonlar â€” Pixel Art Ã‡erÃ§eve
 
-`_PixelButonPainter` (CustomPainter): metalik siyah gradient çerçeve, renkli gradient iç, L-şekli köşe süsleri (7 piksel/köşe), üst parlama şeridi.
-`_oyunButon()` → `GestureDetector` + `CustomPaint(painter: _PixelButonPainter(...))`.
-Yükseklik: 50px. Yazılar `FittedBox(fit: BoxFit.scaleDown)` ile taşmaz.
+`_PixelButonPainter` (CustomPainter): metalik siyah gradient Ã§erÃ§eve, renkli gradient iÃ§, L-ÅŸekli kÃ¶ÅŸe sÃ¼sleri (7 piksel/kÃ¶ÅŸe), Ã¼st parlama ÅŸeridi.
+`_oyunButon()` â†’ `GestureDetector` + `CustomPaint(painter: _PixelButonPainter(...))`.
+YÃ¼kseklik: 50px. YazÄ±lar `FittedBox(fit: BoxFit.scaleDown)` ile taÅŸmaz.
 
 ---
 
-## Pazarlık Popup — Tıklanabilir Teklif Balonu
+## PazarlÄ±k Popup â€” TÄ±klanabilir Teklif Balonu
 
-Müşteri ALICIYSA (`!musteriSatiyor && !anlasildi && !gitti && !_bitti`):
+MÃ¼ÅŸteri ALICIYSA (`!musteriSatiyor && !anlasildi && !gitti && !_bitti`):
 ```
-_dialogMesaj Container → GestureDetector
+_dialogMesaj Container â†’ GestureDetector
   borderRadius: 24 (oval)
-  border: Color(0xFF4caf50), width: 1.8  ← yeşil
-  boxShadow: yeşil parlama
-  onTap: widget.state.teklifVer(musteriTeklif) → Navigator.pop()
+  border: Color(0xFF4caf50), width: 1.8  â† yeÅŸil
+  boxShadow: yeÅŸil parlama
+  onTap: widget.state.teklifVer(musteriTeklif) â†’ Navigator.pop()
 ```
-Tıklanınca oyuncu müşterinin teklifini kabul etmiş olur.
-Butonlar: sadece "Reddet" (kırmızı) + "Fiyat Ver" (altın) — "Kabul Et" yok.
+TÄ±klanÄ±nca oyuncu mÃ¼ÅŸterinin teklifini kabul etmiÅŸ olur.
+Butonlar: sadece "Reddet" (kÄ±rmÄ±zÄ±) + "Fiyat Ver" (altÄ±n) â€” "Kabul Et" yok.
 
-**Piyasa/Maliyet bilgisi (v90 ile aynı font):**
+**Piyasa/Maliyet bilgisi (v90 ile aynÄ± font):**
 ```dart
 Piyasa : fontSize 14, white60, w600 + basePrice (blue 0xFF64B5F6, bold)
 Maliyet: fontSize 14, white60, w600 + value     (orangeAccent, bold)
@@ -852,7 +894,7 @@ Maliyet: fontSize 14, white60, w600 + value     (orangeAccent, bold)
 
 ## Envanter Kompaksiyon
 
-`urunCikar()` → ürün çıktıktan sonra dolu slotlar öne çekilir, boşluklar sona itilir:
+`urunCikar()` â†’ Ã¼rÃ¼n Ã§Ä±ktÄ±ktan sonra dolu slotlar Ã¶ne Ã§ekilir, boÅŸluklar sona itilir:
 ```dart
 final dolu = slotlar.sublist(0, acikSlotSayisi).whereType<GameItem>().toList();
 for (int j = 0; j < acikSlotSayisi; j++) slotlar[j] = j < dolu.length ? dolu[j] : null;
@@ -860,48 +902,48 @@ for (int j = 0; j < acikSlotSayisi; j++) slotlar[j] = j < dolu.length ? dolu[j] 
 
 ---
 
-## Ürün Listesi (`_baslangicUrunler`)
+## ÃœrÃ¼n Listesi (`_baslangicUrunler`)
 
-| Kategori | ID | Ad | Görsel | basePrice |
+| Kategori | ID | Ad | GÃ¶rsel | basePrice |
 |----------|----|----|--------|-----------|
-| cd | cd1..14 | KARMAGEDDON, CİMRİCİTY, ..., TENİS OYUNU, DALAKKÜREK, ŞAHMAT, TOTORACER, GAMLIBAYKUŞ, KISPET, UÇARSOKAR, DÜTTÜRÜ | CD_1..14.png | 80-175 |
+| cd | cd1..14 | KARMAGEDDON, CÄ°MRÄ°CÄ°TY, ..., TENÄ°S OYUNU, DALAKKÃœREK, ÅAHMAT, TOTORACER, GAMLIBAYKUÅ, KISPET, UÃ‡ARSOKAR, DÃœTTÃœRÃœ | CD_1..14.png | 80-175 |
 | konsol | konsol1 | PlayStatyon | konsol_1.png | 900 |
 | konsol | konsol2 | Ninetendo | konsol_2.png | 750 |
 | konsol | konsol3 | Ateri | konsol_3.png | 500 |
 | konsol | konsol4/5/6 | El Konsolu (3 versiyon) | konsol_4/5/6.png | 380-560 |
 | konsol | konsol7 | son sistem oyun konsolu | konsol_7.png | 3200 |
 | aksesuar | aksesuar1..N | Direksiyon, Joypad, vs. | ... | ... |
-| aksesuar | kolonya | Kolonya (slot dışı, +1 ilave) | kolonya.png | 120 |
+| aksesuar | kolonya | Kolonya (slot dÄ±ÅŸÄ±, +1 ilave) | kolonya.png | 120 |
 
 ---
 
 ## AdMob Reklam Sistemi (v91-v92)
 
-Her yeni günün başına interstitial (geçiş) reklamı, game over değilse. **Emülatörde reklam çıkmaz** (politika güvenliği).
+Her yeni gÃ¼nÃ¼n baÅŸÄ±na interstitial (geÃ§iÅŸ) reklamÄ±, game over deÄŸilse. **EmÃ¼latÃ¶rde reklam Ã§Ä±kmaz** (politika gÃ¼venliÄŸi).
 
 ### AdMob Kimlikleri (PROD)
 - **App ID** (AndroidManifest): `ca-app-pub-6470338276121414~9391747814`
 - **Interstitial Unit ID**: `ca-app-pub-6470338276121414/4138047986`
 
-### Akış
+### AkÄ±ÅŸ
 ```
-Gün Bitti popup → "Yeni Güne Başla" → ReklamServisi.goster()
-  ↓ (emülatörse / reklam yoksa: anında)
-  ↓ (gerçek cihaz + reklam varsa: tam ekran geçiş reklamı)
-onClosed: _state.gunuBitir() → Yeni gün
+GÃ¼n Bitti popup â†’ "Yeni GÃ¼ne BaÅŸla" â†’ ReklamServisi.goster()
+  â†“ (emÃ¼latÃ¶rse / reklam yoksa: anÄ±nda)
+  â†“ (gerÃ§ek cihaz + reklam varsa: tam ekran geÃ§iÅŸ reklamÄ±)
+onClosed: _state.gunuBitir() â†’ Yeni gÃ¼n
 ```
 
-İflas durumunda reklam GÖSTERİLMEZ (`paraOncesi - toplamKesinti < 0` dalı).
+Ä°flas durumunda reklam GÃ–STERÄ°LMEZ (`paraOncesi - toplamKesinti < 0` dalÄ±).
 
-### Emülatör Algılama
-`main()` başında `ReklamServisi.emulatorAlgila()` `device_info_plus` ile `androidInfo.isPhysicalDevice` okur. Emülatörde:
+### EmÃ¼latÃ¶r AlgÄ±lama
+`main()` baÅŸÄ±nda `ReklamServisi.emulatorAlgila()` `device_info_plus` ile `androidInfo.isPhysicalDevice` okur. EmÃ¼latÃ¶rde:
 - `MobileAds.instance.initialize()` ATLANIR
 - `yukle()` no-op olur
-- `goster()` direkt `onClosed()` çağırır
+- `goster()` direkt `onClosed()` Ã§aÄŸÄ±rÄ±r
 
-Bu sayede emülatörde AdMob hiç başlamaz, sahte gösterim olmaz.
+Bu sayede emÃ¼latÃ¶rde AdMob hiÃ§ baÅŸlamaz, sahte gÃ¶sterim olmaz.
 
-### Kod Yapısı
+### Kod YapÄ±sÄ±
 ```dart
 class ReklamServisi {
   static const String _adUnitId = 'ca-app-pub-6470338276121414/4138047986';
@@ -925,97 +967,98 @@ if (!ReklamServisi.emulator) {
 
 ---
 
-## Pazarlık Çeşitliliği (v92)
+## PazarlÄ±k Ã‡eÅŸitliliÄŸi (v92)
 
-Karşı tarafın hareketi her zaman gıdım gıdım değil — sürpriz büyük adımlar var. Bazen alıcı maliyetin çok üstüne, hatta piyasa fiyatının üstüne çıkabilir.
+KarÅŸÄ± tarafÄ±n hareketi her zaman gÄ±dÄ±m gÄ±dÄ±m deÄŸil â€” sÃ¼rpriz bÃ¼yÃ¼k adÄ±mlar var. Bazen alÄ±cÄ± maliyetin Ã§ok Ã¼stÃ¼ne, hatta piyasa fiyatÄ±nÄ±n Ã¼stÃ¼ne Ã§Ä±kabilir.
 
-### Rezervasyon Fiyatı Sürprizi (`MusteriOzellik.reservationPrice`)
-| Olasılık | Çarpan | Anlam |
+### Rezervasyon FiyatÄ± SÃ¼rprizi (`MusteriOzellik.reservationPrice`)
+| OlasÄ±lÄ±k | Ã‡arpan | Anlam |
 |----------|--------|-------|
-| %6 | 1.55–2.10× | Zengin/aceleci alıcı (veya dar satıcı) — çok yüksek tavan |
-| %14 | 1.18–1.45× | Cömert |
-| %80 | 1.00× | Normal (eski davranış) |
+| %6 | 1.55â€“2.10Ã— | Zengin/aceleci alÄ±cÄ± (veya dar satÄ±cÄ±) â€” Ã§ok yÃ¼ksek tavan |
+| %14 | 1.18â€“1.45Ã— | CÃ¶mert |
+| %80 | 1.00Ã— | Normal (eski davranÄ±ÅŸ) |
 
-- Alıcı tavanı: `marketPrice * 0.50 ... 2.30` (eskiden max 1.20)
-- Satıcı tabanı: `marketPrice * 0.40 ... 1.55` (eskiden min 0.65)
+- AlÄ±cÄ± tavanÄ±: `marketPrice * 0.50 ... 2.30` (eskiden max 1.20)
+- SatÄ±cÄ± tabanÄ±: `marketPrice * 0.40 ... 1.55` (eskiden min 0.65)
 
-### Tur Başına Adım Büyüklüğü (`oyuncuTeklifVer` → `concessionRatio`)
-| Olasılık | Çarpan | Anlam |
+### Tur BaÅŸÄ±na AdÄ±m BÃ¼yÃ¼klÃ¼ÄŸÃ¼ (`oyuncuTeklifVer` â†’ `concessionRatio`)
+| OlasÄ±lÄ±k | Ã‡arpan | Anlam |
 |----------|--------|-------|
-| %10 | 2.5–4× | BÜYÜK sıçrama — "anlaştık gibi" |
-| %20 | 1.4–2.2× | Orta sıçrama |
-| %70 | 0.5–1.3× | Normal/küçük — gıdım değil ama makul |
+| %10 | 2.5â€“4Ã— | BÃœYÃœK sÄ±Ã§rama â€” "anlaÅŸtÄ±k gibi" |
+| %20 | 1.4â€“2.2Ã— | Orta sÄ±Ã§rama |
+| %70 | 0.5â€“1.3Ã— | Normal/kÃ¼Ã§Ã¼k â€” gÄ±dÄ±m deÄŸil ama makul |
 
-Base ratio hâlâ `_clamp(0.18 - progress * 0.15, 0.02, 0.18)`.
+Base ratio hÃ¢lÃ¢ `_clamp(0.18 - progress * 0.15, 0.02, 0.18)`.
 
 ---
 
-## Versiyon Geçmişi (son)
-| Commit | Açıklama |
+## Versiyon GeÃ§miÅŸi (son)
+| Commit | AÃ§Ä±klama |
 |--------|----------|
-| v97 | **Büyük oynanış güncellemesi**: Toptancı Rıza (günlük stok, ucuz ürün), çürük ürün + CD tamir seti ekonomisi, kapalı kutu (lootbox), 8 rozetli Hedefler ekranı, 10 rastgele gün olayı. Tümü browser menüsünden erişilir — alt bar/sahne layout'una dokunulmadı |
-| v100 | **Pazarlık motoru hamle okuma**: `enum Hamle` ile oyuncunun tavizi sınıflandırılıyor (geri/aynı/küçük/orta/büyük); geri adımda müşteri fiyat kırmaz + gidebilir, ısrar yorar, büyük jest ödüllendirilir; kaprisli evet (%5), bir kez sıkıştırma (%30), son teklif uyarısı, jest kabulü |
-| v99 | Diyalog havuzları 5-10 katına çıkarıldı (selamlama 20+20, karşı teklif 25+25 **rol ayrı**, kabul 26, gitme 18/18/12); toast bildirimi Material SnackBar'dan oyun temasına uygun animasyonlu karta çevrildi (elasticOut, glow, okunabilir kontrast) |
-| v98 | Bağlılık mekanikleri: 🔥 seri/kombo (3+ anlaşmada bonus, kızgın müşteride sıfırlanır), 🎯 günlük hedef (6 tip, dükkan seviyesiyle ölçeklenir), ☀️ yarının olayı gün sonunda duyurulur ("bir gün daha" kancası, sabah popup'ı kaldırıldı), 📚 koleksiyon paneli (23 ürün, % tamamlanma) |
-| v97 | **Çözünürlükten bağımsız sahne** — `SahneMetrik` ile ürün/isim/müşteri masa görseline kilitlendi; sabit piksel kaldırıldı; 20:9 / 16:9 / 4:3'te doğrulandı |
-| v96 | App Store'da YAYINDA (id6778437262); iOS reklam ID TEST→PROD (1436676062); ATT dialog (Guideline 2.1 düzeltmesi, app_tracking_transparency); ürün/isim konumu yukarı (ürün -20, isim 338); sürüm 1.0.2+13 (AAB v13); MARKET BUILD ÖNCESİ test-ID kontrol kuralı; app-ads.txt doğrulama notları |
-| v95 | iOS TestFlight aktif: Codemagic pipeline tam çalışır durumda (10+ iterasyon sonrası signing/SwiftPM/build-number/icon hataları çözüldü); Magnus'tan paylaşımlı .p12 cert; CERTIFICATE_PRIVATE_KEY env var; iOS app icon (mavi Flutter üçgeni → gerçek ikon); ITSAppUsesNonExemptEncryption=false; App Privacy formu dolduruldu; support.html + marketing.html (TR/EN) GitHub Pages'te yayında; store/appstore_description_tr.txt yedeği |
-| v94 | iOS App Store hazırlığı: Bundle ID `com.oyuncudukkani.app`, deployment target 13.0, Info.plist'e AdMob iOS App ID + ATT izni + 43 SKAdNetwork ID, codemagic.yaml ile TestFlight'a otomatik gönderim |
-| v93 | Versiyon 1.0.1+12 — Google Play Store için AAB yayını (app-release.aab 61.9MB) |
-| v92 | Prod AdMob ID (ca-app-pub-6470338276121414/...); device_info_plus ile emülatör algılama (emülatörde reklam yok); pazarlık çeşitliliği: %6 zengin/%14 cömert müşteri rezervasyon sürprizi, %10 büyük + %20 orta + %70 normal adım sıçraması |
-| v91 | AdMob interstitial reklam: her yeni gün başına geçiş reklamı (game over değilse). ReklamServisi sınıfı, Kotlin 2.1.0'a yükseltildi (transitive webview_flutter bağımlılığı için) |
-| v90 | "Vazgeç" → "Reddet" (altbar + popup); Maliyet fontu Piyasa ile eşitlendi (RichText, fontSize 14, w600); "el konsolu" → "El Konsolu"; alıcıya kolonya sonrası 6 random mesaj (tekrar engelli, X = orijinal ürün adı) |
-| v89 | Asset optimizasyonu: bgbos/bg1/bg2/bgbosmasa/anamenu/browser/biri resize+recompress (APK 70.8MB → 36.1MB); pubspec wildcard → explicit list; Skia rendering (EnableImpeller=false) — emülatör ANR çözümü; Kolonya Tut butonu altbar'a taşındı (parlak amber, beyaz yazı), eski yerleşik widget kaldırıldı |
-| v88 | Kolonya butonu tasarım: 0xFFE6A800 (parlak amber), beyaz yazı; gun=3 sonrası gösterilir; aktif/pasif state |
-| v87 | Kurye özel müşteri: YeSekSepeti kuryesi, 3 farklı selamlama, EVET/HAYIR, 3sn gecikme, kurye bonusu; durum.png ürün görseli |
-| v86 | Krediyi Al → Tebrikler popup (3 sn otomatik kapanır) |
-| v85 | Banka kredisi popup yeniden yazıldı: gün çarpanı, ok butonları, faiz hesabı, kredi geçmişi taksit limiti |
-| v84 | Kabul Et butonu alıcı müşteriler için de çalışır hale getirildi |
-| v83 | Dükkan kiralama gün koşulları, kilitli dükkan %50 opaklık + 🔒, otomatik kapanan popup |
-| v82 | Kolonya widget %15 küçültüldü, yarım kolonya boyu aşağı |
-| v81 | Kolonya envanter slotu kullanmaz, +1 özel kart olarak gösterilir |
-| v80 | Kolonya 2x büyük 1.5x yukarı; özel müşterilere kolonya ikramı özel mesaj+gönder |
-| v79 | 1. günde iflas: bilgisayar popup gelmez, arka plan değişmez |
-| v78 | Kolonya ürünü: satıcı müşteri, 10 kullanım, sağ widget, pazarlık bonusu |
-| v77 | Bilgisayar Geldi popup: emoji üste, 6 rastgele mesaj |
-| v76 | Kabul Et butonu pazarlık popup dışına taşındı |
-| v70 | Envanter kompaksiyon, daire sayaç, pixel butonlar, balon görseli, yeşil tıklanabilir balon |
+| v97 | **BÃ¼yÃ¼k oynanÄ±ÅŸ gÃ¼ncellemesi**: ToptancÄ± RÄ±za (gÃ¼nlÃ¼k stok, ucuz Ã¼rÃ¼n), Ã§Ã¼rÃ¼k Ã¼rÃ¼n + CD tamir seti ekonomisi, kapalÄ± kutu (lootbox), 8 rozetli Hedefler ekranÄ±, 10 rastgele gÃ¼n olayÄ±. TÃ¼mÃ¼ browser menÃ¼sÃ¼nden eriÅŸilir â€” alt bar/sahne layout'una dokunulmadÄ± |
+| v100 | **PazarlÄ±k motoru hamle okuma**: `enum Hamle` ile oyuncunun tavizi sÄ±nÄ±flandÄ±rÄ±lÄ±yor (geri/aynÄ±/kÃ¼Ã§Ã¼k/orta/bÃ¼yÃ¼k); geri adÄ±mda mÃ¼ÅŸteri fiyat kÄ±rmaz + gidebilir, Ä±srar yorar, bÃ¼yÃ¼k jest Ã¶dÃ¼llendirilir; kaprisli evet (%5), bir kez sÄ±kÄ±ÅŸtÄ±rma (%30), son teklif uyarÄ±sÄ±, jest kabulÃ¼ |
+| v99 | Diyalog havuzlarÄ± 5-10 katÄ±na Ã§Ä±karÄ±ldÄ± (selamlama 20+20, karÅŸÄ± teklif 25+25 **rol ayrÄ±**, kabul 26, gitme 18/18/12); toast bildirimi Material SnackBar'dan oyun temasÄ±na uygun animasyonlu karta Ã§evrildi (elasticOut, glow, okunabilir kontrast) |
+| v98 | BaÄŸlÄ±lÄ±k mekanikleri: ğŸ”¥ seri/kombo (3+ anlaÅŸmada bonus, kÄ±zgÄ±n mÃ¼ÅŸteride sÄ±fÄ±rlanÄ±r), ğŸ¯ gÃ¼nlÃ¼k hedef (6 tip, dÃ¼kkan seviyesiyle Ã¶lÃ§eklenir), â˜€ï¸ yarÄ±nÄ±n olayÄ± gÃ¼n sonunda duyurulur ("bir gÃ¼n daha" kancasÄ±, sabah popup'Ä± kaldÄ±rÄ±ldÄ±), ğŸ“š koleksiyon paneli (23 Ã¼rÃ¼n, % tamamlanma) |
+| v97 | **Ã‡Ã¶zÃ¼nÃ¼rlÃ¼kten baÄŸÄ±msÄ±z sahne** â€” `SahneMetrik` ile Ã¼rÃ¼n/isim/mÃ¼ÅŸteri masa gÃ¶rseline kilitlendi; sabit piksel kaldÄ±rÄ±ldÄ±; 20:9 / 16:9 / 4:3'te doÄŸrulandÄ± |
+| v96 | App Store'da YAYINDA (id6778437262); iOS reklam ID TESTâ†’PROD (1436676062); ATT dialog (Guideline 2.1 dÃ¼zeltmesi, app_tracking_transparency); Ã¼rÃ¼n/isim konumu yukarÄ± (Ã¼rÃ¼n -20, isim 338); sÃ¼rÃ¼m 1.0.2+13 (AAB v13); MARKET BUILD Ã–NCESÄ° test-ID kontrol kuralÄ±; app-ads.txt doÄŸrulama notlarÄ± |
+| v95 | iOS TestFlight aktif: Codemagic pipeline tam Ã§alÄ±ÅŸÄ±r durumda (10+ iterasyon sonrasÄ± signing/SwiftPM/build-number/icon hatalarÄ± Ã§Ã¶zÃ¼ldÃ¼); Magnus'tan paylaÅŸÄ±mlÄ± .p12 cert; CERTIFICATE_PRIVATE_KEY env var; iOS app icon (mavi Flutter Ã¼Ã§geni â†’ gerÃ§ek ikon); ITSAppUsesNonExemptEncryption=false; App Privacy formu dolduruldu; support.html + marketing.html (TR/EN) GitHub Pages'te yayÄ±nda; store/appstore_description_tr.txt yedeÄŸi |
+| v94 | iOS App Store hazÄ±rlÄ±ÄŸÄ±: Bundle ID `com.oyuncudukkani.app`, deployment target 13.0, Info.plist'e AdMob iOS App ID + ATT izni + 43 SKAdNetwork ID, codemagic.yaml ile TestFlight'a otomatik gÃ¶nderim |
+| v93 | Versiyon 1.0.1+12 â€” Google Play Store iÃ§in AAB yayÄ±nÄ± (app-release.aab 61.9MB) |
+| v92 | Prod AdMob ID (ca-app-pub-6470338276121414/...); device_info_plus ile emÃ¼latÃ¶r algÄ±lama (emÃ¼latÃ¶rde reklam yok); pazarlÄ±k Ã§eÅŸitliliÄŸi: %6 zengin/%14 cÃ¶mert mÃ¼ÅŸteri rezervasyon sÃ¼rprizi, %10 bÃ¼yÃ¼k + %20 orta + %70 normal adÄ±m sÄ±Ã§ramasÄ± |
+| v91 | AdMob interstitial reklam: her yeni gÃ¼n baÅŸÄ±na geÃ§iÅŸ reklamÄ± (game over deÄŸilse). ReklamServisi sÄ±nÄ±fÄ±, Kotlin 2.1.0'a yÃ¼kseltildi (transitive webview_flutter baÄŸÄ±mlÄ±lÄ±ÄŸÄ± iÃ§in) |
+| v90 | "VazgeÃ§" â†’ "Reddet" (altbar + popup); Maliyet fontu Piyasa ile eÅŸitlendi (RichText, fontSize 14, w600); "el konsolu" â†’ "El Konsolu"; alÄ±cÄ±ya kolonya sonrasÄ± 6 random mesaj (tekrar engelli, X = orijinal Ã¼rÃ¼n adÄ±) |
+| v89 | Asset optimizasyonu: bgbos/bg1/bg2/bgbosmasa/anamenu/browser/biri resize+recompress (APK 70.8MB â†’ 36.1MB); pubspec wildcard â†’ explicit list; Skia rendering (EnableImpeller=false) â€” emÃ¼latÃ¶r ANR Ã§Ã¶zÃ¼mÃ¼; Kolonya Tut butonu altbar'a taÅŸÄ±ndÄ± (parlak amber, beyaz yazÄ±), eski yerleÅŸik widget kaldÄ±rÄ±ldÄ± |
+| v88 | Kolonya butonu tasarÄ±m: 0xFFE6A800 (parlak amber), beyaz yazÄ±; gun=3 sonrasÄ± gÃ¶sterilir; aktif/pasif state |
+| v87 | Kurye Ã¶zel mÃ¼ÅŸteri: YeSekSepeti kuryesi, 3 farklÄ± selamlama, EVET/HAYIR, 3sn gecikme, kurye bonusu; durum.png Ã¼rÃ¼n gÃ¶rseli |
+| v86 | Krediyi Al â†’ Tebrikler popup (3 sn otomatik kapanÄ±r) |
+| v85 | Banka kredisi popup yeniden yazÄ±ldÄ±: gÃ¼n Ã§arpanÄ±, ok butonlarÄ±, faiz hesabÄ±, kredi geÃ§miÅŸi taksit limiti |
+| v84 | Kabul Et butonu alÄ±cÄ± mÃ¼ÅŸteriler iÃ§in de Ã§alÄ±ÅŸÄ±r hale getirildi |
+| v83 | DÃ¼kkan kiralama gÃ¼n koÅŸullarÄ±, kilitli dÃ¼kkan %50 opaklÄ±k + ğŸ”’, otomatik kapanan popup |
+| v82 | Kolonya widget %15 kÃ¼Ã§Ã¼ltÃ¼ldÃ¼, yarÄ±m kolonya boyu aÅŸaÄŸÄ± |
+| v81 | Kolonya envanter slotu kullanmaz, +1 Ã¶zel kart olarak gÃ¶sterilir |
+| v80 | Kolonya 2x bÃ¼yÃ¼k 1.5x yukarÄ±; Ã¶zel mÃ¼ÅŸterilere kolonya ikramÄ± Ã¶zel mesaj+gÃ¶nder |
+| v79 | 1. gÃ¼nde iflas: bilgisayar popup gelmez, arka plan deÄŸiÅŸmez |
+| v78 | Kolonya Ã¼rÃ¼nÃ¼: satÄ±cÄ± mÃ¼ÅŸteri, 10 kullanÄ±m, saÄŸ widget, pazarlÄ±k bonusu |
+| v77 | Bilgisayar Geldi popup: emoji Ã¼ste, 6 rastgele mesaj |
+| v76 | Kabul Et butonu pazarlÄ±k popup dÄ±ÅŸÄ±na taÅŸÄ±ndÄ± |
+| v70 | Envanter kompaksiyon, daire sayaÃ§, pixel butonlar, balon gÃ¶rseli, yeÅŸil tÄ±klanabilir balon |
 
 ## Yeni Eklenen Alanlar (_GameScreenState / GameState)
 
 ```dart
 // _GameScreenState
-String? _kolonyaGeciciMesaj;   // 3 sn gösterilen özel mesaj (teşekkürler)
+String? _kolonyaGeciciMesaj;   // 3 sn gÃ¶sterilen Ã¶zel mesaj (teÅŸekkÃ¼rler)
 Timer? _kolonyaMesajTimer;
 Timer? _kuryeTimer;
-int _kolonyaSonrasiSonIdx = -1; // alıcı+kolonya sonrası random mesaj tekrar engeli
+int _kolonyaSonrasiSonIdx = -1; // alÄ±cÄ±+kolonya sonrasÄ± random mesaj tekrar engeli
 
 // GameState
-int para = 1000;                  // başlangıç parası (eskiden 500)
-String? _sonUrunId;               // ardışık aynı ürün engeli
-bool kuryeBonusuAktif = false;    // bir sonraki müşteri çok avantajlı olacak
+int para = 1000;                  // baÅŸlangÄ±Ã§ parasÄ± (eskiden 500)
+String? _sonUrunId;               // ardÄ±ÅŸÄ±k aynÄ± Ã¼rÃ¼n engeli
+bool kuryeBonusuAktif = false;    // bir sonraki mÃ¼ÅŸteri Ã§ok avantajlÄ± olacak
 int kolonyaKullanim = 0;          // 0-10
 bool kolonyaIkramEdildi = false;
 double _kolonyaPendingBonus = 0.0;
 List<OzelMusteriTip> _ozelTipSirasi; // [hirsiz, polis, vergici, kurye]
 ```
 
-## Kayıt Migrasyonu (fromJson)
+## KayÄ±t Migrasyonu (fromJson)
 
-Eski kayıtlar için güvenli yükleme:
-- `ozelTipSirasi` yoksa default sıra atanır
-- Eksik tipler (kurye gibi yeni eklenen) otomatik sıraya eklenir
-- `firstWhere` `orElse` ile crash önlenir
-- `_devamEt()` içinde try/catch + bozuk kayıt için "Kayıt Okunamadı" popup'ı
+Eski kayÄ±tlar iÃ§in gÃ¼venli yÃ¼kleme:
+- `ozelTipSirasi` yoksa default sÄ±ra atanÄ±r
+- Eksik tipler (kurye gibi yeni eklenen) otomatik sÄ±raya eklenir
+- `firstWhere` `orElse` ile crash Ã¶nlenir
+- `_devamEt()` iÃ§inde try/catch + bozuk kayÄ±t iÃ§in "KayÄ±t OkunamadÄ±" popup'Ä±
 
 ## Dikkat Edilecekler
-- `main.dart` tek ve büyük bir dosya — refactor önerilmez, performans yeterli
-- Müşteri görseli **masa layer'ının altında** olmalı (Z-order kritik)
-- `_bilgisayarGeldiGosterildi` flag'i state'de değil widget'ta — her oyun başında sıfırlanır, intentional
-- `konsol_3/4/5/6.png`, `oyuncudireksiyonu.png`, `joypad.png` ürünleri %15 küçük gösterilir — intentional
-- `durum.png` (kurye dürümü) %20 küçük — intentional
-- Tüm "SON DEĞER — DOKUNMA!" yorumları uzun iterasyonlar sonucu bulunmuştur, değiştirmeden önce mutlaka test et
-- Worktree'den değil her zaman **main repo'dan** (`C:\src\oyuncu_dukkani`) derle — worktree dalı eski commit'ten başlayabilir
-- Kolonya butonu için `kolonyaKullanim > 0` koşulu — buton sadece kolonyacıdan kolonya alındıktan sonra görünür
-- Asset değişikliği sonrası **build clean** gerekmez ama install için `-r` flag'ini unutma
-- Emülatör tıkanırsa Cold Boot — saatlerce install/uninstall yapıldıysa system_server kötüleşir
+- `main.dart` tek ve bÃ¼yÃ¼k bir dosya â€” refactor Ã¶nerilmez, performans yeterli
+- MÃ¼ÅŸteri gÃ¶rseli **masa layer'Ä±nÄ±n altÄ±nda** olmalÄ± (Z-order kritik)
+- `_bilgisayarGeldiGosterildi` flag'i state'de deÄŸil widget'ta â€” her oyun baÅŸÄ±nda sÄ±fÄ±rlanÄ±r, intentional
+- `konsol_3/4/5/6.png`, `oyuncudireksiyonu.png`, `joypad.png` Ã¼rÃ¼nleri %15 kÃ¼Ã§Ã¼k gÃ¶sterilir â€” intentional
+- `durum.png` (kurye dÃ¼rÃ¼mÃ¼) %20 kÃ¼Ã§Ã¼k â€” intentional
+- TÃ¼m "SON DEÄER â€” DOKUNMA!" yorumlarÄ± uzun iterasyonlar sonucu bulunmuÅŸtur, deÄŸiÅŸtirmeden Ã¶nce mutlaka test et
+- Worktree'den deÄŸil her zaman **main repo'dan** (`C:\src\oyuncu_dukkani`) derle â€” worktree dalÄ± eski commit'ten baÅŸlayabilir
+- Kolonya butonu iÃ§in `kolonyaKullanim > 0` koÅŸulu â€” buton sadece kolonyacÄ±dan kolonya alÄ±ndÄ±ktan sonra gÃ¶rÃ¼nÃ¼r
+- Asset deÄŸiÅŸikliÄŸi sonrasÄ± **build clean** gerekmez ama install iÃ§in `-r` flag'ini unutma
+- EmÃ¼latÃ¶r tÄ±kanÄ±rsa Cold Boot â€” saatlerce install/uninstall yapÄ±ldÄ±ysa system_server kÃ¶tÃ¼leÅŸir
+

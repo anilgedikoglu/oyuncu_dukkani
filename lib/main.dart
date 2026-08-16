@@ -8,6 +8,7 @@ import 'package:device_info_plus/device_info_plus.dart';
 import 'package:device_preview/device_preview.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart' show Ticker;
+import 'package:flutter/services.dart' show HapticFeedback; // dokunsal geri bildirim
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -1141,17 +1142,57 @@ class PazarlikSeans {
 
 // ─── SES SERVİSİ ─────────────────────────────────────────────────────────────
 
+/// Ses + dokunsal geri bildirim.
+///
+/// DOSYA EKLEME: `assets/sounds/` klasörüne at, yeter. pubspec.yaml klasörü
+/// toptan listeliyor (`- assets/sounds/`), tek tek eklemeye gerek YOK.
+/// Dosya yoksa `_cal` sessizce geçer — eksik ses çökmeye sebep olmaz.
+///
+/// Beklenen dosyalar (olmayanlar sessiz kalır):
+///   kapi.mp3 ✓, paragirdi.mp3 ✓, anlasma.mp3, basarisiz.mp3, rozet.mp3,
+///   seri.mp3, kutu.mp3, tamir.mp3, gunsonu.mp3, hedef.mp3, hata.mp3,
+///   envanter.mp3, tik.mp3
 class SesServisi {
   static bool sesAcik = true;
 
-  static void kapiyiCal() {
+  // ── Mevcut ──
+  static void kapiyiCal()  { _oynat('kapi.mp3');       _titre(HapticFeedback.lightImpact); }
+  static void paraGirdi()  { _oynat('paragirdi.mp3'); }
+
+  // ── Yeni tetikleyiciler ──
+  /// Pazarlık anlaşmayla bitti — en tatmin edici an
+  static void anlasma()    { _oynat('anlasma.mp3');    _titre(HapticFeedback.mediumImpact); }
+  /// Müşteri kızıp gitti / pazarlık koptu
+  static void basarisiz()  { _oynat('basarisiz.mp3');  _titre(HapticFeedback.lightImpact); }
+  /// Rozet kazanıldı — kutlama
+  static void rozet()      { _oynat('rozet.mp3');      _titre(HapticFeedback.heavyImpact); }
+  /// Seri (kombo) bonusu
+  static void seri()       { _oynat('seri.mp3');       _titre(HapticFeedback.lightImpact); }
+  /// Günlük hedef tamamlandı
+  static void hedefTamam() { _oynat('hedef.mp3');      _titre(HapticFeedback.mediumImpact); }
+  /// Kapalı kutu açıldı
+  static void kutuAcildi() { _oynat('kutu.mp3');       _titre(HapticFeedback.mediumImpact); }
+  /// Çürük ürün tamir edildi
+  static void tamir()      { _oynat('tamir.mp3');      _titre(HapticFeedback.lightImpact); }
+  /// Gün sonu / kasa kapanışı
+  static void gunSonu()    { _oynat('gunsonu.mp3'); }
+  /// Hata: yetersiz para, envanter dolu vb.
+  static void hata()       { _oynat('hata.mp3');       _titre(HapticFeedback.heavyImpact); }
+  /// Envanter açıldı
+  static void envanter()   { _oynat('envanter.mp3');   _titre(HapticFeedback.selectionClick); }
+  /// Genel buton dokunuşu (seyrek kullan — her butona koyma)
+  static void tikla()      { _oynat('tik.mp3');        _titre(HapticFeedback.selectionClick); }
+
+  static void _oynat(String dosya) {
     if (!sesAcik) return;
-    _cal('sounds/kapi.mp3');
+    _cal('sounds/$dosya');
   }
 
-  static void paraGirdi() {
+  /// Dokunsal geri bildirim — ses dosyası gerektirmez, cihaz titreşimi.
+  /// Ses kapalıysa titreşim de kapanır (tek ayar, tek beklenti).
+  static void _titre(Future<void> Function() f) {
     if (!sesAcik) return;
-    _cal('sounds/paragirdi.mp3');
+    try { f(); } catch (_) {}
   }
 
   static Future<void> _cal(String asset) async {
@@ -1860,6 +1901,7 @@ class GameState extends ChangeNotifier {
     tamirSetiAdet--;
     tamirEdilenSayisi++;
     _hedefIlerlet(HedefTip.tamir, 1);
+    SesServisi.tamir();
     notifyListeners();
     return true;
   }
@@ -1883,6 +1925,7 @@ class GameState extends ChangeNotifier {
     slotlar[slotIndex] = cikan;
     acilanKutuSayisi++;
     _hedefIlerlet(HedefTip.kutu, 1);
+    SesServisi.kutuAcildi();
     notifyListeners();
     return cikan;
   }
@@ -2251,6 +2294,7 @@ class GameState extends ChangeNotifier {
       _anlasmayiTamamla();
     } else if (durum == PazarlikDurum.gitti) {
       _komboSifirla(); // müşteri kızıp gitti → seri bozuldu
+      SesServisi.basarisiz();
       mesaj = '${aktifMusteri!.name}: ${aktifPazarlik!.mesaj}';
       _musteriGonder();
     } else {
@@ -2275,6 +2319,7 @@ class GameState extends ChangeNotifier {
         para -= anlasilanFiyat;
         SesServisi.paraGirdi();
       } else {
+        SesServisi.hata();
         mesaj = 'Yeterli paran yok! 💸';
         _musteriGonder();
         return;
@@ -2292,6 +2337,7 @@ class GameState extends ChangeNotifier {
     }
     basariliPazarlik++;
     _komboArtir();
+    SesServisi.anlasma();
     // Kabul mesajını göster, göndermeyi UI'daki gecikme yönetir
     mesaj = p.mesaj;
     notifyListeners();
@@ -2584,6 +2630,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     final rozet = _state.yeniKazanilanRozetler.removeAt(0);
     Future.delayed(const Duration(milliseconds: 250), () {
       if (!mounted) { _rozetPopupAcik = false; return; }
+      SesServisi.rozet();
       _rozetPopup(rozet);
     });
   }
@@ -2670,6 +2717,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       _state.sonKomboBonusu = 0; // tüket
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
+        SesServisi.seri();
         _toastGoster('$k\'LÜ SERİ!', altYazi: '+$b lira', emoji: '🔥',
           renk: const Color(0xFFFF9500));
       });
@@ -2680,6 +2728,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       if (h != null) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted) return;
+          SesServisi.hedefTamam();
           _toastGoster('GÜNÜN HEDEFİ TAMAM!', altYazi: '+${h.odul} lira', emoji: '🎯',
             renk: const Color(0xFF3fb950));
         });
@@ -2830,6 +2879,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   }
 
   void _gunSonuPopupGoster() {
+    SesServisi.gunSonu();
     final eskiGun = _state.gun;
     final kira = _state.aktifDukkan.kira;
     final paraOncesi = _state.para;
@@ -3275,6 +3325,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                   onPressed: alinabilir ? () {
                     final hata = _state.toptanciSatinAl(index);
                     if (hata != null) {
+                      SesServisi.hata();
                       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                         content: Text(hata), duration: const Duration(seconds: 2),
                         backgroundColor: const Color(0xFF8B0000)));
@@ -4756,7 +4807,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
             const SizedBox(width: 12),
             Expanded(child: _oyunButon(
               emoji: '📦', label: 'Envanter',
-              onTap: () => setState(() => _envanterAcik = true),
+              onTap: () { SesServisi.envanter(); setState(() => _envanterAcik = true); },
               gradyan: const [Color(0xFF8c6aff), Color(0xFF311b92)],
               kenar: const Color(0xFFb39ddb),
             )),
