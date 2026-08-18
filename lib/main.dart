@@ -1981,6 +1981,12 @@ class GameState extends ChangeNotifier {
   }
 
   static const List<String> _erkekIsimleri = [
+    // ── v102: 50 yeni erkek ismi (çeşitlilik) ──
+    'Sinan','Devrim','Ferhat','Görkem','Hakan','Işık','Kerem','Mert','Nadir','Oktay',
+    'Özgür','Polat','Rüzgar','Sarp','Şahin','Taner','Ulaş','Vedat','Yalçın','Zeki',
+    'Atilla','Bülent','Cihat','Çağatay','Demir','Efe','Ferit','Güven','Hikmet','İsmet',
+    'Kayhan','Lütfü','Metin','Necmi','Ömür','Poyraz','Rıza','Selçuk','Tayfun','Tuna',
+    'Uraz','Ünal','Vural','Yavuz','Zeynel','Alaattin','Bahadır','Cevdet','Dursun','Erdinç',
     'Ahmet','Mehmet','Ali','Mustafa','Ömer','İbrahim','Hüseyin','Hasan','Yusuf','İsmail',
     'Murat','Burak','Emre','Can','Berk','Kaan','Sercan','Arda','Deniz','Furkan',
     'Berkay','Alp','Alperen','Barış','Caner','Doruk','Ege','Eren','Enes','Fatih',
@@ -1994,6 +2000,12 @@ class GameState extends ChangeNotifier {
   ];
 
   static const List<String> _kadinIsimleri = [
+    // ── v102: 50 yeni kadın ismi (çeşitlilik) ──
+    'Alev','Ceyda','Bengü','Çisem','Ferah','Dilek','Handan','Hayal','Jale','Kader',
+    'Lamia','Melis','Nihan','Oya','Öykü','Pelin','Mine','Sena','Şeyma','Papatya',
+    'Şirin','Vildan','Yaren','Rengin','Aysel','Berrin','Canan','Çiğdem','Deniz','Esin',
+    'Fulya','Gonca','Feride','İnci','Kevser','Leyla','Mercan','Irmak','Nilay','Sıla',
+    'Kumsal','Rüya','Nergis','Tansu','Tülay','Ulviye','Vuslat','Yeliz','Zerrin','Afet',
     'Ayşe','Fatma','Zeynep','Emine','Hatice','Elif','Meryem','Büşra','Esra','Merve',
     'Selin','Özge','Duygu','Ebru','Gül','Hande','İpek','Kübra','Lale','Meltem',
     'Neslihan','Nur','Pınar','Reyhan','Seda','Sevgi','Sibel','Tuğçe','Yasemin','Zara',
@@ -2018,6 +2030,25 @@ class GameState extends ChangeNotifier {
     {'gorsel': 'assets/musteri_9.png', 'cinsiyet': 'K'},
     {'gorsel': 'assets/musteri_10.png', 'cinsiyet': 'K'},
     {'gorsel': 'assets/musteri_11.png', 'cinsiyet': 'E'},
+    // ── 18 yeni karakter (v102) — cinsiyetler görsellerden tespit edildi ──
+    {'gorsel': 'assets/musteri_12.png', 'cinsiyet': 'E'}, // bıyıklı orta yaşlı, hawaii gömlek
+    {'gorsel': 'assets/musteri_13.png', 'cinsiyet': 'E'}, // beyaz saçlı bey, uzun palto
+    {'gorsel': 'assets/musteri_14.png', 'cinsiyet': 'K'}, // kızıl örgülü, bahçıvan tulumu
+    {'gorsel': 'assets/musteri_15.png', 'cinsiyet': 'E'}, // kel sakallı, mor bomber ceket
+    {'gorsel': 'assets/musteri_16.png', 'cinsiyet': 'K'}, // yaşlı teyze, sarı hırka
+    {'gorsel': 'assets/musteri_17.png', 'cinsiyet': 'E'}, // beyaz bıyıklı amca, yelek
+    {'gorsel': 'assets/musteri_18.png', 'cinsiyet': 'E'}, // genç adam, krem takım
+    {'gorsel': 'assets/musteri_19.png', 'cinsiyet': 'K'}, // kot ceket, hardal etek
+    {'gorsel': 'assets/musteri_20.png', 'cinsiyet': 'E'}, // genç adam, haki ceket
+    {'gorsel': 'assets/musteri_21.png', 'cinsiyet': 'K'}, // yaşlı hanım, mor palto ve çanta
+    {'gorsel': 'assets/musteri_22.png', 'cinsiyet': 'K'}, // kıvırcık saçlı, turuncu bluz
+    {'gorsel': 'assets/musteri_23.png', 'cinsiyet': 'K'}, // punk, mor mohawk
+    {'gorsel': 'assets/musteri_24.png', 'cinsiyet': 'E'}, // sakallı, yelek ve gömlek
+    {'gorsel': 'assets/musteri_25.png', 'cinsiyet': 'K'}, // renkli saçlı genç
+    {'gorsel': 'assets/musteri_26.png', 'cinsiyet': 'E'}, // takım elbiseli genç
+    {'gorsel': 'assets/musteri_27.png', 'cinsiyet': 'E'}, // erkek çocuk, mavi kazak
+    {'gorsel': 'assets/musteri_28.png', 'cinsiyet': 'K'}, // kız çocuk, okul üniforması
+    {'gorsel': 'assets/musteri_29.png', 'cinsiyet': 'E'}, // atletik, kolsuz tişört
   ];
   List<int> _musteriSira = [];
 

@@ -63,6 +63,87 @@ SplashScreen (6 sn yasal metin)
 
 ---
 
+## 👥 KARAKTER HAVUZU (v102)
+
+**29 müşteri görseli** (11 eski + 18 yeni). Dağılım: **14 erkek, 15 kadın**.
+İsim havuzu: **150 erkek + 150 kadın**, hepsi benzersiz (tekrar kontrolü yapıldı).
+
+### Yeni karakterler ve cinsiyetleri
+`musteri_12..29.png` — her satırın yanında ne olduğu yorum olarak yazılı
+(`musteriHavuzu` içinde). Örn: `musteri_23` = punk, mor mohawk, K.
+
+### Arka plan silme aracı — `tools/arkaplan_sil.ps1`
+Beyaz zeminli karakter görselini oyunun formatına çevirir. **Tekrar kullanılabilir.**
+
+```powershell
+Set-Location C:\src\oyuncu_dukkani\tools
+. .\arkaplan_sil.ps1                       # C# helper'i derler
+[BgKiller]::Process($kaynak, $hedef, 500, 640, 232, 0.95, 5)
+# parametreler: cikisBoyut, calismaCozunurlugu, beyazEsigi, doluluk, altBosluk
+```
+Toplu iş + kontak sayfası için: `tools/toplu_isle.ps1`
+
+**Nasıl çalışıyor (ve neden böyle):**
+1. **Kenardan flood-fill** — "tüm beyazları sil" DEĞİL. Öyle yapılsa beyaz gömlek/
+   pantolon da silinirdi. Sadece dış kenara bağlı beyaz temizlenir.
+2. **Hale yumuşatma** — şeffaf komşusu olan çok açık pikseller kısmi alfa alır,
+   beyaz kontur kalmaz.
+3. **PASS 2: alt bölge kapalı leke temizliği** — bacak arasında kalan ve dışarıya
+   bağlanamayan beyaz bloklar (yer gölgesi bunları mühürlüyor) siliniyor.
+   Sadece içeriğin **alt %45'inde** ve **>=150 piksel** bileşenler → beyaz gömlek
+   (gövdede) güvende. `IsLightNeutral`: min>=218 ve (max-min)<=22 (krem kumaş
+   tinted olduğu için elenmiyor).
+4. **Çerçeve normalize** — içerik kutusu bulunup 500×500 tuvale, yüksekliğin
+   %95'i olacak şekilde, yatay ortalı, altta 5px boşlukla yerleştirilir.
+   Mevcut 11 müşteriyle **birebir aynı çerçeveleme** (ölçülerek bulundu).
+
+> ⚠️ PowerShell 5.1, BOM'suz UTF-8 `.ps1` dosyasını ANSI okur → Türkçe yol bozulur.
+> Script ASCII-only tutuldu, yollar `Get-ChildItem` ile dosya sisteminden alınıyor.
+> Saf PowerShell piksel döngüsü çok yavaş; iş **Add-Type ile C#'a** verildi (0.2 sn/görsel).
+
+> ⚠️ Kaynakta **2 çift kopya** vardı (md5 ile yakalandı), 20 dosyadan 18 benzersiz çıktı.
+> Yeni görsel geldiğinde `md5sum *.png | sort | uniq -d` ile kontrol et.
+
+> ℹ️ Ayak altındaki küçük gölge izleri **önemsiz** — müşteri masanın arkasında
+> göğsünden kesiliyor (`kMusteriUstu` 0.2183 → masa 0.4833), ayaklar hiç görünmüyor.
+
+---
+
+## ⏭️ SIRADAKİ İŞ — YAŞ SİSTEMİ (başlanmadı)
+
+Kullanıcının son isteği. **Henüz yapılmadı, buradan devam edilecek.**
+
+### Sorun
+Replikler yaşa/cinsiyete bakmadan rastgele seçiliyor. Sonuç saçmalıyor:
+*"Anneme sormadan CD satmaya geldim"* repliği **70-80 yaşında ak sakallı bir amcaya**
+denk gelebiliyor. O yaşta birinin annesine sorması (hatta annesinin yaşıyor olması) tuhaf.
+
+### Yapılacaklar
+1. **Her karaktere yaş aralığı ver** — `musteriHavuzu`'na `'yas'` alanı ekle.
+   Öneri kategoriler: `cocuk` (7-12), `genc` (16-25), `yetiskin` (26-50), `yasli` (60+).
+   Mevcut 29 karakterin görselleri `build/kontak_macenta.png`'de numaralı duruyor;
+   `musteri_12..29` sırası `musteriHavuzu` yorumlarında yazılı (punk, yaşlı teyze, çocuk vb.).
+   Örnek: musteri_27 (erkek çocuk) → cocuk, musteri_16/21 (yaşlı teyzeler) → yasli,
+   musteri_13/17 (beyaz saçlı beyler) → yasli, musteri_28 (kız çocuk) → cocuk.
+2. **Repliklere yaş/cinsiyet etiketi ver** — her replik hangi gruplara uygun.
+   Basit yol: `_saticiSelam` gibi düz listeler yerine
+   `{metin, yas: [..], cinsiyet: 'E'|'K'|null}` kayıtları; seçerken filtrele.
+   Filtre sonucu boşsa nötr havuza düş (güvenlik).
+3. **Mevcut yaş-duyarlı replikleri düzelt** — "Anneme sormadan..." sadece `cocuk`/`genc`.
+4. **Replik sayısını ARTIR** — yaş/cinsiyet imalı yeni satırlar ekle. Kullanıcının örneği:
+   *"Kızlar X oynamaz derler ama ben bu oyunu seviyorum. Bana satar mısın?"* (kadın).
+   Diğer fikirler: çocuk → *"Harçlığımla aldım"*, yaşlı → *"Torunuma alacağım"*,
+   genç → *"Arkadaşlarda gördüm, bende de olsun"*.
+
+### Dokunulacak yerler
+- `GameState.musteriHavuzu` (yaş alanı)
+- `Customer` sınıfı (yaş taşısın) ve `selamMesaji`
+- `GameState.yeniMusteriGonder` (yaşı Customer'a geçir)
+- `PazarlikSeans` replik havuzları (karşı teklif/kabul/gitme) — istenirse oraya da yaş
+
+> Placeholder kuralı geçerli: `{AD}`/`{URUN}` kullan, **tek harf kullanma**
+> (`replaceAll('A',...)` "Arkadaşlar"ı bozar — bu hata bir kez yapıldı).
+
 ## ğŸ”Š SES SÄ°STEMÄ° (v101)
 
 ### Dosya ekleme â€” pubspec'e DOKUNMA
@@ -996,6 +1077,8 @@ Base ratio hÃ¢lÃ¢ `_clamp(0.18 - progress * 0.15, 0.02, 0.18)`.
 | Commit | AÃ§Ä±klama |
 |--------|----------|
 | v97 | **BÃ¼yÃ¼k oynanÄ±ÅŸ gÃ¼ncellemesi**: ToptancÄ± RÄ±za (gÃ¼nlÃ¼k stok, ucuz Ã¼rÃ¼n), Ã§Ã¼rÃ¼k Ã¼rÃ¼n + CD tamir seti ekonomisi, kapalÄ± kutu (lootbox), 8 rozetli Hedefler ekranÄ±, 10 rastgele gÃ¼n olayÄ±. TÃ¼mÃ¼ browser menÃ¼sÃ¼nden eriÅŸilir â€” alt bar/sahne layout'una dokunulmadÄ± |
+| v102 | 18 yeni müşteri karakteri (toplam 29: 14E/15K); beyaz zemin C# flood-fill ile temizlendi, oyunun 500×500 çerçevesine normalize edildi; tools/arkaplan_sil.ps1 yeniden kullanılabilir araç; isim havuzu 150+150 (hepsi benzersiz); SIRADAKİ İŞ: yaş sistemi |
+| v101 | Ses sistemi: 11 yeni tetikleyici bağlandı (dosyalar eksik olsa da çökmez), HapticFeedback ile dokunsal geri bildirim |
 | v100 | **PazarlÄ±k motoru hamle okuma**: `enum Hamle` ile oyuncunun tavizi sÄ±nÄ±flandÄ±rÄ±lÄ±yor (geri/aynÄ±/kÃ¼Ã§Ã¼k/orta/bÃ¼yÃ¼k); geri adÄ±mda mÃ¼ÅŸteri fiyat kÄ±rmaz + gidebilir, Ä±srar yorar, bÃ¼yÃ¼k jest Ã¶dÃ¼llendirilir; kaprisli evet (%5), bir kez sÄ±kÄ±ÅŸtÄ±rma (%30), son teklif uyarÄ±sÄ±, jest kabulÃ¼ |
 | v99 | Diyalog havuzlarÄ± 5-10 katÄ±na Ã§Ä±karÄ±ldÄ± (selamlama 20+20, karÅŸÄ± teklif 25+25 **rol ayrÄ±**, kabul 26, gitme 18/18/12); toast bildirimi Material SnackBar'dan oyun temasÄ±na uygun animasyonlu karta Ã§evrildi (elasticOut, glow, okunabilir kontrast) |
 | v98 | BaÄŸlÄ±lÄ±k mekanikleri: ğŸ”¥ seri/kombo (3+ anlaÅŸmada bonus, kÄ±zgÄ±n mÃ¼ÅŸteride sÄ±fÄ±rlanÄ±r), ğŸ¯ gÃ¼nlÃ¼k hedef (6 tip, dÃ¼kkan seviyesiyle Ã¶lÃ§eklenir), â˜€ï¸ yarÄ±nÄ±n olayÄ± gÃ¼n sonunda duyurulur ("bir gÃ¼n daha" kancasÄ±, sabah popup'Ä± kaldÄ±rÄ±ldÄ±), ğŸ“š koleksiyon paneli (23 Ã¼rÃ¼n, % tamamlanma) |
@@ -1061,4 +1144,5 @@ Eski kayÄ±tlar iÃ§in gÃ¼venli yÃ¼kleme:
 - Kolonya butonu iÃ§in `kolonyaKullanim > 0` koÅŸulu â€” buton sadece kolonyacÄ±dan kolonya alÄ±ndÄ±ktan sonra gÃ¶rÃ¼nÃ¼r
 - Asset deÄŸiÅŸikliÄŸi sonrasÄ± **build clean** gerekmez ama install iÃ§in `-r` flag'ini unutma
 - EmÃ¼latÃ¶r tÄ±kanÄ±rsa Cold Boot â€” saatlerce install/uninstall yapÄ±ldÄ±ysa system_server kÃ¶tÃ¼leÅŸir
+
 
