@@ -34,7 +34,7 @@ assets/                â€” gÃ¶rseller ve sesler
   bgbos.png            â€” sabit arka plan
   bgbosmasa.png        â€” masa (3. gÃ¼nden Ã¶nce)
   biri.png             â€” kapÄ± gÃ¶lgesi (mÃ¼ÅŸteri yokken gÃ¶rÃ¼nÃ¼r)
-  musteri_1..11.png    â€” mÃ¼ÅŸteri karakterleri
+  musteri_1..28.png    — müşteri karakterleri (28 adet, yaş/cinsiyet musteriHavuzu içinde)
   hirsiz/polis/vergici/kurye.png â€” Ã¶zel mÃ¼ÅŸteri karakterleri
   CD_1..14.png         â€” 14 farklÄ± CD Ã¼rÃ¼nÃ¼
   konsol_1..7.png      â€” konsol Ã¼rÃ¼nleri (PlayStatyon, Ninetendo, Ateri, El Konsolu x3, son sistem)
@@ -63,17 +63,32 @@ SplashScreen (6 sn yasal metin)
 
 ---
 
-## 👥 KARAKTER HAVUZU (v102)
+## 👥 KARAKTER HAVUZU (v103)
 
-**29 müşteri görseli** (11 eski + 18 yeni). Dağılım: **14 erkek, 15 kadın**.
+**28 müşteri görseli** (11 eski + 17 yeni). Dağılım: **14 erkek, 14 kadın**.
 İsim havuzu: **150 erkek + 150 kadın**, hepsi benzersiz (tekrar kontrolü yapıldı).
 
-### Yeni karakterler ve cinsiyetleri
-`musteri_12..29.png` — her satırın yanında ne olduğu yorum olarak yazılı
-(`musteriHavuzu` içinde). Örn: `musteri_23` = punk, mor mohawk, K.
+Her karakterin `musteriHavuzu` satırında **`cinsiyet` + `yas`** alanı ve yanında
+kim olduğu yorum olarak yazılı. Örn: `musteri_22` = punk, mor mohawk, K, genc.
 
-### Arka plan silme aracı — `tools/arkaplan_sil.ps1`
-Beyaz zeminli karakter görselini oyunun formatına çevirir. **Tekrar kullanılabilir.**
+### v103: görseller kullanıcının kendi kesimi — İŞLENMEDİ
+Kullanıcı `tools/arkaplan_sil.ps1` çıktısını beğenmedi, arka planları kendisi
+temizledi (`removebg`). Yeni dosyalar `assets/`e **olduğu gibi** kopyalandı —
+yeniden ölçekleme/çerçeveleme YOK. Zaten 500×500 ARGB geldiler ve içerik
+kutuları mevcut 11 karakterle uyumluydu (yükseklik 419–490, alt boşluk 5–38;
+eski 11'de 454–488 / 0–17). Emülatörde doğrulandı: hale yok, masa hizası doğru.
+
+> ⚠️ **28'e düştü:** kaynak klasörde bir dosya md5 olarak tekrardı ve eski
+> `musteri_19` (kot ceket / hardal etek, K) karşılığı yoktu. `musteri_29.png`
+> silindi, `pubspec.yaml`'dan da çıkarıldı. Yeni bir görsel gelirse
+> `musteri_29` olarak eklenip `musteriHavuzu`'na bir satır yazmak yeterli.
+
+> ⚠️ Yeni görsel geldiğinde **her zaman** `md5sum *.png | sort | uniq -d` ile
+> tekrar kontrolü yap — bu tuzağa iki kez düşüldü.
+
+### Arka plan silme aracı — `tools/arkaplan_sil.ps1` (şu an KULLANILMIYOR)
+Beyaz zeminli görseli oyunun formatına çeviren araç. v103'te devre dışı ama
+duruyor: elde ham (beyaz zeminli) bir görsel kalırsa hâlâ çalışır.
 
 ```powershell
 Set-Location C:\src\oyuncu_dukkani\tools
@@ -90,59 +105,90 @@ Toplu iş + kontak sayfası için: `tools/toplu_isle.ps1`
    beyaz kontur kalmaz.
 3. **PASS 2: alt bölge kapalı leke temizliği** — bacak arasında kalan ve dışarıya
    bağlanamayan beyaz bloklar (yer gölgesi bunları mühürlüyor) siliniyor.
-   Sadece içeriğin **alt %45'inde** ve **>=150 piksel** bileşenler → beyaz gömlek
-   (gövdede) güvende. `IsLightNeutral`: min>=218 ve (max-min)<=22 (krem kumaş
-   tinted olduğu için elenmiyor).
 4. **Çerçeve normalize** — içerik kutusu bulunup 500×500 tuvale, yüksekliğin
    %95'i olacak şekilde, yatay ortalı, altta 5px boşlukla yerleştirilir.
-   Mevcut 11 müşteriyle **birebir aynı çerçeveleme** (ölçülerek bulundu).
 
 > ⚠️ PowerShell 5.1, BOM'suz UTF-8 `.ps1` dosyasını ANSI okur → Türkçe yol bozulur.
 > Script ASCII-only tutuldu, yollar `Get-ChildItem` ile dosya sisteminden alınıyor.
-> Saf PowerShell piksel döngüsü çok yavaş; iş **Add-Type ile C#'a** verildi (0.2 sn/görsel).
-
-> ⚠️ Kaynakta **2 çift kopya** vardı (md5 ile yakalandı), 20 dosyadan 18 benzersiz çıktı.
-> Yeni görsel geldiğinde `md5sum *.png | sort | uniq -d` ile kontrol et.
+> Saf PowerShell piksel döngüsü çok yavaş; iş **Add-Type ile C#'a** verildi.
 
 > ℹ️ Ayak altındaki küçük gölge izleri **önemsiz** — müşteri masanın arkasında
 > göğsünden kesiliyor (`kMusteriUstu` 0.2183 → masa 0.4833), ayaklar hiç görünmüyor.
 
 ---
 
-## ⏭️ SIRADAKİ İŞ — YAŞ SİSTEMİ (başlanmadı)
+## 🎂 YAŞ / CİNSİYET DUYARLI REPLİK SİSTEMİ (v103) — TAMAMLANDI
 
-Kullanıcının son isteği. **Henüz yapılmadı, buradan devam edilecek.**
+### Çözülen sorun
+Replikler yaşa/cinsiyete bakmadan seçiliyordu: *"Anneme sormadan CD satmaya
+geldim"* repliği 75 yaşındaki ak sakallı amcaya denk gelebiliyordu. Artık her
+karakterin kuşağı var ve replikler ona göre filtreleniyor.
 
-### Sorun
-Replikler yaşa/cinsiyete bakmadan rastgele seçiliyor. Sonuç saçmalıyor:
-*"Anneme sormadan CD satmaya geldim"* repliği **70-80 yaşında ak sakallı bir amcaya**
-denk gelebiliyor. O yaşta birinin annesine sorması (hatta annesinin yaşıyor olması) tuhaf.
+### Model — 3 parça
+```dart
+enum YasGrubu { cocuk, genc, yetiskin, yasli }     // sayısal yaş YOK, kuşak yeterli
+class Replik { String metin; List<YasGrubu>? yas; String? cinsiyet; }
+String replikSec(havuz, yas, cinsiyet)             // filtrele → seç
+```
+- `yas == null` → her yaşa uyar, `cinsiyet == null` → her cinsiyete uyar.
+  Böylece **eski düz satırlar hiç etiketlenmeden nötr havuzda kaldı** — hiçbir
+  replik kaybolmadı.
+- Kısayol sabitler: `kYasGenc` (cocuk+genc), `kYasBuyuk` (yetiskin+yasli),
+  `kYasYetiskin` (genc+yetiskin).
 
-### Yapılacaklar
-1. **Her karaktere yaş aralığı ver** — `musteriHavuzu`'na `'yas'` alanı ekle.
-   Öneri kategoriler: `cocuk` (7-12), `genc` (16-25), `yetiskin` (26-50), `yasli` (60+).
-   Mevcut 29 karakterin görselleri `build/kontak_macenta.png`'de numaralı duruyor;
-   `musteri_12..29` sırası `musteriHavuzu` yorumlarında yazılı (punk, yaşlı teyze, çocuk vb.).
-   Örnek: musteri_27 (erkek çocuk) → cocuk, musteri_16/21 (yaşlı teyzeler) → yasli,
-   musteri_13/17 (beyaz saçlı beyler) → yasli, musteri_28 (kız çocuk) → cocuk.
-2. **Repliklere yaş/cinsiyet etiketi ver** — her replik hangi gruplara uygun.
-   Basit yol: `_saticiSelam` gibi düz listeler yerine
-   `{metin, yas: [..], cinsiyet: 'E'|'K'|null}` kayıtları; seçerken filtrele.
-   Filtre sonucu boşsa nötr havuza düş (güvenlik).
-3. **Mevcut yaş-duyarlı replikleri düzelt** — "Anneme sormadan..." sadece `cocuk`/`genc`.
-4. **Replik sayısını ARTIR** — yaş/cinsiyet imalı yeni satırlar ekle. Kullanıcının örneği:
-   *"Kızlar X oynamaz derler ama ben bu oyunu seviyorum. Bana satar mısın?"* (kadın).
-   Diğer fikirler: çocuk → *"Harçlığımla aldım"*, yaşlı → *"Torunuma alacağım"*,
-   genç → *"Arkadaşlarda gördüm, bende de olsun"*.
+### Güvenlik zinciri (ÖNEMLİ)
+`replikSec` asla boş dönmez: **uyan replik → yoksa nötrler → o da yoksa tüm havuz.**
+Filtre ne kadar dar yazılırsa yazılsın oyun boş balon göstermez.
 
-### Dokunulacak yerler
-- `GameState.musteriHavuzu` (yaş alanı)
-- `Customer` sınıfı (yaş taşısın) ve `selamMesaji`
-- `GameState.yeniMusteriGonder` (yaşı Customer'a geçir)
-- `PazarlikSeans` replik havuzları (karşı teklif/kabul/gitme) — istenirse oraya da yaş
+### Dokunulan yerler
+| Yer | Ne oldu |
+|---|---|
+| `GameState.musteriHavuzu` | her satıra `'yas'` alanı |
+| `Customer` | `yas` + `cinsiyet` alanları, `selamMesaji` filtreli |
+| `GameState.yeniMusteriGonder` | yaş/cinsiyeti `Customer`'a geçirir |
+| `PazarlikSeans` | `yas`/`cinsiyet` alanları + `_sec()` yardımcısı |
+| Tüm replik havuzları | `List<String>` → `List<Replik>` |
 
-> Placeholder kuralı geçerli: `{AD}`/`{URUN}` kullan, **tek harf kullanma**
-> (`replaceAll('A',...)` "Arkadaşlar"ı bozar — bu hata bir kez yapıldı).
+`PazarlikSeans.yas`/`cinsiyet` **varsayılanlı** (yetiskin/'E') — özel müşteride
+pazarlık yok, oradan gelen çağrılar bozulmasın diye.
+
+### Genişletilen havuzlar (v99'un üstüne)
+| Havuz | Önce | Sonra |
+|---|---|---|
+| `_saticiSelam` / `_aliciSelam` | 20 / 20 | 39 / 39 |
+| `_saticiKarsiTeklif` / `_aliciKarsiTeklif` | 25 / 25 | 48 / 46 |
+| `_kabulSablonlari` | 26 | 42 |
+| `_gitOfkeli` / `_gitTurBitti` / `_gitErken` | 18 / 18 / 12 | 27 / 26 / 19 |
+| `_kolonyaSelam` | 5 | 9 |
+| `_tepki*` + `_sonTeklifMesajlari` + `_kaprisliKabul` + `_jestKabul` | — | hepsine yaş satırı |
+
+Her yaş+cinsiyet+rol kombinasyonunda **en az 20 farklı selamlama** üretilebiliyor
+(test bunu doğruluyor).
+
+### Regresyon testi — `test/yas_replik_test.dart`
+6 test. Kritik olanlar:
+- çocuk/genç lafları ("Anneme sormadan", "harçlığımı biriktirdim", "Kumbaramı")
+  yetişkin/yaşlıya **düşmüyor**
+- yaşlı lafları ("Torunum", "Emekli", "Çocukluğumdan beri") çocuk/gence **düşmüyor**
+- cinsiyet etiketli replikler karşı cinse düşmüyor
+- `{AD}`/`{URUN}` placeholder'ları **tamamen doldurulmuş** (tuzak testi)
+- `replikSec` boş dönmüyor
+
+```bash
+C:\src\flutter\bin\flutter.bat test test/yas_replik_test.dart
+```
+
+> ⚠️ `test/widget_test.dart` **eskiden beri kırık** (splash ekranı yüzünden
+> "OYUNCU DÜKKANI" metnini hemen bulamıyor). Yaş sistemiyle ilgisi yok.
+
+### Yeni replik yazarken
+- **Tek harf placeholder YASAK**: `{AD}` / `{URUN}` kullan. `replaceAll('A', ...)`
+  "**A**rkadaşlar"ı bozar. Fiyat için `X` güvenli (Türkçede büyük X geçen kelime yok).
+- Rol ayrımını koru: malı **satan** müşteri "o para bu malı almaz", **alan**
+  müşteri "o kadar para vermem" der.
+- Etiketlemekte kararsızsan **etiketleme** — nötr satır her yaşa gider, zararsız.
+
+---
 
 ## ğŸ”Š SES SÄ°STEMÄ° (v101)
 
@@ -1076,6 +1122,7 @@ Base ratio hÃ¢lÃ¢ `_clamp(0.18 - progress * 0.15, 0.02, 0.18)`.
 ## Versiyon GeÃ§miÅŸi (son)
 | Commit | AÃ§Ä±klama |
 |--------|----------|
+| v103 | **Yaş/cinsiyet duyarlı replik sistemi**: `enum YasGrubu` (cocuk/genc/yetiskin/yasli) + `Replik{metin,yas,cinsiyet}` kaydı + `replikSec` filtresi (uyan→nötr→tüm havuz güvenlik zinciri); 28 karakterin hepsine yaş etiketi; TÜM replik havuzları `List<String>`→`List<Replik>`; selamlama 20→39, karşı teklif 25→48/46, kabul 26→42, gitme 18/18/12→27/26/19; `test/yas_replik_test.dart` regresyon testi (6 test). Ayrıca: 17 yeni karakter görseli kullanıcının kendi kesimiyle değiştirildi (işlenmeden kopyalandı), kaynakta md5 tekrarı ve bir eksik karakter yüzünden roster 29→28, `musteri_29.png` silindi |
 | v97 | **BÃ¼yÃ¼k oynanÄ±ÅŸ gÃ¼ncellemesi**: ToptancÄ± RÄ±za (gÃ¼nlÃ¼k stok, ucuz Ã¼rÃ¼n), Ã§Ã¼rÃ¼k Ã¼rÃ¼n + CD tamir seti ekonomisi, kapalÄ± kutu (lootbox), 8 rozetli Hedefler ekranÄ±, 10 rastgele gÃ¼n olayÄ±. TÃ¼mÃ¼ browser menÃ¼sÃ¼nden eriÅŸilir â€” alt bar/sahne layout'una dokunulmadÄ± |
 | v102 | 18 yeni müşteri karakteri (toplam 29: 14E/15K); beyaz zemin C# flood-fill ile temizlendi, oyunun 500×500 çerçevesine normalize edildi; tools/arkaplan_sil.ps1 yeniden kullanılabilir araç; isim havuzu 150+150 (hepsi benzersiz); SIRADAKİ İŞ: yaş sistemi |
 | v101 | Ses sistemi: 11 yeni tetikleyici bağlandı (dosyalar eksik olsa da çökmez), HapticFeedback ile dokunsal geri bildirim |

@@ -599,6 +599,57 @@ class OzelMusteri {
   }
 }
 
+// ─── YAŞ / CİNSİYET DUYARLI REPLİK SİSTEMİ ───────────────────────────────────
+
+/// Karakterin yaş kuşağı. Replik filtrelemesinin tek kaynağı.
+/// Sayısal yaş tutmuyoruz — replik yazarken kuşak yeterli, sayı fazladan yük.
+enum YasGrubu { cocuk, genc, yetiskin, yasli }
+
+const List<YasGrubu> kYasGenc     = [YasGrubu.cocuk, YasGrubu.genc];
+const List<YasGrubu> kYasBuyuk    = [YasGrubu.yetiskin, YasGrubu.yasli];
+const List<YasGrubu> kYasYetiskin = [YasGrubu.genc, YasGrubu.yetiskin];
+
+YasGrubu yasGrubuCoz(String? s) {
+  switch (s) {
+    case 'cocuk':    return YasGrubu.cocuk;
+    case 'genc':     return YasGrubu.genc;
+    case 'yasli':    return YasGrubu.yasli;
+    default:         return YasGrubu.yetiskin;
+  }
+}
+
+/// Tek bir replik satırı + kime uyduğu.
+///
+/// `yas == null` → her yaşa uyar. `cinsiyet == null` → her cinsiyete uyar.
+/// Böylece eski düz satırlar hiç etiketlenmeden nötr havuzda kalabiliyor.
+///
+/// ⚠️ Metinde TEK HARFLİ placeholder KULLANMA — `{AD}` / `{URUN}` kullan.
+/// `replaceAll('A', ...)` "Arkadaşlar" kelimesindeki A'yı da bozar.
+class Replik {
+  final String metin;
+  final List<YasGrubu>? yas;
+  final String? cinsiyet; // 'E' | 'K' | null
+  const Replik(this.metin, {this.yas, this.cinsiyet});
+
+  bool uyar(YasGrubu y, String c) =>
+      (yas == null || yas!.contains(y)) && (cinsiyet == null || cinsiyet == c);
+
+  bool get notr => yas == null && cinsiyet == null;
+}
+
+/// Havuzdan karaktere uygun rastgele replik seçer.
+///
+/// Güvenlik zinciri: uygun replik yoksa nötr havuza, o da boşsa tüm havuza
+/// düşer. Yani filtre ne kadar dar olursa olsun asla boş metin dönmez.
+String replikSec(List<Replik> havuz, YasGrubu yas, String cinsiyet, [Random? r]) {
+  final rng = r ?? Random();
+  final uygun = havuz.where((x) => x.uyar(yas, cinsiyet)).toList();
+  if (uygun.isNotEmpty) return uygun[rng.nextInt(uygun.length)].metin;
+  final notrler = havuz.where((x) => x.notr).toList();
+  if (notrler.isNotEmpty) return notrler[rng.nextInt(notrler.length)].metin;
+  return havuz[rng.nextInt(havuz.length)].metin;
+}
+
 // ─── PAZARLIK MODELİ ─────────────────────────────────────────────────────────
 
 enum PazarlikDurum { devamEdiyor, anlasildi, gitti }
@@ -611,6 +662,10 @@ class PazarlikSeans {
   final bool musteriSatiyor;
   final int piyasaFiyati;
   final MusteriOzellik ozellik;
+  /// Karşı tarafın kuşağı ve cinsiyeti — replik filtrelemesi için.
+  /// Özel müşteride pazarlık yok, o yüzden varsayılan nötr bir yetişkin.
+  final YasGrubu yas;
+  final String cinsiyet;
   double _reservationPrice; // colonya bonusu uygulanabilir, final değil
 
   int musteriTeklif;
@@ -633,6 +688,8 @@ class PazarlikSeans {
     required this.maxTur,
     required this.ozellik,
     required double reservationPrice,
+    this.yas = YasGrubu.yetiskin,
+    this.cinsiyet = 'E',
   })  : _reservationPrice = reservationPrice,
         turSayisi = 0,
         durum = PazarlikDurum.devamEdiyor,
@@ -644,58 +701,74 @@ class PazarlikSeans {
   // ── HAMLEYE TEPKİ REPLİKLERİ ──────────────────────────────────────────────
 
   /// Oyuncu geri adım attı (önceki teklifinden daha kötü bir teklif verdi)
-  static const List<String> _tepkiGeri = [
-    'Dur dur! Az önce daha iyi bir rakam söylemiştin, geri mi gidiyorsun?',
-    'Yanlış duymadıysam teklifin kötüleşti. X, ben buradayım.',
-    'Bu ne şimdi? Pazarlık ileri gider, geri değil! X.',
-    'Sen benimle dalga mı geçiyorsun? X diyorum, düşün.',
-    'Geri adım attın diye ben de fiyatımı kırmıyorum: X.',
-    'Ters yöne gidiyorsun dostum. X, aynen duruyor.',
-    'Hop! Cebine geri mi koydun parayı? X.',
-    'Böyle pazarlık olmaz ki. Fiyatım X, sabit.',
+  static const List<Replik> _tepkiGeri = [
+    Replik('Dur dur! Az önce daha iyi bir rakam söylemiştin, geri mi gidiyorsun?'),
+    Replik('Yanlış duymadıysam teklifin kötüleşti. X, ben buradayım.'),
+    Replik('Bu ne şimdi? Pazarlık ileri gider, geri değil! X.'),
+    Replik('Sen benimle dalga mı geçiyorsun? X diyorum, düşün.'),
+    Replik('Geri adım attın diye ben de fiyatımı kırmıyorum: X.'),
+    Replik('Ters yöne gidiyorsun dostum. X, aynen duruyor.'),
+    Replik('Hop! Cebine geri mi koydun parayı? X.'),
+    Replik('Böyle pazarlık olmaz ki. Fiyatım X, sabit.'),
+    Replik('Hile yapıyorsun! Böyle olmaz ki, X demiştin.', yas: [YasGrubu.cocuk]),
+    Replik('Cidden mi? Geri gitmek diye bir şey yok. X.', yas: kYasGenc),
+    Replik('Evladım, verdiğin sözden dönülmez. X.', yas: [YasGrubu.yasli]),
+    Replik('Ablan bunu yutmaz, X.', cinsiyet: 'K', yas: kYasBuyuk),
   ];
 
   /// Oyuncu aynı teklifi tekrarladı
-  static const List<String> _tepkiAyni = [
-    'Aynı rakamı tekrar söyledin. İnatçıymışsın. X.',
-    'Değişen bir şey yok sende, bende de yok pek: X.',
-    'Kaset mi takıldı? X diyorum ben de.',
-    'Sen kımıldamazsan ben de kımıldamam. X.',
-    'Israrcısın, kabul. Ama X.',
-    'Bak ben biraz indirdim, sen hiç. X.',
-    'Aynı yerde sayıyoruz. X, bir adım at.',
+  static const List<Replik> _tepkiAyni = [
+    Replik('Aynı rakamı tekrar söyledin. İnatçıymışsın. X.'),
+    Replik('Değişen bir şey yok sende, bende de yok pek: X.'),
+    Replik('Kaset mi takıldı? X diyorum ben de.'),
+    Replik('Sen kımıldamazsan ben de kımıldamam. X.'),
+    Replik('Israrcısın, kabul. Ama X.'),
+    Replik('Bak ben biraz indirdim, sen hiç. X.'),
+    Replik('Aynı yerde sayıyoruz. X, bir adım at.'),
+    Replik('Aynı şeyi söyleyip duruyorsun, sıkıldım! X.', yas: [YasGrubu.cocuk]),
+    Replik('Kopyala yapıştır mı yapıyorsun? X.', yas: kYasGenc),
+    Replik('Benim sabrım var evladım ama vaktim yok. X.', yas: [YasGrubu.yasli]),
   ];
 
   /// Oyuncu büyük bir jest yaptı (ciddi bir sıçrama)
-  static const List<String> _tepkiBuyuk = [
-    'Ooo, işte bu adamlık! Ben de X diyeyim.',
-    'Büyük adım attın, saygı duydum. X.',
-    'Ciddi olduğunu anladım. Gel X\'te buluşalım.',
-    'Bu jestin karşılıksız kalmaz: X.',
-    'Vay be, hiç beklemiyordum. X olsun.',
-    'Böyle pazarlık severim işte! X.',
-    'Sen adam gibi davrandın, ben de X.',
-    'Yaklaştık! X, neredeyse bitti bu iş.',
+  static const List<Replik> _tepkiBuyuk = [
+    Replik('Ooo, işte bu adamlık! Ben de X diyeyim.'),
+    Replik('Büyük adım attın, saygı duydum. X.'),
+    Replik('Ciddi olduğunu anladım. Gel X\'te buluşalım.'),
+    Replik('Bu jestin karşılıksız kalmaz: X.'),
+    Replik('Vay be, hiç beklemiyordum. X olsun.'),
+    Replik('Böyle pazarlık severim işte! X.'),
+    Replik('Sen adam gibi davrandın, ben de X.'),
+    Replik('Yaklaştık! X, neredeyse bitti bu iş.'),
+    Replik('Vaaay! Sen çok iyisin. X olsun!', yas: [YasGrubu.cocuk]),
+    Replik('Efsanesin! X diyorum ben de.', yas: kYasGenc),
+    Replik('Sağ ol evladım, hakkını helal et. X.', yas: [YasGrubu.yasli]),
+    Replik('Ablan bu jesti unutmaz. X.', cinsiyet: 'K', yas: kYasBuyuk),
   ];
 
   /// Bir kereye mahsus "az daha sıkıştırma" (teklif kabul edilebilir olsa bile)
-  static const List<String> _tepkiSikistirma = [
-    'Neredeyse tamam... Bir tık daha, X olsun bitsin.',
-    'Az kaldı! X yaparsan hemen tokalaşırız.',
-    'Elini biraz daha gevşet: X. Sonra anlaştık.',
-    'Buraya kadar geldik, X\'e yuvarlayalım.',
-    'Son bir gayret, X. Sonra çayları ben söylerim.',
-    'X desen, hiç düşünmem. Hadi.',
+  static const List<Replik> _tepkiSikistirma = [
+    Replik('Neredeyse tamam... Bir tık daha, X olsun bitsin.'),
+    Replik('Az kaldı! X yaparsan hemen tokalaşırız.'),
+    Replik('Elini biraz daha gevşet: X. Sonra anlaştık.'),
+    Replik('Buraya kadar geldik, X\'e yuvarlayalım.'),
+    Replik('Son bir gayret, X. Sonra çayları ben söylerim.'),
+    Replik('X desen, hiç düşünmem. Hadi.'),
+    Replik('Napcaz, biraz daha? X olsa süper olur!', yas: kYasGenc),
+    Replik('Bir yaşlı hatırı için X, olur mu evladım?', yas: [YasGrubu.yasli]),
   ];
 
   /// Son tur uyarısı — oyuncu bunun son şans olduğunu bilsin
-  static const List<String> _sonTeklifMesajlari = [
-    'SON TEKLİFİM: X. Ya alırsın ya küserim.',
-    'Bak bu son: X. Ötesi yok, bitti.',
-    'X. Son sözüm bu, düşün taşın karar ver.',
-    'Daha fazla uzatmam: X, ya evet ya hoşça kal.',
-    'Son teklif X. Kabul edersen anlaştık, etmezsen eyvallah.',
-    'Bitiriyorum: X. Kararı sen ver.',
+  static const List<Replik> _sonTeklifMesajlari = [
+    Replik('SON TEKLİFİM: X. Ya alırsın ya küserim.'),
+    Replik('Bak bu son: X. Ötesi yok, bitti.'),
+    Replik('X. Son sözüm bu, düşün taşın karar ver.'),
+    Replik('Daha fazla uzatmam: X, ya evet ya hoşça kal.'),
+    Replik('Son teklif X. Kabul edersen anlaştık, etmezsen eyvallah.'),
+    Replik('Bitiriyorum: X. Kararı sen ver.'),
+    Replik('SON: X! Yoksa eve gidiyorum, gerçekten.', yas: [YasGrubu.cocuk]),
+    Replik('Son teklifim X, sonrası yok. Ciddiyim.', yas: kYasGenc),
+    Replik('Son sözüm X evladım, yorulmayalım artık.', yas: [YasGrubu.yasli]),
   ];
 
   PazarlikDurum oyuncuTeklifVer(int yeniOyuncuTeklif) {
@@ -729,7 +802,7 @@ class PazarlikSeans {
         musteriTeklif = musteriSatiyor
             ? ortaNokta.clamp(oyuncuTeklif + 1, musteriTeklif)
             : ortaNokta.clamp(musteriTeklif, oyuncuTeklif - 1);
-        mesaj = _tepkiSikistirma[rng.nextInt(_tepkiSikistirma.length)]
+        mesaj = _sec(_tepkiSikistirma)
             .replaceAll('X', '$musteriTeklif');
         durum = PazarlikDurum.devamEdiyor;
         return durum;
@@ -768,7 +841,7 @@ class PazarlikSeans {
     if (hamle == Hamle.geri) {
       _frustration = _clamp(_frustration + 0.30, 0, 1);
       if (rng.nextDouble() < 0.22 + (1 - pat) * 0.28) return _git();
-      mesaj = _tepkiGeri[rng.nextInt(_tepkiGeri.length)].replaceAll('X', '$musteriTeklif');
+      mesaj = _sec(_tepkiGeri).replaceAll('X', '$musteriTeklif');
       durum = PazarlikDurum.devamEdiyor;
       return durum;
     }
@@ -879,7 +952,7 @@ class PazarlikSeans {
     // Oyuncu "bu son şans" olduğunu bilsin — pazarlığa doruk noktası katar.
     if (turSayisi >= maxTur - 1) {
       sonTeklifMi = true;
-      mesaj = _sonTeklifMesajlari[rng.nextInt(_sonTeklifMesajlari.length)]
+      mesaj = _sec(_sonTeklifMesajlari)
           .replaceAll('X', '$musteriTeklif');
       durum = PazarlikDurum.devamEdiyor;
       return durum;
@@ -887,9 +960,9 @@ class PazarlikSeans {
 
     // ── 11. Hamleye göre tepki mesajı ──
     if (hamle == Hamle.ayni) {
-      mesaj = _tepkiAyni[rng.nextInt(_tepkiAyni.length)].replaceAll('X', '$musteriTeklif');
+      mesaj = _sec(_tepkiAyni).replaceAll('X', '$musteriTeklif');
     } else if (hamle == Hamle.buyuk) {
-      mesaj = _tepkiBuyuk[rng.nextInt(_tepkiBuyuk.length)].replaceAll('X', '$musteriTeklif');
+      mesaj = _sec(_tepkiBuyuk).replaceAll('X', '$musteriTeklif');
     } else {
       _karsiTeklifMesaj();
     }
@@ -929,213 +1002,340 @@ class PazarlikSeans {
   // ALAN aynı cümleyi kuramaz. İkisi için ayrı havuz.
 
   /// Müşteri malı SATIYOR (oyuncu alıcı) — "bu para bu malı almaz" tonu
-  static const List<String> _saticiKarsiTeklif = [
-    "Yok abi, o para bu malı almaz. X diyelim.",
-    "Bu fiyata versem eve dönemem. X olsun, helalleşelim.",
-    "Vallahi zarar ederim. X, son sözüm... şimdilik.",
-    "Ayıp ya! Bu mala X bile az.",
-    "Gönlümden X koptu, gerisi lafıgüzaf.",
-    "Bak, X. Bundan aşağısı kul hakkı.",
-    "Kalbimi kırdın ama pazarlık bu. X?",
-    "Bu malın hikâyesi var, hikâye de para eder. X.",
-    "X. Bak yuvarlak sayı, hesabı kolay olsun.",
-    "Böyle giderse akşama kadar buradayız. X.",
-    "İnsaf be! X'e razıyım, bitirelim şu işi.",
-    "X olur mu? Olmazsa da kırılmam... biraz kırılırım.",
-    "X. Üstüne bir çay ısmarlarsan hiç itiraz etmem.",
-    "Pazarlıkta ustayımdır ama bugün yorgunum: X.",
-    "Sen de bir adım at ya! X.",
-    "Anam görse 'satma' derdi. X'e satarım.",
-    "X. Bu fiyatı sadece sana söylüyorum, kimseye deme.",
-    "Az kaldı az! X de tamam.",
-    "Rakamlar konuşsun: X.",
-    "Bu fiyatı duysa malın eski sahibi ters döner. X.",
-    "X diyorum, gözün arkada kalmasın.",
-    "Elimi kolumu bağladın. X, bitti gitti.",
-    "Ben buraya pazarlık etmeye geldim, dilenmeye değil. X.",
-    "X. Hesap makinesi getireyim mi, beraber bakalım?",
-    "Şu malın tozunu bile X eder. Hadi.",
+  static const List<Replik> _saticiKarsiTeklif = [
+    // ── nötr (her yaş, her cinsiyet) ──
+    Replik("Yok abi, o para bu malı almaz. X diyelim."),
+    Replik("Bu fiyata versem eve dönemem. X olsun, helalleşelim."),
+    Replik("Vallahi zarar ederim. X, son sözüm... şimdilik."),
+    Replik("Ayıp ya! Bu mala X bile az."),
+    Replik("Gönlümden X koptu, gerisi lafıgüzaf."),
+    Replik("Bak, X. Bundan aşağısı kul hakkı."),
+    Replik("Kalbimi kırdın ama pazarlık bu. X?"),
+    Replik("Bu malın hikâyesi var, hikâye de para eder. X."),
+    Replik("X. Bak yuvarlak sayı, hesabı kolay olsun."),
+    Replik("Böyle giderse akşama kadar buradayız. X."),
+    Replik("İnsaf be! X'e razıyım, bitirelim şu işi."),
+    Replik("X olur mu? Olmazsa da kırılmam... biraz kırılırım."),
+    Replik("X. Üstüne bir çay ısmarlarsan hiç itiraz etmem."),
+    Replik("Pazarlıkta ustayımdır ama bugün yorgunum: X."),
+    Replik("Sen de bir adım at ya! X."),
+    Replik("Anam görse 'satma' derdi. X'e satarım."),
+    Replik("X. Bu fiyatı sadece sana söylüyorum, kimseye deme."),
+    Replik("Az kaldı az! X de tamam."),
+    Replik("Rakamlar konuşsun: X."),
+    Replik("Bu fiyatı duysa malın eski sahibi ters döner. X."),
+    Replik("X diyorum, gözün arkada kalmasın."),
+    Replik("Elimi kolumu bağladın. X, bitti gitti."),
+    Replik("Ben buraya pazarlık etmeye geldim, dilenmeye değil. X."),
+    Replik("X. Hesap makinesi getireyim mi, beraber bakalım?"),
+    Replik("Şu malın tozunu bile X eder. Hadi."),
+    // ── çocuk ──
+    Replik("Kumbaramı kırdım diye annem kızdı, bari X olsun.", yas: [YasGrubu.cocuk]),
+    Replik("Bisiklet için para biriktiriyorum. X yeter bana.", yas: [YasGrubu.cocuk]),
+    Replik("Ağabeyim 'X'ten aşağı verme' dedi, sözünden çıkamam.", yas: [YasGrubu.cocuk]),
+    Replik("Öğretmenim matematikten iyiyim der. X ediyor bu, hesapladım.", yas: [YasGrubu.cocuk]),
+    // ── çocuk + genç ──
+    Replik("Kantin borcum var, X desen kurtulurum.", yas: kYasGenc),
+    Replik("Arkadaşlar 'bu en az X eder' dedi, onlara güveniyorum.", yas: kYasGenc),
+    Replik("Yeni oyun çıktı, ona para lazım. X?", yas: kYasGenc),
+    // ── genç ──
+    Replik("Öğrenciyim, her kuruş lazım: X.", yas: [YasGrubu.genc]),
+    Replik("Konser bileti alacağım, X'e razıyım.", yas: [YasGrubu.genc]),
+    Replik("İnternette X'e gidiyor, kargo derdi olmasa satmazdım sana.", yas: [YasGrubu.genc]),
+    // ── yetişkin ──
+    Replik("Faturalar kapıda dostum, X desen anlaşırız.", yas: [YasGrubu.yetiskin]),
+    Replik("Çocuklara oda açıyorum evde, X'e bırakırım.", yas: [YasGrubu.yetiskin]),
+    Replik("Ben de esnaflık yaptım, boş konuşmayalım: X.", yas: [YasGrubu.yetiskin]),
+    // ── yetişkin + yaşlı ──
+    Replik("Benim yaşımda insan boşuna pazarlık etmez. X.", yas: kYasBuyuk),
+    Replik("Bunu aldığımda sen daha bu dükkânı hayal etmiyordun. X.", yas: kYasBuyuk),
+    // ── yaşlı ──
+    Replik("Torunum büyüdü, artık oynamıyor. X desen severek veririm.", yas: [YasGrubu.yasli]),
+    Replik("Emekli maaşı yetmiyor evladım, X olsun.", yas: [YasGrubu.yasli]),
+    Replik("Bu yaştan sonra pazarlık ikimizi de yormasın: X.", yas: [YasGrubu.yasli]),
+    Replik("Gözlerim iyi görmüyor ama rakamdan anlarım: X.", yas: [YasGrubu.yasli]),
+    // ── cinsiyet imalı ──
+    Replik("Kadın müşteri fiyat bilmez sanma, malın değeri X.", cinsiyet: 'K'),
+    Replik("Ablan sana kazık atmaz, X gerçek değeri.", cinsiyet: 'K', yas: kYasBuyuk),
+    Replik("Bunu kızıma alacaktım, ona X'lik başka bir şey bakarım. X?", cinsiyet: 'K', yas: kYasBuyuk),
+    Replik("Delikanlı adam sözünden dönmez: X dedim, X.", cinsiyet: 'E', yas: kYasYetiskin),
+    Replik("Abin sana yanlış yapmaz, X.", cinsiyet: 'E', yas: kYasBuyuk),
   ];
 
   /// Müşteri malı ALIYOR (oyuncu satıcı) — "o kadar para vermem" tonu
-  static const List<String> _aliciKarsiTeklif = [
-    "O paraya bu mu? X veririm, fazlası yok.",
-    "Cebimde X var, gerisi hayal.",
-    "X. Üstüne bir teşekkür de ederim, olur mu?",
-    "Bu fiyata yenisini alırım ben. X.",
-    "Gönlüm X diyor, cüzdanım da öyle.",
-    "X'ten yukarısı için evden izin almam lazım.",
-    "Sen fiyatı söylerken bile utandın. X.",
-    "X. Sen de kâr et ama tek başına etme.",
-    "X veriyorum, üstüne poşet de isterim.",
-    "Şu ekonomide X bile büyük laf.",
-    "Bak X diyorum, sonra fikrim değişir ha.",
-    "X. Yuvarlıyorum, hesap kolay olsun.",
-    "Bu mala X, bir de gülümseme veririm.",
-    "Fiyatı duyunca gözüm karardı. X'e gelirim.",
-    "X. Anlaşırsak arkadaşlara da tavsiye ederim.",
-    "Harçlığım X, ötesi yok vallahi.",
-    "X olsun, ikimiz de kazanalım.",
-    "Pazarlık kültürümüzde var, kusura bakma: X.",
-    "X. Bunun üstüne çıkarsam bana evde kızarlar.",
-    "İndirim yapmayan esnaf, esnaf değildir. X.",
-    "Bugün şanslı günün: X kabul.",
-    "Son teklifim X... yani şimdilik son.",
-    "X diyorum, gerisini hayır dualarımla tamamlarım.",
-    "Sen bunu bana X'e verirsen adamsın.",
-    "X. Elimi vicdanıma koydum, çıkan rakam bu.",
+  static const List<Replik> _aliciKarsiTeklif = [
+    // ── nötr ──
+    Replik("O paraya bu mu? X veririm, fazlası yok."),
+    Replik("Cebimde X var, gerisi hayal."),
+    Replik("X. Üstüne bir teşekkür de ederim, olur mu?"),
+    Replik("Bu fiyata yenisini alırım ben. X."),
+    Replik("Gönlüm X diyor, cüzdanım da öyle."),
+    Replik("Sen fiyatı söylerken bile utandın. X."),
+    Replik("X. Sen de kâr et ama tek başına etme."),
+    Replik("X veriyorum, üstüne poşet de isterim."),
+    Replik("Şu ekonomide X bile büyük laf."),
+    Replik("Bak X diyorum, sonra fikrim değişir ha."),
+    Replik("X. Yuvarlıyorum, hesap kolay olsun."),
+    Replik("Bu mala X, bir de gülümseme veririm."),
+    Replik("Fiyatı duyunca gözüm karardı. X'e gelirim."),
+    Replik("X. Anlaşırsak arkadaşlara da tavsiye ederim."),
+    Replik("X olsun, ikimiz de kazanalım."),
+    Replik("Pazarlık kültürümüzde var, kusura bakma: X."),
+    Replik("İndirim yapmayan esnaf, esnaf değildir. X."),
+    Replik("Bugün şanslı günün: X kabul."),
+    Replik("Son teklifim X... yani şimdilik son."),
+    Replik("X diyorum, gerisini hayır dualarımla tamamlarım."),
+    Replik("Sen bunu bana X'e verirsen adamsın."),
+    Replik("X. Elimi vicdanıma koydum, çıkan rakam bu."),
+    // ── çocuk ──
+    Replik("Harçlığım tam X, kumbara bomboş kaldı.", yas: [YasGrubu.cocuk]),
+    Replik("Annemden X aldım, fazlasını istemeye korkarım.", yas: [YasGrubu.cocuk]),
+    Replik("Bayram harçlığım X. Yeter mi abi, yeter değil mi?", yas: [YasGrubu.cocuk]),
+    Replik("Karnem iyi geldi diye X verdiler. Hepsi bu.", yas: [YasGrubu.cocuk]),
+    // ── çocuk + genç ──
+    Replik("Harçlığım X, ötesi yok vallahi.", yas: kYasGenc),
+    Replik("X. Bunun üstüne çıkarsam bana evde kızarlar.", yas: kYasGenc),
+    Replik("X'ten yukarısı için evden izin almam lazım.", yas: kYasGenc),
+    // ── genç ──
+    Replik("Öğrenciyim, bütçem X. Biraz anlayış bekliyorum.", yas: [YasGrubu.genc]),
+    Replik("Burs yattı, buna X ayırdım. Gerisi yemek parası.", yas: [YasGrubu.genc]),
+    Replik("Yurtta herkes bunu konuşuyor ama cebimde X var.", yas: [YasGrubu.genc]),
+    // ── yetişkin ──
+    Replik("Çocuğun doğum günü yaklaştı, bütçem X.", yas: [YasGrubu.yetiskin]),
+    Replik("Eve hesap vereceğim, X'te kalayım.", yas: [YasGrubu.yetiskin]),
+    Replik("Kredi kartı dolu, nakit X var. Karar senin.", yas: [YasGrubu.yetiskin]),
+    // ── yetişkin + yaşlı ──
+    Replik("Çocukluğumdaki fiyatları hatırlıyorum da... neyse, X.", yas: kYasBuyuk),
+    Replik("Bizim zamanımızda bunun üçü X ederdi. Yine de X diyorum.", yas: kYasBuyuk),
+    // ── yaşlı ──
+    Replik("Torunuma alacağım, X'e verirsen arkandan dua ederim.", yas: [YasGrubu.yasli]),
+    Replik("Emekliyiz evladım, X'ten fazlasını çıkaramam.", yas: [YasGrubu.yasli]),
+    Replik("Maaş üçüne yatıyor, bugün elimde X var.", yas: [YasGrubu.yasli]),
+    Replik("Yaşlıyım diye kandırma beni, X eder bu.", yas: [YasGrubu.yasli]),
+    // ── cinsiyet imalı ──
+    Replik("Kadın müşteriyi kaçırma, X de bitsin bu iş.", cinsiyet: 'K'),
+    Replik("Kızlar bunlardan anlamaz derler, bak anlıyorum: X.", cinsiyet: 'K', yas: kYasYetiskin),
+    Replik("Teyzeni kırma, X'e ver şunu.", cinsiyet: 'K', yas: [YasGrubu.yasli]),
+    Replik("Erkek adamın cebinde X var, artırsam yalan olur.", cinsiyet: 'E', yas: kYasYetiskin),
+    Replik("Amcana bu iyiliği yap, X.", cinsiyet: 'E', yas: [YasGrubu.yasli]),
   ];
+
+  /// Karaktere uygun replik seç — yaş/cinsiyet filtresi burada devreye girer.
+  String _sec(List<Replik> havuz) => replikSec(havuz, yas, cinsiyet);
 
   void _karsiTeklifMesaj() {
     final havuz = musteriSatiyor ? _saticiKarsiTeklif : _aliciKarsiTeklif;
-    mesaj = havuz[Random().nextInt(havuz.length)].replaceAll('X', '$musteriTeklif');
+    mesaj = _sec(havuz).replaceAll('X', '$musteriTeklif');
   }
 
-  static const List<String> _kabulSablonlari = [
-    'Anlaştık! Elini sıkayım, hayırlı olsun.',
-    'Tamamdır! Böyle pazarlık severim işte.',
-    'Oldu bu iş! X lira, helali hoş olsun.',
-    'Kabul! Sen de iyi pazarlıkçısın ha.',
-    'Yaptın yapacağını, X\'e razıyım!',
-    'Anlaştık. Bir dahakine bu kadar kolay olmayacak ama.',
-    'X. Tamam! Vicdanım rahat.',
-    'Hah şöyle! İkimiz de kazandık.',
-    'Kabul ediyorum, ellerine sağlık.',
-    'Oldu! Bu alışverişten memnunum.',
-    'X\'e anlaştık. Bereketli olsun!',
-    'Peki! Zaten seni kıramazdım.',
-    'Tamam, kabul. Sen kazandın bu sefer.',
-    'X! Hemen kapatalım, fikrim değişmeden.',
-    'Anlaştık. Arkadaşlara da senden bahsedeceğim.',
-    'Al benden de o kadar! Kabul.',
-    'Uzattık yeter, X\'e tamam.',
-    'Bak bu güzel oldu. X, anlaştık.',
-    'Eyvallah, X\'e razıyım.',
-    'Şu tokalaşma anı var ya, işte bunun için buradayım!',
-    'Tamam! Gözüm arkada kalmadı.',
-    'X lira. Hesap tamam, gönül tamam.',
-    'Kabul kabul, bitsin de çayımı içeyim.',
-    'Helal olsun sana. X, anlaştık.',
-    'Ooo, sonunda! X. Tokalaşalım.',
-    'Bu fiyata evet demezsem ayıp olur. Kabul!',
+  static const List<Replik> _kabulSablonlari = [
+    // ── nötr ──
+    Replik('Anlaştık! Elini sıkayım, hayırlı olsun.'),
+    Replik('Tamamdır! Böyle pazarlık severim işte.'),
+    Replik('Oldu bu iş! X lira, helali hoş olsun.'),
+    Replik('Kabul! Sen de iyi pazarlıkçısın ha.'),
+    Replik('Yaptın yapacağını, X\'e razıyım!'),
+    Replik('Anlaştık. Bir dahakine bu kadar kolay olmayacak ama.'),
+    Replik('X. Tamam! Vicdanım rahat.'),
+    Replik('Hah şöyle! İkimiz de kazandık.'),
+    Replik('Kabul ediyorum, ellerine sağlık.'),
+    Replik('Oldu! Bu alışverişten memnunum.'),
+    Replik('X\'e anlaştık. Bereketli olsun!'),
+    Replik('Peki! Zaten seni kıramazdım.'),
+    Replik('Tamam, kabul. Sen kazandın bu sefer.'),
+    Replik('X! Hemen kapatalım, fikrim değişmeden.'),
+    Replik('Anlaştık. Arkadaşlara da senden bahsedeceğim.'),
+    Replik('Al benden de o kadar! Kabul.'),
+    Replik('Uzattık yeter, X\'e tamam.'),
+    Replik('Bak bu güzel oldu. X, anlaştık.'),
+    Replik('Eyvallah, X\'e razıyım.'),
+    Replik('Şu tokalaşma anı var ya, işte bunun için buradayım!'),
+    Replik('Tamam! Gözüm arkada kalmadı.'),
+    Replik('X lira. Hesap tamam, gönül tamam.'),
+    Replik('Kabul kabul, bitsin de çayımı içeyim.'),
+    Replik('Helal olsun sana. X, anlaştık.'),
+    Replik('Ooo, sonunda! X. Tokalaşalım.'),
+    Replik('Bu fiyata evet demezsem ayıp olur. Kabul!'),
+    // ── çocuk ──
+    Replik('Tamam! Eve koşa koşa gideceğim, X!', yas: [YasGrubu.cocuk]),
+    Replik('Anneme anlatacağım bunu! Anlaştık.', yas: [YasGrubu.cocuk]),
+    Replik('Kabul! Sen dünyanın en iyi dükkâncısısın.', yas: [YasGrubu.cocuk]),
+    // ── çocuk + genç ──
+    Replik('Arkadaşlara hava atacağım, kabul!', yas: kYasGenc),
+    Replik('X mi? Tamam tamam, kaçmaz böyle fırsat!', yas: kYasGenc),
+    // ── genç ──
+    Replik('Efsane! X, anlaştık.', yas: [YasGrubu.genc]),
+    Replik('Bunu paylaşacağım, dükkânın reklamı olsun. Kabul!', yas: [YasGrubu.genc]),
+    // ── yetişkin ──
+    Replik('X. Tamam, işim var benim, kapatalım.', yas: [YasGrubu.yetiskin]),
+    Replik('Anlaştık. Bir sonrakinde beni ara, müşterin oldum.', yas: [YasGrubu.yetiskin]),
+    // ── yaşlı ──
+    Replik('Eline sağlık evladım, X\'e anlaştık.', yas: [YasGrubu.yasli]),
+    Replik('Allah bereket versin, kabul.', yas: [YasGrubu.yasli]),
+    Replik('Torunum çok sevinecek. Anlaştık!', yas: [YasGrubu.yasli]),
+    // ── cinsiyet imalı ──
+    Replik('Ablan memnun kaldı, kabul!', cinsiyet: 'K', yas: kYasBuyuk),
+    Replik('Kızlar pazarlıktan anlar işte. X, anlaştık!', cinsiyet: 'K', yas: kYasYetiskin),
+    Replik('Erkek adam sözünü tutar: kabul, X.', cinsiyet: 'E', yas: kYasYetiskin),
+    Replik('Eyvallah evladım, amcanı kırmadın.', cinsiyet: 'E', yas: [YasGrubu.yasli]),
   ];
 
   PazarlikDurum _kabul(double fiyat) {
     musteriTeklif = fiyat.round();
     durum = PazarlikDurum.anlasildi;
-    mesaj = _kabulSablonlari[Random().nextInt(_kabulSablonlari.length)]
-        .replaceAll('X', '$musteriTeklif');
+    mesaj = _sec(_kabulSablonlari).replaceAll('X', '$musteriTeklif');
     return durum;
   }
 
   /// Kaprisli evet: mantıken kabul etmemesi gereken bir teklifi kabul eder.
   /// Nadir (%5) ve sınırlı (en fazla %25 aşım) — "vay be" anı yaratsın diye.
-  static const List<String> _kaprisliKabul = [
-    'Ya boşver, kafam iyi bugün. Kabul!',
-    'Normalde asla vermezdim ama seni sevdim. Tamam!',
-    'Bugün doğum günüm, hediyem olsun. Anlaştık!',
-    'Acelem var, kabul, ver şunu.',
-    'Bu kadar ısrar edene hayır denmez. Oldu!',
-    'İçimden bir ses "ver gitsin" dedi. Kabul!',
-    'Zarar mı ediyorum? Ediyorum. Kabul mü? Kabul!',
-    'Yıldızların dizilimi iyi bugün. Anlaştık!',
-    'Bu hikâyeyi arkadaşlara anlatacağım. Kabul!',
-    'Dur dur, düşünmeyeyim, fikrim değişmeden kabul!',
+  static const List<Replik> _kaprisliKabul = [
+    Replik('Ya boşver, kafam iyi bugün. Kabul!'),
+    Replik('Normalde asla vermezdim ama seni sevdim. Tamam!'),
+    Replik('Bugün doğum günüm, hediyem olsun. Anlaştık!'),
+    Replik('Acelem var, kabul, ver şunu.'),
+    Replik('Bu kadar ısrar edene hayır denmez. Oldu!'),
+    Replik('İçimden bir ses "ver gitsin" dedi. Kabul!'),
+    Replik('Zarar mı ediyorum? Ediyorum. Kabul mü? Kabul!'),
+    Replik('Yıldızların dizilimi iyi bugün. Anlaştık!'),
+    Replik('Bu hikâyeyi arkadaşlara anlatacağım. Kabul!'),
+    Replik('Dur dur, düşünmeyeyim, fikrim değişmeden kabul!'),
+    Replik('Tamam tamam! Zaten canım çok istiyordu.', yas: [YasGrubu.cocuk]),
+    Replik('Boşver ya, olsun. Kabul!', yas: kYasGenc),
+    Replik('Ömrümüzün sonunda pazarlık mı kaldı? Kabul evladım.', yas: [YasGrubu.yasli]),
+    Replik('Ablanın bugün keyfi yerinde: kabul!', cinsiyet: 'K', yas: kYasBuyuk),
   ];
 
   PazarlikDurum _kabulKaprisli(double fiyat) {
     musteriTeklif = fiyat.round();
     durum = PazarlikDurum.anlasildi;
-    mesaj = _kaprisliKabul[Random().nextInt(_kaprisliKabul.length)];
+    mesaj = _sec(_kaprisliKabul);
     return durum;
   }
 
   /// Büyük jesti onurlandıran kabul
-  static const List<String> _jestKabul = [
-    'Bu kadar büyük adım attıktan sonra hayır diyemem. Anlaştık!',
-    'Mertlik bozulmasın, kabul!',
-    'Sen adam gibi davrandın, ben de kabul ediyorum.',
-    'İşte pazarlık böyle biter! Anlaştık.',
-    'Bu jestin hatırına: kabul.',
-    'Elini sıkayım, hak ettin. Anlaştık!',
+  static const List<Replik> _jestKabul = [
+    Replik('Bu kadar büyük adım attıktan sonra hayır diyemem. Anlaştık!'),
+    Replik('Mertlik bozulmasın, kabul!'),
+    Replik('Sen adam gibi davrandın, ben de kabul ediyorum.'),
+    Replik('İşte pazarlık böyle biter! Anlaştık.'),
+    Replik('Bu jestin hatırına: kabul.'),
+    Replik('Elini sıkayım, hak ettin. Anlaştık!'),
+    Replik('Çok iyisin sen ya! Kabul!', yas: [YasGrubu.cocuk]),
+    Replik('Bu hareketi beklemiyordum, kral adamsın. Kabul!', yas: kYasGenc),
+    Replik('Böyle esnaf az kaldı evladım. Anlaştık.', yas: [YasGrubu.yasli]),
+    Replik('Ablan bu inceliği unutmaz, kabul!', cinsiyet: 'K', yas: kYasBuyuk),
   ];
 
   PazarlikDurum _kabulJest(double fiyat) {
     musteriTeklif = fiyat.round();
     durum = PazarlikDurum.anlasildi;
-    mesaj = _jestKabul[Random().nextInt(_jestKabul.length)];
+    mesaj = _sec(_jestKabul);
     return durum;
   }
 
   // ── Çekip gitme replikleri: üç ruh haline göre ayrı havuz ──
 
   /// Sinirlenip gitti (frustration yüksek)
-  static const List<String> _gitOfkeli = [
-    'Sen şaşırmışsın, konuşmasak daha iyi!',
-    'Senin piyasadan hiç mi haberin yok!',
-    'Yok artık Lebron James!',
-    'Oldu paşam, Malkara Keşan!',
-    'Sen tok satıcısın, anlaşıldı!...',
-    'Beni aptal yerine koyamazsın!',
-    'Bu ne pazarlık ya, resmen soygun!',
-    'Sinirlerim! Ben gidiyorum.',
-    'Sen bu kafayla dükkânı kapatırsın!',
-    'Vallahi güldüm. Güle güle!',
-    'Buraya bir daha adımımı atarsam...',
-    'Enflasyon senin yüzünden bu kadar!',
-    'Fiyatı duyunca kulaklarım çınladı, kaçtım!',
-    'Yandaki dükkân yarı fiyatına veriyor, hoşça kal!',
-    'Sabrımı taşırdın, gidiyorum!',
-    'Bu pazarlık değil, işkence!',
-    'Kalbim kırıldı, hem de gerçekten.',
-    'Şaka gibisin, valla şaka gibi!',
+  static const List<Replik> _gitOfkeli = [
+    // ── nötr ──
+    Replik('Sen şaşırmışsın, konuşmasak daha iyi!'),
+    Replik('Senin piyasadan hiç mi haberin yok!'),
+    Replik('Yok artık Lebron James!'),
+    Replik('Oldu paşam, Malkara Keşan!'),
+    Replik('Sen tok satıcısın, anlaşıldı!...'),
+    Replik('Beni aptal yerine koyamazsın!'),
+    Replik('Bu ne pazarlık ya, resmen soygun!'),
+    Replik('Sinirlerim! Ben gidiyorum.'),
+    Replik('Sen bu kafayla dükkânı kapatırsın!'),
+    Replik('Vallahi güldüm. Güle güle!'),
+    Replik('Buraya bir daha adımımı atarsam...'),
+    Replik('Enflasyon senin yüzünden bu kadar!'),
+    Replik('Fiyatı duyunca kulaklarım çınladı, kaçtım!'),
+    Replik('Yandaki dükkân yarı fiyatına veriyor, hoşça kal!'),
+    Replik('Sabrımı taşırdın, gidiyorum!'),
+    Replik('Bu pazarlık değil, işkence!'),
+    Replik('Kalbim kırıldı, hem de gerçekten.'),
+    Replik('Şaka gibisin, valla şaka gibi!'),
+    // ── yaşa göre ──
+    Replik('Anneme söyleyeceğim seni!', yas: [YasGrubu.cocuk]),
+    Replik('Hiç adil değil bu! Küstüm sana.', yas: [YasGrubu.cocuk]),
+    Replik('Bu dükkânı kimse takmıyor zaten, hoşça kal!', yas: [YasGrubu.genc]),
+    Replik('Yorum yazacağım, bir yıldız bile fazla!', yas: [YasGrubu.genc]),
+    Replik('Ayıp ettin evladım, ayıp!', yas: [YasGrubu.yasli]),
+    Replik('Benim yaşımdaki birine bu reva mı? Eyvallah!', yas: [YasGrubu.yasli]),
+    Replik('Bu yaşa geldim, böyle esnaf görmedim!', yas: kYasBuyuk),
+    // ── cinsiyet imalı ──
+    Replik('Kadın diye kolay lokma sandın, yanıldın!', cinsiyet: 'K'),
+    Replik('Ablanı kızdırdın işte, güle güle!', cinsiyet: 'K', yas: kYasBuyuk),
+    Replik('Erkek adam böyle fiyat vermez, eyvallah!', cinsiyet: 'E', yas: kYasYetiskin),
   ];
 
   /// Tur bitti, anlaşamadılar (kızgın değil, yorgun)
-  static const List<String> _gitTurBitti = [
-    'Yok ya seninle anlaşamıyoruz...',
-    'Olmadı, olduramadık...',
-    'Pazarlık benim için bitmiştir!...',
-    'Biz bu işi unutalım bence.',
-    "Ne sen Leyla'sın ne de ben Mecnun.",
-    'Tekliflerimiz ikimize de makul gelmedi.',
-    'Başka işlerim var, gitmeliyim...',
-    'Güzel pazarlıktı ama olmadı.',
-    'Vakit geçti, ben kaçayım.',
-    'Olmuyor işte olmuyor. Eyvallah.',
-    'İkimiz de haklıyız ama anlaşamıyoruz.',
-    'Bu iş bugünlük burada bitsin.',
-    'Belki başka bahar...',
-    'Yolumuz ayrıldı dostum.',
-    'Kısmet değilmiş, hoşça kal.',
-    'Çok konuştuk, az anlaştık. Gidiyorum.',
-    'Sana da bana da yazık. Görüşürüz.',
-    'Uzadı bu iş, bende o sabır yok.',
+  static const List<Replik> _gitTurBitti = [
+    // ── nötr ──
+    Replik('Yok ya seninle anlaşamıyoruz...'),
+    Replik('Olmadı, olduramadık...'),
+    Replik('Pazarlık benim için bitmiştir!...'),
+    Replik('Biz bu işi unutalım bence.'),
+    Replik("Ne sen Leyla'sın ne de ben Mecnun."),
+    Replik('Tekliflerimiz ikimize de makul gelmedi.'),
+    Replik('Başka işlerim var, gitmeliyim...'),
+    Replik('Güzel pazarlıktı ama olmadı.'),
+    Replik('Vakit geçti, ben kaçayım.'),
+    Replik('Olmuyor işte olmuyor. Eyvallah.'),
+    Replik('İkimiz de haklıyız ama anlaşamıyoruz.'),
+    Replik('Bu iş bugünlük burada bitsin.'),
+    Replik('Belki başka bahar...'),
+    Replik('Yolumuz ayrıldı dostum.'),
+    Replik('Kısmet değilmiş, hoşça kal.'),
+    Replik('Çok konuştuk, az anlaştık. Gidiyorum.'),
+    Replik('Sana da bana da yazık. Görüşürüz.'),
+    Replik('Uzadı bu iş, bende o sabır yok.'),
+    // ── yaşa göre ──
+    Replik('Servis kaçacak, gitmem lazım.', yas: [YasGrubu.cocuk]),
+    Replik('Eve geç kalırsam kızarlar, kaçtım.', yas: kYasGenc),
+    Replik('Dersim var, bu kadar konuştuğumuz yeter.', yas: [YasGrubu.genc]),
+    Replik('Mesaiye yetişeceğim, bir dahakine.', yas: [YasGrubu.yetiskin]),
+    Replik('Ayaklarım ağrıdı evladım, oturacak yer arayayım.', yas: [YasGrubu.yasli]),
+    Replik('Bu kadar ayakta durdum, kısmet değilmiş.', yas: [YasGrubu.yasli]),
+    // ── cinsiyet imalı ──
+    Replik('Ablan başka dükkâna bakar artık, görüşürüz.', cinsiyet: 'K', yas: kYasBuyuk),
+    Replik('Amcan başka kapı çalsın bari.', cinsiyet: 'E', yas: [YasGrubu.yasli]),
   ];
 
   /// Erken vazgeçti
-  static const List<String> _gitErken = [
-    'Dur ya, vazgeçtim!...',
-    'Şu teklifle anında vazgeçtim!',
-    'Dolandırılacağım sanırım, kaçıyorum!...',
-    'Seninle ortayı bulamıyoruz.',
-    'Bir dahaki sefere artık.',
-    'Yok yok, içime sinmedi.',
-    'Aklıma başka iş geldi, kaçtım!',
-    'Şöyle bir düşüneyim... düşündüm, olmadı.',
-    "Cüzdanım 'yürü' diyor.",
-    'Vazgeçtim, kusura bakma.',
-    'Bugün alışveriş yıldızım tutmadı.',
-    'Bir tur atıp geleyim... belki.',
+  static const List<Replik> _gitErken = [
+    // ── nötr ──
+    Replik('Dur ya, vazgeçtim!...'),
+    Replik('Şu teklifle anında vazgeçtim!'),
+    Replik('Dolandırılacağım sanırım, kaçıyorum!...'),
+    Replik('Seninle ortayı bulamıyoruz.'),
+    Replik('Bir dahaki sefere artık.'),
+    Replik('Yok yok, içime sinmedi.'),
+    Replik('Aklıma başka iş geldi, kaçtım!'),
+    Replik('Şöyle bir düşüneyim... düşündüm, olmadı.'),
+    Replik("Cüzdanım 'yürü' diyor."),
+    Replik('Vazgeçtim, kusura bakma.'),
+    Replik('Bugün alışveriş yıldızım tutmadı.'),
+    Replik('Bir tur atıp geleyim... belki.'),
+    // ── yaşa göre ──
+    Replik('Bu kadar param yok ki benim, vazgeçtim.', yas: [YasGrubu.cocuk]),
+    Replik('Önce anneme sorayım, sonra gelirim.', yas: [YasGrubu.cocuk]),
+    Replik('İnternetten bakayım bir, belki daha ucuzdur.', yas: kYasGenc),
+    Replik('Şimdilik pas, maaş yatınca konuşuruz.', yas: [YasGrubu.yetiskin]),
+    Replik('Bir düşüneyim evladım, acelem yok.', yas: [YasGrubu.yasli]),
+    // ── cinsiyet imalı ──
+    Replik('Eşime bir danışayım, öyle karar vereyim.', yas: kYasBuyuk),
+    Replik('Kızıma sorayım bir, o bu işlerden anlar.', cinsiyet: 'K', yas: [YasGrubu.yasli]),
   ];
 
   PazarlikDurum _git() {
     durum = PazarlikDurum.gitti;
-    final rng = Random();
     final havuz = _frustration > 0.6
         ? _gitOfkeli
         : (turSayisi >= maxTur ? _gitTurBitti : _gitErken);
-    mesaj = havuz[rng.nextInt(havuz.length)];
+    mesaj = _sec(havuz);
     return durum;
   }
 }
@@ -1504,74 +1704,139 @@ class Customer {
   final GameItem item;
   final int ilkTeklif;
   final MusteriOzellik ozellik;
+  /// Karakterin kuşağı ve cinsiyeti — görselden geliyor, replikleri filtreler.
+  final YasGrubu yas;
+  final String cinsiyet; // 'E' | 'K'
 
-  Customer({required this.name, required this.gorsel, required this.musteriSatiyor, required this.item, required this.ilkTeklif, required this.ozellik});
+  Customer({required this.name, required this.gorsel, required this.musteriSatiyor, required this.item, required this.ilkTeklif, required this.ozellik, required this.yas, required this.cinsiyet});
 
   // ── SELAMLAMA HAVUZLARI ──
   // {AD} = müşteri adı, {URUN} = ürün adı.
   // DİKKAT: Tek harfli placeholder KULLANMA — "Arkadaşlar"daki A'yı da değiştirir.
+  //
+  // Etiketsiz Replik = her yaşa/cinsiyete uyar. Etiketliler yalnız kendi
+  // kuşağına gider; uyan replik bulunamazsa `replikSec` nötrlere düşer.
 
-  static const List<String> _kolonyaSelam = [
-    'Ben kolonya satıyorum, üreticiyim. İlgilenir misin?',
-    'Kolonyacı geldi! Limon, tütün, lavanta... hepsi var. Bakar mısın?',
-    'Selam usta! Kolonya satıyorum, dükkâna misk gibi kokar.',
-    'Kolonyam var kolonya! Müşterinin gönlünü alır, deneyeceksin göreceksin.',
-    'Ben kolonyacı. Dükkânda kolonya olmazsa olmaz, bilirsin.',
+  static const List<Replik> _kolonyaSelam = [
+    Replik('Ben kolonya satıyorum, üreticiyim. İlgilenir misin?', yas: kYasBuyuk),
+    Replik('Kolonyacı geldi! Limon, tütün, lavanta... hepsi var. Bakar mısın?'),
+    Replik('Selam usta! Kolonya satıyorum, dükkâna misk gibi kokar.'),
+    Replik('Kolonyam var kolonya! Müşterinin gönlünü alır, deneyeceksin göreceksin.'),
+    Replik('Ben kolonyacı. Dükkânda kolonya olmazsa olmaz, bilirsin.', yas: kYasBuyuk),
+    Replik('Babamın kolonya tezgâhı var, ben de dükkânları geziyorum. Alır mısın?', yas: kYasGenc),
+    Replik('Harçlığımı çıkarmak için kolonya satıyorum. Bir şişe alsana!', yas: [YasGrubu.cocuk]),
+    Replik('Ben kolonyacıyım evladım, kırk yıllık. Bir bak istersen.', yas: [YasGrubu.yasli]),
+    Replik('Kolonyanın iyisini kadın bilir derler, bu da benim işim. Bakar mısın?', cinsiyet: 'K', yas: kYasBuyuk),
   ];
 
-  static const List<String> _saticiSelam = [
-    'Merhaba, ben {AD}. Elimde {URUN} var, satmak istiyorum. İlgilenir misin?',
-    'Selam! {AD} ben. Şu {URUN} elimde kaldı, alır mısın?',
-    'Kolay gelsin! {AD}. {URUN} satıyorum, bir bakar mısın?',
-    'Merhaba, adım {AD}. Evi toparlarken {URUN} çıktı, sana getirdim.',
-    '{AD} ben. {URUN} boşuna duruyordu, dedim satayım. İlgini çeker mi?',
-    'Selamlar! {AD}. {URUN} devretmek istiyorum, konuşalım mı?',
-    'Hayırlı işler! {AD} ben. {URUN} var bende, alıcısı sensin galiba.',
-    'Merhaba! {AD}. Şu {URUN} taşımaktan yoruldum, satalım gitsin.',
-    'Ben {AD}. {URUN} getirdim, hem de tertemiz. Bakar mısın?',
-    'Selam usta! {AD}. {URUN} satılık, ilgilenir misin?',
-    '{AD} ben. Anneme sormadan {URUN} satmaya geldim, aramızda kalsın.',
-    'İyi günler! {AD}. {URUN} elimde, paraya ihtiyacım var. Konuşalım mı?',
-    'Merhaba {AD} ben. {URUN} bu dükkâna yakıştırdım, alır mısın?',
-    'Selam! Ben {AD}. {URUN} satıyorum, fiyatı sen söyle.',
-    'Selam, {AD} ben. Elimde {URUN} var, sana özel fiyat yaparım.',
-    'Merhabalar! {AD} ben. Şu {URUN} için doğru yere mi geldim?',
-    'Selam patron! {AD}. {URUN} satmak istiyorum, vaktin var mı?',
-    'Ben {AD}. Bu {URUN} bende duruyor, sende değer bulur diye geldim.',
-    'Selam! {AD} ben. {URUN} getirdim, kıymetini bilene satarım.',
-    'Merhaba {AD}. Dolabın dibinden {URUN} çıktı, alıcısı var mı dedim.',
+  static const List<Replik> _saticiSelam = [
+    // ── nötr ──
+    Replik('Merhaba, ben {AD}. Elimde {URUN} var, satmak istiyorum. İlgilenir misin?'),
+    Replik('Selam! {AD} ben. Şu {URUN} elimde kaldı, alır mısın?'),
+    Replik('Kolay gelsin! {AD}. {URUN} satıyorum, bir bakar mısın?'),
+    Replik('{AD} ben. {URUN} boşuna duruyordu, dedim satayım. İlgini çeker mi?'),
+    Replik('Selamlar! {AD}. {URUN} devretmek istiyorum, konuşalım mı?'),
+    Replik('Hayırlı işler! {AD} ben. {URUN} var bende, alıcısı sensin galiba.'),
+    Replik('Merhaba! {AD}. Şu {URUN} taşımaktan yoruldum, satalım gitsin.'),
+    Replik('Ben {AD}. {URUN} getirdim, hem de tertemiz. Bakar mısın?'),
+    Replik('Selam usta! {AD}. {URUN} satılık, ilgilenir misin?'),
+    Replik('İyi günler! {AD}. {URUN} elimde, paraya ihtiyacım var. Konuşalım mı?'),
+    Replik('Merhaba {AD} ben. {URUN} bu dükkâna yakıştırdım, alır mısın?'),
+    Replik('Selam! Ben {AD}. {URUN} satıyorum, fiyatı sen söyle.'),
+    Replik('Selam, {AD} ben. Elimde {URUN} var, sana özel fiyat yaparım.'),
+    Replik('Merhabalar! {AD} ben. Şu {URUN} için doğru yere mi geldim?'),
+    Replik('Selam patron! {AD}. {URUN} satmak istiyorum, vaktin var mı?'),
+    Replik('Ben {AD}. Bu {URUN} bende duruyor, sende değer bulur diye geldim.'),
+    Replik('Selam! {AD} ben. {URUN} getirdim, kıymetini bilene satarım.'),
+    Replik('Merhaba {AD}. Dolabın dibinden {URUN} çıktı, alıcısı var mı dedim.'),
+    // ── çocuk ──
+    Replik('{AD} ben. Anneme sormadan {URUN} satmaya geldim, aramızda kalsın.', yas: [YasGrubu.cocuk]),
+    Replik('Merhaba, adım {AD}. {URUN} bana küçük geldi artık, satsam mı acaba?', yas: [YasGrubu.cocuk]),
+    Replik('Ben {AD}! Bisiklet için para biriktiriyorum, {URUN} satıyorum.', yas: [YasGrubu.cocuk]),
+    Replik('Selam! {AD}. Ağabeyim "{URUN} satılır" dedi, ben de geldim.', yas: [YasGrubu.cocuk]),
+    // ── çocuk + genç ──
+    Replik('Selam! {AD} ben. Yeni oyuna para lazım, {URUN} gözden çıkardım.', yas: kYasGenc),
+    Replik('{AD} ben. Arkadaşlar burayı önerdi, {URUN} satacağım.', yas: kYasGenc),
+    // ── genç ──
+    Replik('Selam, {AD}. Öğrenciyim, harçlık bitti; {URUN} satıyorum.', yas: [YasGrubu.genc]),
+    Replik('Merhaba {AD} ben. Yurda taşınıyorum, {URUN} sığmıyor valize.', yas: [YasGrubu.genc]),
+    Replik('{AD} ben. İnternette satacaktım ama kargoyla uğraşamam. {URUN} sende kalsın.', yas: [YasGrubu.genc]),
+    // ── yetişkin ──
+    Replik('Merhaba, adım {AD}. Evi toparlarken {URUN} çıktı, sana getirdim.', yas: kYasBuyuk),
+    Replik('{AD} ben. Çocuklara oda açıyorum, {URUN} fazlalık oldu.', yas: [YasGrubu.yetiskin]),
+    Replik('Selam {AD}. Ay sonu geldi, {URUN} satıp faturaya sayacağım.', yas: [YasGrubu.yetiskin]),
+    // ── yetişkin + yaşlı ──
+    Replik('Ben {AD}. Gençliğimden kalma {URUN} bu, kıymetini bilene gitsin.', yas: kYasBuyuk),
+    Replik('Merhaba {AD}. Bunu aldığımda bu dükkân daha yoktu. {URUN} satılık.', yas: kYasBuyuk),
+    // ── yaşlı ──
+    Replik('Selam evladım, {AD} ben. Torunum büyüdü, {URUN} artık oynanmıyor evde.', yas: [YasGrubu.yasli]),
+    Replik('{AD} ben evladım. Emekli maaşı yetmiyor, {URUN} satayım dedim.', yas: [YasGrubu.yasli]),
+    Replik('Merhaba yavrum, adım {AD}. Sandığı karıştırırken {URUN} çıktı.', yas: [YasGrubu.yasli]),
+    // ── cinsiyet imalı ──
+    Replik('Ben {AD}. Kadın satıcıya ucuza kapatırım sanma, {URUN} kıymetlidir.', cinsiyet: 'K'),
+    Replik('Selam! {AD} ben. Ablan sana kazık atmaz, {URUN} tertemiz.', cinsiyet: 'K', yas: kYasBuyuk),
+    Replik('Merhaba, {AD}. Oğlum bunu bırakıp gitti; {URUN} bana ne yapsın?', cinsiyet: 'K', yas: [YasGrubu.yasli]),
+    Replik('{AD} ben. Delikanlı adam gibi konuşalım: {URUN} satılık, fiyatı sen söyle.', cinsiyet: 'E', yas: kYasYetiskin),
+    Replik('Selam evladım, {AD} ben. Amcanı kırma, {URUN} için iyi bir rakam ver.', cinsiyet: 'E', yas: [YasGrubu.yasli]),
   ];
 
-  static const List<String> _aliciSelam = [
-    'Selam! Ben {AD}. Elinde {URUN} olduğunu duydum, bana satar mısın?',
-    'Merhaba, {AD} ben. {URUN} arıyorum, sende var mı diye uğradım.',
-    'Kolay gelsin! {AD}. {URUN} için ta buraya geldim, satar mısın?',
-    'Selam! {AD}. Arkadaşlar "{URUN} ondadır" dedi, doğru mu?',
-    '{AD} ben. Çocukluğumdan beri {URUN} arıyorum. Sende varmış!',
-    'Merhaba! {AD}. {URUN} görünce dayanamadım, alabilir miyim?',
-    'Selamlar, {AD}. {URUN} lazım bana. Konuşalım mı?',
-    'Ben {AD}. {URUN} rüyamda gördüm, sabah soluğu burada aldım.',
-    'Hayırlı işler! {AD}. {URUN} talibim, fiyat nedir?',
-    '{AD} ben. Koleksiyonumda {URUN} eksik. Tamamlayalım mı?',
-    'Merhaba! {AD}. {URUN} varmış sende, gözüme kestirdim.',
-    'Selam usta! {AD}. Şu {URUN} bana ayırır mısın?',
-    'İyi günler, {AD}. {URUN} için pazarlığa hazır mısın?',
-    'Ben {AD}. {URUN} almadan bu dükkândan çıkmam.',
-    'Selam! {AD}. {URUN} yeğenime hediye alacağım, var mı?',
-    'Merhabalar, {AD} ben. {URUN} görürsem duramıyorum, kaça?',
-    'Kolay gelsin, {AD} ben. {URUN} için harçlığımı biriktirdim!',
-    'Selam! {AD}. {URUN} bulmak için üç dükkân gezdim, son duraksın.',
-    'Merhaba {AD} ben. Vitrinden {URUN} gördüm, içeri dalıverdim.',
-    'Selam! {AD}. Şu {URUN} bende olmalı, kader bizi buluşturdu.',
+  static const List<Replik> _aliciSelam = [
+    // ── nötr ──
+    Replik('Selam! Ben {AD}. Elinde {URUN} olduğunu duydum, bana satar mısın?'),
+    Replik('Merhaba, {AD} ben. {URUN} arıyorum, sende var mı diye uğradım.'),
+    Replik('Kolay gelsin! {AD}. {URUN} için ta buraya geldim, satar mısın?'),
+    Replik('Selam! {AD}. Arkadaşlar "{URUN} ondadır" dedi, doğru mu?'),
+    Replik('Merhaba! {AD}. {URUN} görünce dayanamadım, alabilir miyim?'),
+    Replik('Selamlar, {AD}. {URUN} lazım bana. Konuşalım mı?'),
+    Replik('Ben {AD}. {URUN} rüyamda gördüm, sabah soluğu burada aldım.'),
+    Replik('Hayırlı işler! {AD}. {URUN} talibim, fiyat nedir?'),
+    Replik('{AD} ben. Koleksiyonumda {URUN} eksik. Tamamlayalım mı?'),
+    Replik('Merhaba! {AD}. {URUN} varmış sende, gözüme kestirdim.'),
+    Replik('Selam usta! {AD}. Şu {URUN} bana ayırır mısın?'),
+    Replik('İyi günler, {AD}. {URUN} için pazarlığa hazır mısın?'),
+    Replik('Ben {AD}. {URUN} almadan bu dükkândan çıkmam.'),
+    Replik('Merhabalar, {AD} ben. {URUN} görürsem duramıyorum, kaça?'),
+    Replik('Selam! {AD}. {URUN} bulmak için üç dükkân gezdim, son duraksın.'),
+    Replik('Merhaba {AD} ben. Vitrinden {URUN} gördüm, içeri dalıverdim.'),
+    Replik('Selam! {AD}. Şu {URUN} bende olmalı, kader bizi buluşturdu.'),
+    // ── çocuk ──
+    Replik('Kolay gelsin, {AD} ben. {URUN} için harçlığımı biriktirdim!', yas: kYasGenc),
+    Replik('Merhaba! Ben {AD}. Annem "bak bakalım" dedi, {URUN} kaça?', yas: [YasGrubu.cocuk]),
+    Replik('{AD} ben! Karnem iyi geldi, ödül olarak {URUN} isteyeceğim.', yas: [YasGrubu.cocuk]),
+    Replik('Selam abi! {AD}. Kumbaramı kırdım, {URUN} alacağım.', yas: [YasGrubu.cocuk]),
+    Replik('Ben {AD}. Sınıfta herkeste {URUN} var, bir bende yok!', yas: [YasGrubu.cocuk]),
+    // ── çocuk + genç ──
+    Replik('Selam! {AD}. Arkadaşlarda gördüm {URUN}, bende de olsun istiyorum.', yas: kYasGenc),
+    Replik('{AD} ben. {URUN} için üç haftadır para biriktiriyorum.', yas: kYasGenc),
+    // ── genç ──
+    Replik('Merhaba, {AD}. Öğrenciyim; bütçem dar ama {URUN} çok istiyorum.', yas: [YasGrubu.genc]),
+    Replik('Selam! {AD} ben. Yurtta akşamları {URUN} oynayacağız, alsam mı?', yas: [YasGrubu.genc]),
+    Replik('{AD} ben. Bunu bulduğumu paylaşırsam kıskanırlar. {URUN} satılık mı?', yas: [YasGrubu.genc]),
+    // ── yetişkin ──
+    Replik('Merhaba {AD}. Çocuğun doğum günü var, {URUN} hediye alacağım.', yas: [YasGrubu.yetiskin]),
+    Replik('Selam, {AD} ben. Akşamları kafa dağıtmak istiyorum; {URUN} var mı?', yas: [YasGrubu.yetiskin]),
+    Replik('{AD} ben. Yeğenime hediye alacağım, {URUN} tam olur.', yas: kYasBuyuk),
+    // ── yetişkin + yaşlı ──
+    Replik('{AD} ben. Çocukluğumdan beri {URUN} arıyorum. Sende varmış!', yas: kYasBuyuk),
+    Replik('Merhaba {AD}. Bizim zamanımızda {URUN} çok kıymetliydi, hâlâ da öyle.', yas: kYasBuyuk),
+    // ── yaşlı ──
+    Replik('Selam evladım, {AD} ben. Torunuma {URUN} alacağım, yardım et.', yas: [YasGrubu.yasli]),
+    Replik('{AD} ben yavrum. Bu {URUN} nedir bilmem ama torun istiyor, alacağım.', yas: [YasGrubu.yasli]),
+    Replik('Merhaba evladım. {AD}. Emekliyim, {URUN} için bir kolaylık yaparsın.', yas: [YasGrubu.yasli]),
+    // ── cinsiyet imalı ──
+    Replik('Selam! {AD} ben. Kızlar {URUN} oynamaz derler ama ben bayılıyorum. Bana satar mısın?', cinsiyet: 'K', yas: kYasYetiskin),
+    Replik('Merhaba, {AD}. Kadın müşteriyi hafife alma; {URUN} için geldim.', cinsiyet: 'K'),
+    Replik('{AD} ben yavrum. Teyzeni kırma, {URUN} torunuma lazım.', cinsiyet: 'K', yas: [YasGrubu.yasli]),
+    Replik('Selam {AD} ben. Erkek adam istediğini alır: {URUN} bende olacak.', cinsiyet: 'E', yas: kYasYetiskin),
+    Replik('Merhaba evladım, {AD} ben. Amcana {URUN} konusunda yardımcı ol.', cinsiyet: 'E', yas: [YasGrubu.yasli]),
   ];
 
   String get selamMesaji {
-    final rng = Random();
     if (musteriSatiyor && item.id == 'kolonya') {
-      return _kolonyaSelam[rng.nextInt(_kolonyaSelam.length)];
+      return replikSec(_kolonyaSelam, yas, cinsiyet);
     }
     final havuz = musteriSatiyor ? _saticiSelam : _aliciSelam;
-    return havuz[rng.nextInt(havuz.length)]
+    return replikSec(havuz, yas, cinsiyet)
         .replaceAll('{AD}', name)
         .replaceAll('{URUN}', item.name);
   }
@@ -2018,37 +2283,41 @@ class GameState extends ChangeNotifier {
     'Gamze','Gönül','Gülay','Hilal','Işıl','Naz','Sevinç','Tuğba','Ülkü','Yıldız',
   ];
 
+  /// 28 karakter. `yas` alanı görsellerden okundu (kontak sayfası ile ölçüldü)
+  /// ve repliklerin filtresi bu — "anneme sormadan" repliği artık ak sakallı
+  /// amcaya düşmüyor. Kabul edilen değerler: cocuk / genc / yetiskin / yasli.
   final List<Map<String, String>> musteriHavuzu = [
-    {'gorsel': 'assets/musteri_1.png', 'cinsiyet': 'E'},
-    {'gorsel': 'assets/musteri_2.png', 'cinsiyet': 'K'},
-    {'gorsel': 'assets/musteri_3.png', 'cinsiyet': 'E'},
-    {'gorsel': 'assets/musteri_4.png', 'cinsiyet': 'K'},
-    {'gorsel': 'assets/musteri_5.png', 'cinsiyet': 'K'},
-    {'gorsel': 'assets/musteri_6.png', 'cinsiyet': 'E'},
-    {'gorsel': 'assets/musteri_7.png', 'cinsiyet': 'K'},
-    {'gorsel': 'assets/musteri_8.png', 'cinsiyet': 'K'},
-    {'gorsel': 'assets/musteri_9.png', 'cinsiyet': 'K'},
-    {'gorsel': 'assets/musteri_10.png', 'cinsiyet': 'K'},
-    {'gorsel': 'assets/musteri_11.png', 'cinsiyet': 'E'},
-    // ── 18 yeni karakter (v102) — cinsiyetler görsellerden tespit edildi ──
-    {'gorsel': 'assets/musteri_12.png', 'cinsiyet': 'E'}, // bıyıklı orta yaşlı, hawaii gömlek
-    {'gorsel': 'assets/musteri_13.png', 'cinsiyet': 'E'}, // beyaz saçlı bey, uzun palto
-    {'gorsel': 'assets/musteri_14.png', 'cinsiyet': 'K'}, // kızıl örgülü, bahçıvan tulumu
-    {'gorsel': 'assets/musteri_15.png', 'cinsiyet': 'E'}, // kel sakallı, mor bomber ceket
-    {'gorsel': 'assets/musteri_16.png', 'cinsiyet': 'K'}, // yaşlı teyze, sarı hırka
-    {'gorsel': 'assets/musteri_17.png', 'cinsiyet': 'E'}, // beyaz bıyıklı amca, yelek
-    {'gorsel': 'assets/musteri_18.png', 'cinsiyet': 'E'}, // genç adam, krem takım
-    {'gorsel': 'assets/musteri_19.png', 'cinsiyet': 'K'}, // kot ceket, hardal etek
-    {'gorsel': 'assets/musteri_20.png', 'cinsiyet': 'E'}, // genç adam, haki ceket
-    {'gorsel': 'assets/musteri_21.png', 'cinsiyet': 'K'}, // yaşlı hanım, mor palto ve çanta
-    {'gorsel': 'assets/musteri_22.png', 'cinsiyet': 'K'}, // kıvırcık saçlı, turuncu bluz
-    {'gorsel': 'assets/musteri_23.png', 'cinsiyet': 'K'}, // punk, mor mohawk
-    {'gorsel': 'assets/musteri_24.png', 'cinsiyet': 'E'}, // sakallı, yelek ve gömlek
-    {'gorsel': 'assets/musteri_25.png', 'cinsiyet': 'K'}, // renkli saçlı genç
-    {'gorsel': 'assets/musteri_26.png', 'cinsiyet': 'E'}, // takım elbiseli genç
-    {'gorsel': 'assets/musteri_27.png', 'cinsiyet': 'E'}, // erkek çocuk, mavi kazak
-    {'gorsel': 'assets/musteri_28.png', 'cinsiyet': 'K'}, // kız çocuk, okul üniforması
-    {'gorsel': 'assets/musteri_29.png', 'cinsiyet': 'E'}, // atletik, kolsuz tişört
+    {'gorsel': 'assets/musteri_1.png',  'cinsiyet': 'E', 'yas': 'genc'},     // kıvırcık saçlı genç, yeşil ceket
+    {'gorsel': 'assets/musteri_2.png',  'cinsiyet': 'K', 'yas': 'genc'},     // mor mohawk punk, deri ceket
+    {'gorsel': 'assets/musteri_3.png',  'cinsiyet': 'E', 'yas': 'yasli'},    // gri saçlı sakallı bey
+    {'gorsel': 'assets/musteri_4.png',  'cinsiyet': 'K', 'yas': 'yasli'},    // beyaz saçlı hanım, teal takım
+    {'gorsel': 'assets/musteri_5.png',  'cinsiyet': 'K', 'yas': 'genc'},     // mor dalgalı saçlı genç kadın
+    {'gorsel': 'assets/musteri_6.png',  'cinsiyet': 'E', 'yas': 'genc'},     // genç adam, yeşil takım
+    {'gorsel': 'assets/musteri_7.png',  'cinsiyet': 'K', 'yas': 'yetiskin'}, // sarışın kadın, kahve kazak
+    {'gorsel': 'assets/musteri_8.png',  'cinsiyet': 'K', 'yas': 'genc'},     // sarışın genç, krem elbise
+    {'gorsel': 'assets/musteri_9.png',  'cinsiyet': 'K', 'yas': 'genc'},     // topuzlu genç, pembe ceket
+    {'gorsel': 'assets/musteri_10.png', 'cinsiyet': 'K', 'yas': 'yetiskin'}, // kızıl saçlı, yeşil kazak
+    {'gorsel': 'assets/musteri_11.png', 'cinsiyet': 'E', 'yas': 'genc'},     // şapkalı delikanlı, tişört
+    // ── 17 yeni karakter (v103) — görseller kullanıcının kendi kesimi ──
+    // NOT: v102'de 18 karakter vardı. Yeni kaynak klasörde bir dosya tekrardı
+    // (md5 aynı) ve "kot ceket / hardal etek" karakteri yoktu → 29. slot düştü.
+    {'gorsel': 'assets/musteri_12.png', 'cinsiyet': 'E', 'yas': 'yetiskin'}, // bıyıklı orta yaşlı, hawaii gömlek
+    {'gorsel': 'assets/musteri_13.png', 'cinsiyet': 'E', 'yas': 'yasli'},    // beyaz saçlı bey, uzun palto
+    {'gorsel': 'assets/musteri_14.png', 'cinsiyet': 'E', 'yas': 'yetiskin'}, // kel sakallı, mor bomber ceket
+    {'gorsel': 'assets/musteri_15.png', 'cinsiyet': 'K', 'yas': 'yasli'},    // yaşlı teyze, sarı hırka ve gözlük
+    {'gorsel': 'assets/musteri_16.png', 'cinsiyet': 'E', 'yas': 'yasli'},    // beyaz bıyıklı amca, yelek
+    {'gorsel': 'assets/musteri_17.png', 'cinsiyet': 'E', 'yas': 'genc'},     // genç adam, krem ceket
+    {'gorsel': 'assets/musteri_18.png', 'cinsiyet': 'K', 'yas': 'genc'},     // kızıl örgülü, bahçıvan tulumu
+    {'gorsel': 'assets/musteri_19.png', 'cinsiyet': 'E', 'yas': 'genc'},     // genç adam, haki ceket
+    {'gorsel': 'assets/musteri_20.png', 'cinsiyet': 'K', 'yas': 'yasli'},    // yaşlı hanım, mor palto ve çanta
+    {'gorsel': 'assets/musteri_21.png', 'cinsiyet': 'K', 'yas': 'yetiskin'}, // kıvırcık saçlı, turuncu bluz
+    {'gorsel': 'assets/musteri_22.png', 'cinsiyet': 'K', 'yas': 'genc'},     // punk, mor mohawk
+    {'gorsel': 'assets/musteri_23.png', 'cinsiyet': 'E', 'yas': 'yetiskin'}, // sakallı, yelek ve gömlek
+    {'gorsel': 'assets/musteri_24.png', 'cinsiyet': 'K', 'yas': 'genc'},     // renkli saçlı genç
+    {'gorsel': 'assets/musteri_25.png', 'cinsiyet': 'E', 'yas': 'genc'},     // takım elbiseli genç
+    {'gorsel': 'assets/musteri_26.png', 'cinsiyet': 'E', 'yas': 'cocuk'},    // erkek çocuk, mavi kazak
+    {'gorsel': 'assets/musteri_27.png', 'cinsiyet': 'K', 'yas': 'cocuk'},    // kız çocuk, okul üniforması
+    {'gorsel': 'assets/musteri_28.png', 'cinsiyet': 'E', 'yas': 'yetiskin'}, // atletik, kolsuz tişört
   ];
   List<int> _musteriSira = [];
 
@@ -2218,7 +2487,9 @@ class GameState extends ChangeNotifier {
     final musteriIndex = _musteriSira.removeLast();
     final secilen = musteriHavuzu[musteriIndex];
     final gorsel = secilen['gorsel']!;
-    final isimListesi = secilen['cinsiyet'] == 'E' ? _erkekIsimleri : _kadinIsimleri;
+    final cinsiyet = secilen['cinsiyet']!;
+    final yas = yasGrubuCoz(secilen['yas']);
+    final isimListesi = cinsiyet == 'E' ? _erkekIsimleri : _kadinIsimleri;
     final isim = isimListesi[rng.nextInt(isimListesi.length)];
     final musteriSatiyor = rng.nextBool();
     final ozellik = MusteriOzellik.random();
@@ -2254,7 +2525,7 @@ class GameState extends ChangeNotifier {
     final openingRaw = ozellik.openingOffer(reserv, fiyat, musteriSatiyor);
     final ilkTeklif  = openingRaw.round();
 
-    aktifMusteri = Customer(name: isim, gorsel: gorsel, musteriSatiyor: musteriSatiyor, item: secilenUrun, ilkTeklif: ilkTeklif, ozellik: ozellik);
+    aktifMusteri = Customer(name: isim, gorsel: gorsel, musteriSatiyor: musteriSatiyor, item: secilenUrun, ilkTeklif: ilkTeklif, ozellik: ozellik, yas: yas, cinsiyet: cinsiyet);
     musteriGorunuyor = true;
     musteriKabulBekliyor = true;
     musteriSayisi++;
@@ -2283,6 +2554,8 @@ class GameState extends ChangeNotifier {
       maxTur: m.ozellik.maxTur,
       ozellik: m.ozellik,
       reservationPrice: reserv,
+      yas: m.yas,
+      cinsiyet: m.cinsiyet,
     );
     // Pazarlık başlamadan önce kolonya ikram edildiyse bonusu şimdi uygula
     if (_kolonyaPendingBonus > 0) {
