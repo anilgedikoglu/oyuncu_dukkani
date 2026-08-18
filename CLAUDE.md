@@ -215,19 +215,25 @@ sprite'ı o dükkanın kapı oranlarına yerleştiriyor:
 
 ```dart
 // DukkanSeviye alanları
-arkaplanOrani                          // en/boy — cover kutusu icin
-kapiSol, kapiUst, kapiGen, kapiYuk     // silüetin arka plan İÇİNDEKİ yeri (0..1)
+arkaplanOrani                   // en/boy — cover kutusu icin
+kapiSol, kapiUst, kapiGen       // silüetin arka plan İÇİNDEKİ yeri (0..1)
+const kKapidakiOrani = 38 / 81; // sprite'ın kendi oranı
 ```
 
+> ⚠️ **`kapiYuk` YOK, bilinçli.** Yükseklik `genislik / kKapidakiOrani` ile
+> türetiliyor. Yükseklik de elle verilseydi kapısı dar olan dükkanlarda
+> (yeni görsellerin kapıları bgbos'a göre daha dar ve uzun) silüet yatay
+> ezilirdi — ilk denemede %27'ye varan bir sıkışma çıktı.
+
 Seviye 1'in oranları **`biri.png`'in alfa kutusundan birebir** alındı
-(0.3167 / 0.0898 / 0.1114 / 0.1582) → eski görünüm zerre değişmedi, emülatörde
+(0.3167 / 0.0898 / 0.1114) → eski görünüm zerre değişmedi, emülatörde
 önce/sonra karşılaştırmasıyla doğrulandı.
 
 **Yeni arka plan eklerken:** görselin kapı camını ölç, silüeti camın içine
-oturtacak 4 oranı yaz. Ölçüm için `tools/` altındaki grid yöntemi işe yarar —
-görseli %2'lik ızgarayla bas, kapı camının sol/üst/genişlik/yükseklik oranını
-oku. Sonra `BoxFit.cover` matematiğini taklit eden bir simülasyonla kontrol et;
-seviye 1 birebir tutuyorsa simülasyon doğrudur.
+oturtacak 3 oranı yaz (sol/üst/genişlik). Ölçüm yöntemi: görseli %2'lik
+ızgarayla bas, kapı camının sol/üst/genişlik oranını oku. Sonra
+`BoxFit.cover` matematiğini taklit eden bir simülasyonla kontrol et —
+seviye 1 birebir tutuyorsa simülasyon doğrudur, diğerlerine güvenebilirsin.
 
 > ⚠️ Sabit piksel YOK — sahne metriği felsefesiyle aynı: her şey arka planın
 > ekrandaki kutusuna oranla veriliyor, çözünürlük/en-boy değişse de kaymıyor.
