@@ -86,6 +86,17 @@ eski 11'de 454–488 / 0–17). Emülatörde doğrulandı: hale yok, masa hizas�
 > ⚠️ Yeni görsel geldiğinde **her zaman** `md5sum *.png | sort | uniq -d` ile
 > tekrar kontrolü yap — bu tuzağa iki kez düşüldü.
 
+### 🚨 KARAKTER GÖRSELİ KARE OLMALI
+Sahnede müşteri **kare bir kutuya** `BoxFit.contain` ile çiziliyor
+(`width: boy, height: boy`, `boy = m.u(kMusteriBoyu)`). Kare olmayan bir görsel
+letterbox olur → karakter küçülür ve masadan yukarı kalkar.
+
+Elde kare olmayan bir kesim varsa, **yeniden ölçekleme yapmadan** kare tuvale
+taşı: alfa sınır kutusunu bul, içeriği 1:1 kopyala, tuval boyutunu
+`icerikYuksekligi / doluluk` ile seç. v103'te `toptanci.png` böyle yapıldı
+(456×547 → 470×470, içerik 196×454 native piksel, üst 4 / alt 12).
+Oranlar: **doluluk 0.95–0.965, alt boşluk ~0.025** (mevcut kadroyla uyumlu).
+
 ### Arka plan silme aracı — `tools/arkaplan_sil.ps1` (şu an KULLANILMIYOR)
 Beyaz zeminli görseli oyunun formatına çeviren araç. v103'te devre dışı ama
 duruyor: elde ham (beyaz zeminli) bir görsel kalırsa hâlâ çalışır.
@@ -582,7 +593,7 @@ Hepsi **browser popup'Ä±** (`_browserPopup`, ğŸ–¥ï¸ butonu, `gun >= 2
 - 5 tezgÃ¢h (tuccar rozetiyle 6): 1 tamir seti + %70 kapalÄ± kutu + kalanÄ± Ã¼rÃ¼n
 - Fiyatlar: saÄŸlam %55-75, Ã§Ã¼rÃ¼k %28-40 (piyasa fiyatÄ±nÄ±n)
 - Ä°ndirimler toplanÄ±r: gÃ¼nlÃ¼k olay + `zengin` rozeti (%10) + `pazarlikci` rozeti (Ã§Ã¼rÃ¼kte %20)
-- GÃ¶rsel: `assets/toptanci.png` (400Ã—400, kullanÄ±cÄ± Ã¼retti)
+- Görsel: `assets/toptanci.png` (470×470, kullanıcı üretti — v103'te yüksek çözünürlüklü kesimle değişti)
 
 ### 5. Hedefler & Rozetler (`Rozet`)
 8 rozet. `_rozetleriDenetle()` **`notifyListeners()` iÃ§inde** Ã§alÄ±ÅŸÄ±r (kendisi notify Ã§aÄŸÄ±rmaz â†’ dÃ¶ngÃ¼ yok).
