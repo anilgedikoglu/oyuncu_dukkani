@@ -141,8 +141,19 @@ class DukkanSeviye {
   /// Bu dükkanın arka plan görseli. Kiralanınca sahne arkası değişir.
   /// Elde 4 görsel var, 5 seviye — seviye 4 ve 5 aynı mağazayı paylaşır.
   final String arkaplan;
+  /// Arka plan görselinin en/boy oranı. `BoxFit.cover` kutusunu hesaplamak
+  /// için gerekli — kapı gölgesi bu kutuya göre konumlanır.
+  final double arkaplanOrani;
+  /// Kapıda bekleyen silüetin (`kapidaki.png`) arka plan görseli İÇİNDEKİ
+  /// yeri: sol, üst, genişlik, yükseklik — hepsi 0..1 oranı.
+  /// Her dükkanın kapısı farklı yerde; bu yüzden görsel başına ölçüldü.
+  final double kapiSol, kapiUst, kapiGen, kapiYuk;
 
-  const DukkanSeviye({required this.seviye, required this.isim, required this.kira, required this.minGun, required this.arkaplan});
+  const DukkanSeviye({
+    required this.seviye, required this.isim, required this.kira, required this.minGun,
+    required this.arkaplan, required this.arkaplanOrani,
+    required this.kapiSol, required this.kapiUst, required this.kapiGen, required this.kapiYuk,
+  });
 
   /// Günlük müşteri sayısını ağırlıklı random ile belirle
   /// Alt sınır daha yüksek olasılıklı, üst sınır daha düşük
@@ -161,12 +172,20 @@ class DukkanSeviye {
   String get yildizlar => '★' * seviye + '☆' * (5 - seviye);
 }
 
+// Kapı oranları: seviye 1'inki `biri.png`'in alfa kutusundan birebir alındı
+// (o yüzden eski görünüm ZERRE değişmedi). Diğerleri görselin kapı camı
+// ölçülüp aynı bağıl yerleşim uygulanarak bulundu.
 const List<DukkanSeviye> tumDukkanlar = [
-  DukkanSeviye(seviye: 1, isim: 'Bodrum Kat Dükkan',    kira: 300,  minGun: 1,  arkaplan: 'assets/bgbos.png'),
-  DukkanSeviye(seviye: 2, isim: 'Mahalle Köşe Dükkanı', kira: 600,  minGun: 3,  arkaplan: 'assets/bgbos_2.jpg'),
-  DukkanSeviye(seviye: 3, isim: 'Cadde Dükkanı',        kira: 900,  minGun: 5,  arkaplan: 'assets/bgbos_3.jpg'),
-  DukkanSeviye(seviye: 4, isim: 'Çarşı Dükkanı',        kira: 1200, minGun: 8,  arkaplan: 'assets/bgbos_4.jpg'),
-  DukkanSeviye(seviye: 5, isim: 'AVM Dükkanı',          kira: 1500, minGun: 10, arkaplan: 'assets/bgbos_4.jpg'),
+  DukkanSeviye(seviye: 1, isim: 'Bodrum Kat Dükkan',    kira: 300,  minGun: 1,  arkaplan: 'assets/bgbos.png',   arkaplanOrani: 719 / 1080,
+    kapiSol: 0.3167, kapiUst: 0.0898, kapiGen: 0.1114, kapiYuk: 0.1582),
+  DukkanSeviye(seviye: 2, isim: 'Mahalle Köşe Dükkanı', kira: 600,  minGun: 3,  arkaplan: 'assets/bgbos_2.jpg', arkaplanOrani: 719 / 1278,
+    kapiSol: 0.3987, kapiUst: 0.1287, kapiGen: 0.0912, kapiYuk: 0.1468),
+  DukkanSeviye(seviye: 3, isim: 'Cadde Dükkanı',        kira: 900,  minGun: 5,  arkaplan: 'assets/bgbos_3.jpg', arkaplanOrani: 719 / 1278,
+    kapiSol: 0.3902, kapiUst: 0.1280, kapiGen: 0.1013, kapiYuk: 0.1393),
+  DukkanSeviye(seviye: 4, isim: 'Çarşı Dükkanı',        kira: 1200, minGun: 8,  arkaplan: 'assets/bgbos_4.jpg', arkaplanOrani: 719 / 1278,
+    kapiSol: 0.3887, kapiUst: 0.1290, kapiGen: 0.0912, kapiYuk: 0.1506),
+  DukkanSeviye(seviye: 5, isim: 'AVM Dükkanı',          kira: 1500, minGun: 10, arkaplan: 'assets/bgbos_4.jpg', arkaplanOrani: 719 / 1278,
+    kapiSol: 0.3887, kapiUst: 0.1290, kapiGen: 0.0912, kapiYuk: 0.1506),
 ];
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -4866,6 +4885,40 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     );
   }
 
+  /// Kapıda bekleyen silüet.
+  ///
+  /// Eskiden `biri.png` tam ekran `BoxFit.cover` ile basılıyordu ve kapının
+  /// yeri görsele gömülüydü. Dükkan başına farklı arka plan gelince silüet
+  /// kapının yanına düştü. Artık sprite (`kapidaki.png`), arka planın ekrandaki
+  /// `cover` kutusu hesaplanıp o dükkanın kapı oranlarına yerleştiriliyor —
+  /// yani sahnedeki diğer her şey gibi, sabit piksel yok.
+  Widget _buildKapidaki() {
+    return LayoutBuilder(builder: (context, kutu) {
+      final d = _state.aktifDukkan;
+      final sw = kutu.maxWidth, sh = kutu.maxHeight;
+      // BoxFit.cover + Alignment.center: iki eksenden büyük ölçek kazanır,
+      // taşan kısım iki yandan eşit kırpılır.
+      final gorselOrani = d.arkaplanOrani;          // en / boy
+      final ekranOrani  = sw / sh;
+      final double dw, dh;
+      if (ekranOrani > gorselOrani) {               // ekran daha geniş → ene sığdır
+        dw = sw; dh = sw / gorselOrani;
+      } else {                                      // ekran daha dar → boya sığdır
+        dh = sh; dw = sh * gorselOrani;
+      }
+      final sol = (sw - dw) / 2, ust = (sh - dh) / 2;
+      return Stack(children: [
+        Positioned(
+          left:   sol + d.kapiSol * dw,
+          top:    ust + d.kapiUst * dh,
+          width:  d.kapiGen * dw,
+          height: d.kapiYuk * dh,
+          child: Image.asset('assets/kapidaki.png', fit: BoxFit.fill),
+        ),
+      ]);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
@@ -4892,13 +4945,13 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                 child: AnimatedOpacity(
                   opacity: (_state.musteriGorunuyor || _state.ozelMusteriGorunuyor) ? 0.0 : 1.0,
                   duration: const Duration(milliseconds: 150),
-                  child: Image.asset('assets/biri.png', fit: BoxFit.cover, alignment: Alignment.center),
+                  child: _buildKapidaki(),
                 ),
               ),
               // ╔═══════════════════════════════════════════════════════════════╗
               // ║  KATMAN SİSTEMİ — Stack Z-order (arkadan öne)               ║
-              // ║  1. bgbos.png        — sabit dükkan arkaplanı                ║
-              // ║  2. biri.png         — kapı gölgesi (müşteri yokken)         ║
+              // ║  1. arka plan        — dükkan seviyesine göre (bgbos*)       ║
+              // ║  2. kapidaki.png     — kapı silüeti (müşteri yokken)         ║
               // ║  3. MÜŞTERİ görseli  — masanın ALTINDA ← BU KATMAN          ║
               // ║  4. Masa (AnimatedSwitcher: bg1/bg2/bgbosmasa)               ║
               // ║  5. SafeArea UI      — header + _buildSahne() + altbar       ║

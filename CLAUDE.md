@@ -31,11 +31,12 @@ lib/main.dart          â€” tÃ¼m oyun mantÄ±ÄŸÄ± tek dosyada
 assets/                â€” gÃ¶rseller ve sesler
   bg1.png              â€” masa (bilgisayarsÄ±z)
   bg2.png              â€” masa (bilgisayarlÄ± / iMac alÄ±ndÄ±ktan sonra)
-  bgbos.png            â€” sabit arka plan
-  bgbosmasa.png        â€” masa (3. gÃ¼nden Ã¶nce)
-  biri.png             â€” kapÄ± gÃ¶lgesi (mÃ¼ÅŸteri yokken gÃ¶rÃ¼nÃ¼r)
+  bgbos.png            — dükkan arka planı (seviye 1)
+  bgbos_2/3/4.jpg      — seviye 2/3/4-5 arka planları (JPEG: opak, PNG'de 6.5MB olurdu)
+  bgbosmasa.png        — masa (3. günden önce)
+  kapidaki.png         — kapıda bekleyen silüet (müşteri yokken; dükkana göre konumlanır)
   musteri_1..28.png    — müşteri karakterleri (28 adet, yaş/cinsiyet musteriHavuzu içinde)
-  hirsiz/polis/vergici/kurye.png â€” Ã¶zel mÃ¼ÅŸteri karakterleri
+  hirsiz/polis/vergici/kurye/toptanci/falci.png — özel müşteri karakterleri
   CD_1..14.png         â€” 14 farklÄ± CD Ã¼rÃ¼nÃ¼
   konsol_1..7.png      â€” konsol Ã¼rÃ¼nleri (PlayStatyon, Ninetendo, Ateri, El Konsolu x3, son sistem)
   durum.png            â€” kurye'nin getirdiÄŸi yemek gÃ¶rseli
@@ -125,6 +126,111 @@ Toplu iş + kontak sayfası için: `tools/toplu_isle.ps1`
 
 > ℹ️ Ayak altındaki küçük gölge izleri **önemsiz** — müşteri masanın arkasında
 > göğsünden kesiliyor (`kMusteriUstu` 0.2183 → masa 0.4833), ayaklar hiç görünmüyor.
+
+---
+
+## 🔮 FALCI FALOYA (v104)
+
+Yeni özel müşteri. Gelince *"Ben falcıyım, X liraya falına bakayım mı?"* der
+(ücret 40-140 lira, selamlama metninde açıkça yazar — oyuncu ne ödeyeceğini bilir).
+
+| Seçim | Ne olur |
+|---|---|
+| **EVET** | Ücret düşer → 50 fal metninden biri popup'ta çıkar → etki uygulanır |
+| **HAYIR** | Küsüp gider, para gitmez |
+| **Parası yetmiyorsa** | Ücret ALINMAZ, *"Cebinde o kadar yok evladım"* der ve gider |
+
+> ⚠️ Hırsız/polis zorla para alır, **falcı almaz**. Fal isteğe bağlı bir
+> harcama; oyuncuyu buradan iflasa sürüklemek adil değil.
+
+### Model
+```dart
+enum FalEtki { yok, paraKazanc, paraKayip, dukkanBuyut, kolonyaHediye,
+               tamirSeti, kapaliKutu, urunCuruk, kuryeSansi,
+               vergiciGelecek, hirsizGelecek, polisGelecek,
+               kuryeGelecek, toptanciGelecek }
+class Fal { String metin; FalEtki etki; int min, max; }   // Fal.havuz = 50 metin
+class FalSonuc { String? satir; int miktar; }             // satir null → sadece hikâye
+GameState.falUygula(Fal) → FalSonuc
+```
+
+- `{X}` placeholder → gerçek tutarla doldurulur (`metniDoldur`). **Tek harf
+  placeholder YASAK** — eski kural burada da geçerli.
+- `falUygula` **`notifyListeners()` ÇAĞIRMAZ**; popup açıkken ekran zıplamasın
+  diye bildirimi çağıran taraf tek seferde yapar.
+
+### Etkiler ve emniyet kuralları
+| Etki | Not |
+|---|---|
+| `paraKazanc` / `paraKayip` | Kayıp **parayı eksiye düşürmez** (`miktar` kasayla sınırlanır) |
+| `dukkanBuyut` | Bir üst dükkana bedava geçiş. **Son seviyedeyse** patlamaz, 500 lira verir |
+| `*Gelecek` (5 tip) | `zorunluOzelTip` alanını set eder → falcı gidince O müşteri gelir |
+| `kapaliKutu` | Envanter doluysa kutu geri alınır, sessiz kaybolma yok |
+| `urunCuruk` | Çürütecek sağlam ürün yoksa "kehanet boşa çıktı" der |
+
+**Kehanet fallarında sonuç şeridi GÖSTERİLMEZ** (`satir == null`) — sürpriz
+bozulmasın, vergici kapıyı kendisi çalsın.
+
+### `zorunluOzelTip`
+`GameState`'te public alan, `yeniMusteriGonder` başında tüketilir. Sayaç
+beklemez, araya girer, rotasyonu bozmaz. `toJson`/`fromJson`'da saklanıyor —
+fal bakıldıktan sonra oyun kapatılırsa kehanet kaybolmuyor.
+
+> Eski kayıtlar: `fromJson`'daki mevcut migrasyon döngüsü `OzelMusteriTip.values`
+> üzerinden gittiği için `falci` rotasyona **otomatik** ekleniyor, ek kod yok.
+
+### Test — `test/fal_test.dart`
+11 test: 50 metin benzersiz mi, placeholder kaldı mı, 2-3 cümle sınırı,
+para aralıkları, her etki havuzda temsil ediliyor mu, para kaybı tabanı,
+dükkan büyütme son seviye davranışı, kehanet eşleşmesi, ücret aralığı.
+
+---
+
+## 🏠 DÜKKANA GÖRE ARKA PLAN + KAPI SİLÜETİ (v104)
+
+Her dükkan seviyesinin kendi arka planı var; kiralanınca sahne arkası
+`AnimatedSwitcher` ile çapraz solarak değişir.
+
+| Seviye | Arka plan | Görünüm |
+|---|---|---|
+| 1 | `bgbos.png` (719×1080) | ahşap, mütevazı |
+| 2 | `bgbos_2.jpg` (719×1278) | terrazzo zemin, ahşap vitrin |
+| 3 | `bgbos_3.jpg` | koyu + neon RGB |
+| 4, 5 | `bgbos_4.jpg` | parlak beyaz, modern perakende |
+
+> Elde **3 yeni görsel** vardı, 5 seviye → 4 ve 5 aynı mağazayı paylaşıyor.
+> 5. seviye için ayrı görsel gelirse tek satır değiştirmek yeterli.
+
+> ℹ️ Arka planlar **JPEG** (q92). Opak oldukları için alfa gereksiz; PNG'de
+> 3 dosya 6.5MB tutuyordu, JPEG'de 0.84MB. APK 41.2 → 42.3MB.
+
+### 🚪 Kapı silüeti artık dükkana göre konumlanıyor
+**Eski hâli bozuluyordu:** `biri.png` tam ekran `BoxFit.cover` ile basılıyordu,
+yani kapının yeri görsele gömülüydü. Farklı arka plan gelince silüet kapının
+yanına düştü (en-boy oranı da farklı olduğu için `cover` kırpması değişiyor).
+
+**Yeni hâli:** `biri.png`'in alfa kutusu kesilip `kapidaki.png` sprite'ı
+yapıldı. `_buildKapidaki()` arka planın ekrandaki `cover` kutusunu hesaplayıp
+sprite'ı o dükkanın kapı oranlarına yerleştiriyor:
+
+```dart
+// DukkanSeviye alanları
+arkaplanOrani                          // en/boy — cover kutusu icin
+kapiSol, kapiUst, kapiGen, kapiYuk     // silüetin arka plan İÇİNDEKİ yeri (0..1)
+```
+
+Seviye 1'in oranları **`biri.png`'in alfa kutusundan birebir** alındı
+(0.3167 / 0.0898 / 0.1114 / 0.1582) → eski görünüm zerre değişmedi, emülatörde
+önce/sonra karşılaştırmasıyla doğrulandı.
+
+**Yeni arka plan eklerken:** görselin kapı camını ölç, silüeti camın içine
+oturtacak 4 oranı yaz. Ölçüm için `tools/` altındaki grid yöntemi işe yarar —
+görseli %2'lik ızgarayla bas, kapı camının sol/üst/genişlik/yükseklik oranını
+oku. Sonra `BoxFit.cover` matematiğini taklit eden bir simülasyonla kontrol et;
+seviye 1 birebir tutuyorsa simülasyon doğrudur.
+
+> ⚠️ Sabit piksel YOK — sahne metriği felsefesiyle aynı: her şey arka planın
+> ekrandaki kutusuna oranla veriliyor, çözünürlük/en-boy değişse de kaymıyor.
 
 ---
 
@@ -630,7 +736,7 @@ KazanÄ±lanlar `yeniKazanilanRozetler` kuyruÄŸuna girer, UI `_rozetKuyrugunuI
 - **PazarlÄ±k**: MÃ¼ÅŸteri teklif verir, oyuncu kabul/reddeder
 - **Envanter slot sistemi**: ÃœrÃ¼n alÄ±m/satÄ±m
 - **DÃ¼kkan seviyeleri**: Kira Ã¶deyerek bÃ¼yÃ¼tme
-- **Ã–zel mÃ¼ÅŸteriler**: HÄ±rsÄ±z, polis, vergici, **kurye** (YeSekSepeti)
+- **Özel müşteriler**: Hırsız, polis, vergici, kurye (YeSekSepeti), Toptancı Rıza, **Falcı Faloya**
 - **iMac satÄ±n alma**: 3. gÃ¼nden sonra gÃ¶rÃ¼nÃ¼r buton, alÄ±ndÄ±ktan sonra masa deÄŸiÅŸir
 - **Bilgisayar Geldi popup**: 3. gÃ¼nde tetiklenir (tek seferlik, `_bilgisayarGeldiGosterildi` flag'i)
 - **Oyun sonu**: Para bitti + envanter boÅŸ â†’ iflas popup
@@ -1145,6 +1251,7 @@ Base ratio hÃ¢lÃ¢ `_clamp(0.18 - progress * 0.15, 0.02, 0.18)`.
 ## Versiyon GeÃ§miÅŸi (son)
 | Commit | AÃ§Ä±klama |
 |--------|----------|
+| v104 | **Falcı Faloya** özel müşterisi: 40-140 liraya fal bakar, 50 fal metni, 14 etki türü (para kazanç/kayıp, bedava dükkan büyütme, "benden sonra vergici gelecek" kehanetleri, kolonya/tamir seti/kutu hediyesi, ürün çürütme, cömert müşteri şansı); parası yetmezse ücret alınmaz. **Dükkana göre arka plan**: 3 yeni görsel (JPEG, +1.1MB APK), seviye 2/3/4-5'e atandı, AnimatedSwitcher ile çapraz solma. **Kapı silüeti yeniden yazıldı**: `biri.png` tam ekran cover yerine `kapidaki.png` sprite'ı, arka planın cover kutusuna göre dükkan başına konumlanıyor (seviye 1 birebir aynı kaldı). `test/fal_test.dart` (11 test) |
 | v103 | **Yaş/cinsiyet duyarlı replik sistemi**: `enum YasGrubu` (cocuk/genc/yetiskin/yasli) + `Replik{metin,yas,cinsiyet}` kaydı + `replikSec` filtresi (uyan→nötr→tüm havuz güvenlik zinciri); 28 karakterin hepsine yaş etiketi; TÜM replik havuzları `List<String>`→`List<Replik>`; selamlama 20→39, karşı teklif 25→48/46, kabul 26→42, gitme 18/18/12→27/26/19; `test/yas_replik_test.dart` regresyon testi (6 test). Ayrıca: 17 yeni karakter görseli kullanıcının kendi kesimiyle değiştirildi (işlenmeden kopyalandı), kaynakta md5 tekrarı ve bir eksik karakter yüzünden roster 29→28, `musteri_29.png` silindi |
 | v97 | **BÃ¼yÃ¼k oynanÄ±ÅŸ gÃ¼ncellemesi**: ToptancÄ± RÄ±za (gÃ¼nlÃ¼k stok, ucuz Ã¼rÃ¼n), Ã§Ã¼rÃ¼k Ã¼rÃ¼n + CD tamir seti ekonomisi, kapalÄ± kutu (lootbox), 8 rozetli Hedefler ekranÄ±, 10 rastgele gÃ¼n olayÄ±. TÃ¼mÃ¼ browser menÃ¼sÃ¼nden eriÅŸilir â€” alt bar/sahne layout'una dokunulmadÄ± |
 | v102 | 18 yeni müşteri karakteri (toplam 29: 14E/15K); beyaz zemin C# flood-fill ile temizlendi, oyunun 500×500 çerçevesine normalize edildi; tools/arkaplan_sil.ps1 yeniden kullanılabilir araç; isim havuzu 150+150 (hepsi benzersiz); SIRADAKİ İŞ: yaş sistemi |
