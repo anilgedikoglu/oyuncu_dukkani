@@ -138,8 +138,11 @@ class DukkanSeviye {
   final String isim;
   final int kira;
   final int minGun; // bu dükkana geçmek için gereken minimum gün
+  /// Bu dükkanın arka plan görseli. Kiralanınca sahne arkası değişir.
+  /// Elde 4 görsel var, 5 seviye — seviye 4 ve 5 aynı mağazayı paylaşır.
+  final String arkaplan;
 
-  const DukkanSeviye({required this.seviye, required this.isim, required this.kira, required this.minGun});
+  const DukkanSeviye({required this.seviye, required this.isim, required this.kira, required this.minGun, required this.arkaplan});
 
   /// Günlük müşteri sayısını ağırlıklı random ile belirle
   /// Alt sınır daha yüksek olasılıklı, üst sınır daha düşük
@@ -159,11 +162,11 @@ class DukkanSeviye {
 }
 
 const List<DukkanSeviye> tumDukkanlar = [
-  DukkanSeviye(seviye: 1, isim: 'Bodrum Kat Dükkan',    kira: 300,  minGun: 1),
-  DukkanSeviye(seviye: 2, isim: 'Mahalle Köşe Dükkanı', kira: 600,  minGun: 3),
-  DukkanSeviye(seviye: 3, isim: 'Cadde Dükkanı',        kira: 900,  minGun: 5),
-  DukkanSeviye(seviye: 4, isim: 'Çarşı Dükkanı',        kira: 1200, minGun: 8),
-  DukkanSeviye(seviye: 5, isim: 'AVM Dükkanı',          kira: 1500, minGun: 10),
+  DukkanSeviye(seviye: 1, isim: 'Bodrum Kat Dükkan',    kira: 300,  minGun: 1,  arkaplan: 'assets/bgbos.png'),
+  DukkanSeviye(seviye: 2, isim: 'Mahalle Köşe Dükkanı', kira: 600,  minGun: 3,  arkaplan: 'assets/bgbos_2.jpg'),
+  DukkanSeviye(seviye: 3, isim: 'Cadde Dükkanı',        kira: 900,  minGun: 5,  arkaplan: 'assets/bgbos_3.jpg'),
+  DukkanSeviye(seviye: 4, isim: 'Çarşı Dükkanı',        kira: 1200, minGun: 8,  arkaplan: 'assets/bgbos_4.jpg'),
+  DukkanSeviye(seviye: 5, isim: 'AVM Dükkanı',          kira: 1500, minGun: 10, arkaplan: 'assets/bgbos_4.jpg'),
 ];
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -533,9 +536,9 @@ class MusteriOzellik {
 }
 
 
-// ─── ÖZEL MÜŞTERİ (HIRSIZ / POLİS / VERGİCİ) ────────────────────────────────
+// ─── ÖZEL MÜŞTERİ (HIRSIZ / POLİS / VERGİCİ / KURYE / TOPTANCI / FALCI) ─────
 
-enum OzelMusteriTip { hirsiz, polis, vergici, kurye, toptanci }
+enum OzelMusteriTip { hirsiz, polis, vergici, kurye, toptanci, falci }
 
 class OzelMusteri {
   final OzelMusteriTip tip;
@@ -595,8 +598,170 @@ class OzelMusteri {
         ];
         return OzelMusteri(tip: tip, gorsel: 'assets/toptanci.png', ad: 'Toptancı Rıza',
           ilkMiktar: 0, ilkMesaj: selamlar[rng.nextInt(selamlar.length)]);
+      case OzelMusteriTip.falci:
+        // Fal ücreti: 40-140 lira. Ucuz tutuldu — sürpriz için oynanmalı,
+        // ödeme yapmak riskli bir bahis gibi hissettirmemeli.
+        final ucret = 40 + rng.nextInt(101);
+        // NOT: switch case'leri aynı kapsamı paylaşır — değişken adı
+        // toptancı case'indeki `selamlar` ile çakışmamalı.
+        final falSelamlar = [
+          'Ben falcıyım. $ucret liraya falına bakayım mı?',
+          'Adım Faloya, gaipten haber veririm. $ucret liraya bakayım mı faluna?',
+          'Selam evladım, ben falcı Faloya. $ucret lira ver, geleceğini okuyayım.',
+          'Elini ver bakayım... Ama önce $ucret lira. Var mısın?',
+          'Yıldızlar seni işaret etti. $ucret liraya falına bakayım mı?',
+          'Ben Faloya. Kahven yoksa da olur, avucun yeter. $ucret lira. Olur mu?',
+        ];
+        return OzelMusteri(tip: tip, gorsel: 'assets/falci.png', ad: 'Falcı Faloya',
+          ilkMiktar: ucret, ilkMesaj: falSelamlar[rng.nextInt(falSelamlar.length)]);
     }
   }
+}
+
+// ─── FAL SİSTEMİ ─────────────────────────────────────────────────────────────
+
+/// Falın oyuna dokunuşu. `yok` dışındakiler gerçekten bir şey değiştirir —
+/// falcının "gördüğü" şey birazdan başa gelir.
+enum FalEtki {
+  yok,              // sadece hikâye
+  paraKazanc,       // kasaya para girer
+  paraKayip,        // kasadan para çıkar
+  dukkanBuyut,      // bir üst dükkana bedava geçiş
+  kolonyaHediye,    // kolonya kullanım hakkı
+  tamirSeti,        // tamir seti
+  kapaliKutu,       // envantere kapalı kutu
+  urunCuruk,        // envanterdeki bir ürün çürür
+  kuryeSansi,       // sıradaki müşteri çok avantajlı (kurye bonusu)
+  vergiciGelecek,   // sıradaki özel müşteri vergici
+  hirsizGelecek,
+  polisGelecek,
+  kuryeGelecek,
+  toptanciGelecek,
+}
+
+/// Falın uygulanmış sonucu: gösterilecek şerit (yoksa null) + çıkan tutar.
+class FalSonuc {
+  final String? satir;
+  final int miktar;
+  const FalSonuc(this.satir, this.miktar);
+}
+
+/// Tek bir fal metni + etkisi.
+/// `{X}` → tutar/sayı ile doldurulur (tek harf placeholder KULLANMA kuralı).
+class Fal {
+  final String metin;
+  final FalEtki etki;
+  final int min; // etki miktarı alt sınır (para/adet)
+  final int max;
+  const Fal(this.metin, {this.etki = FalEtki.yok, this.min = 0, this.max = 0});
+
+  /// Fal metnini oyuncuya gösterilecek hâle getirir: `{X}` → gerçek tutar.
+  String metniDoldur(int miktar) => metin.replaceAll('{X}', '$miktar');
+
+  /// 50 fal metni. Yarısı sadece hikâye, yarısı gerçekten bir şey yapıyor.
+  /// Etkili olanlar sürprizi bozmasın diye metinde açıkça "göreceksin" demez —
+  /// falcı görür, oyuncu sonucu yaşar.
+  static const List<Fal> havuz = [
+    // ── PARA KAZANCI (8) ──
+    Fal('Avucunda bir çatal yol görüyorum, ikisi de altına çıkıyor. Bugün ummadığın bir yerden bereket akacak. Kasan gülecek evladım.',
+        etki: FalEtki.paraKazanc, min: 150, max: 450),
+    Fal('Kahve telvesi gibi karanlık ama dibinde parıltı var. Eski bir borçlu seni hatırlayacak. Cebine {X} lira girecek.',
+        etki: FalEtki.paraKazanc, min: 200, max: 600),
+    Fal('Bir kuş görüyorum, gagasında madeni bir şey. Sokakta değil, tam bu dükkânın içinde düşürecek onu. Şansın açık.',
+        etki: FalEtki.paraKazanc, min: 100, max: 350),
+    Fal('Yıldızlar bugün senin hanende toplanmış. Uzaktaki bir akraban seni anıyor, eli de boş değil. Az sonra anlarsın ne demek istediğimi.',
+        etki: FalEtki.paraKazanc, min: 250, max: 700),
+    Fal('Elinde tuttuğun eski bir şey, sandığından kıymetli çıkacak. Bir koleksiyoncu peşine düşmüş bile. Bereketli olsun.',
+        etki: FalEtki.paraKazanc, min: 180, max: 500),
+    Fal('Suyun yüzünde bir hesap defteri beliriyor, rakamlar hep artı. Bu haftanın rüzgârı senden yana esiyor evladım.',
+        etki: FalEtki.paraKazanc, min: 120, max: 400),
+    Fal('Bir zarf görüyorum, mühürlü ve senin adına. İçindeki kâğıt değil, para. Kapını çalan olursa şaşırma.',
+        etki: FalEtki.paraKazanc, min: 300, max: 800),
+    Fal('Tezgâhının altında unuttuğun bir kutu var. Yıllardır orada duruyor ve içi boş değil. Git bak istersen, ama zaten kendiliğinden bulunacak.',
+        etki: FalEtki.paraKazanc, min: 90, max: 300),
+
+    // ── PARA KAYBI (6) ──
+    Fal('Hmm... Bu hiç hoşuma gitmedi. Cebinde bir delik görüyorum evladım, hem de büyük. Kaybedeceğin para geri gelmeyecek.',
+        etki: FalEtki.paraKayip, min: 100, max: 350),
+    Fal('Fincanın kenarında bir kırık var. Böylesi hep beklenmedik masraf demektir. Bugün elin cebine gidecek, hem de isteksizce.',
+        etki: FalEtki.paraKayip, min: 80, max: 300),
+    Fal('Bir fatura görüyorum, senin adına ama senin bilmediğin. Ödemek zorunda kalacaksın. Üzülme, sağlık olsun.',
+        etki: FalEtki.paraKayip, min: 150, max: 450),
+    Fal('Karanlık bir bulut var başının üstünde, para bulutu ama ters yönde yağıyor. Bugün alacağın değil, vereceğin gün.',
+        etki: FalEtki.paraKayip, min: 120, max: 400),
+    Fal('Elinin çizgisi burada kesiliyor. Bir şey kırılacak ya da kaybolacak, tamiri de sana kalacak. Kızma, kader işte.',
+        etki: FalEtki.paraKayip, min: 60, max: 250),
+    Fal('Sana kötü bir haberim var: yakın çevrenden biri senden borç isteyecek ve geri vermeyecek. Ben söyledim, sen bilirsin.',
+        etki: FalEtki.paraKayip, min: 200, max: 500),
+
+    // ── DÜKKAN BÜYÜTME (2) ──
+    Fal('Aaa, bu ne böyle! Duvarların genişliyor evladım, tavanın yükseliyor. Tez zamanda daha büyük bir dükkâna geçeceksin, hem de hiç para vermeden!',
+        etki: FalEtki.dukkanBuyut),
+    Fal('Bir anahtar görüyorum, seninkinden büyük bir kapının anahtarı. Kısmetin açılmış, mekânın değişiyor. Hayırlı olsun şimdiden!',
+        etki: FalEtki.dukkanBuyut),
+
+    // ── SONRAKİ ÖZEL MÜŞTERİ (7) ──
+    Fal('Resmî bir şey görüyorum, çantalı ve gözlüklü. Benden sonra sana vergici gelecek evladım. Defterlerini bir gözden geçir derim.',
+        etki: FalEtki.vergiciGelecek),
+    Fal('Bir mühür, bir damga, bir de ekşi surat... Devlet kapısı senin kapını çalacak birazdan. Hazırlıklı ol.',
+        etki: FalEtki.vergiciGelecek),
+    Fal('Karanlıkta bir gölge var, yüzü örtülü. Niyeti temiz değil evladım. Benden sonra gelen ilk misafirine dikkat et.',
+        etki: FalEtki.hirsizGelecek),
+    Fal('Kasanın etrafında dönen bir el görüyorum, senin elin değil. Bugün bir hırsız uğrayacak. Söylemedi deme.',
+        etki: FalEtki.hirsizGelecek),
+    Fal('Mavi bir üniforma beliriyor telvede. Kanun adamı yolda evladım, hem de senin dükkânına doğru. Rafları bir düzelt bari.',
+        etki: FalEtki.polisGelecek),
+    Fal('Sıcak bir koku alıyorum... Yemek kokusu bu! Biri sana ikramda bulunacak, kapıdan gelecek. Aç karnına kalmayacaksın.',
+        etki: FalEtki.kuryeGelecek),
+    Fal('Başında tepsi taşıyan bir adam görüyorum. Malı bol, fiyatı ucuz. Benden sonra sana uğrayacak, kaçırma.',
+        etki: FalEtki.toptanciGelecek),
+
+    // ── HEDİYE / EŞYA (6) ──
+    Fal('Güzel bir koku sarıyor etrafını, limon gibi ferah. Misafirlerin memnun kalacak bu kokudan. Al bunu benden hediye evladım.',
+        etki: FalEtki.kolonyaHediye),
+    Fal('Ferahlık görüyorum, hem senin hem müşterinin gönlünde. Elimi cebime attım, sana bir şey çıktı. Kullan, işine yarar.',
+        etki: FalEtki.kolonyaHediye),
+    Fal('Bozuk bir şey görüyorum ama yanında da onu düzeltecek eli. Usta ellerin var senin evladım. Bu benden olsun.',
+        etki: FalEtki.tamirSeti),
+    Fal('Tornavida, tutkal, biraz da sabır... Yakında lazım olacak sana bunlar. Şansına ben yanımda getirmişim.',
+        etki: FalEtki.tamirSeti),
+    Fal('Kapalı bir kutu görüyorum, içinde ne olduğunu ben bile göremiyorum. Bazen bilmemek daha güzeldir. Aç bakalım, kısmetin ne çıkacak.',
+        etki: FalEtki.kapaliKutu),
+    Fal('Sürpriz var falında evladım, sarılı sarmalı. Ne olduğunu söylemeyeceğim, tadı kaçar. Kendi gözünle gör.',
+        etki: FalEtki.kapaliKutu),
+
+    // ── OLUMSUZ EŞYA (2) ──
+    Fal('Rafında bir küf lekesi görüyorum... Nem mi bastı, kader mi bilmem. Bir malın elinde bozulacak evladım, üzülme.',
+        etki: FalEtki.urunCuruk),
+    Fal('Bir çatlak sesi duyuyorum, cam değil, plastik. Mallarından biri artık eskisi gibi olmayacak. Kadere karşı gelinmez.',
+        etki: FalEtki.urunCuruk),
+
+    // ── SONRAKİ MÜŞTERİ ÇOK CÖMERT (3) ──
+    Fal('Bereketli bir el görüyorum, cebi de gönlü de geniş. Sıradaki müşterin sana çok iyi davranacak evladım. Fırsatı kaçırma.',
+        etki: FalEtki.kuryeSansi),
+    Fal('Telvede bir gülümseme var. Kapıdan girecek ilk kişi pazarlığı uzatmayacak, cebi de dolu. Şansın açık bugün.',
+        etki: FalEtki.kuryeSansi),
+    Fal('Yıldızlar hizalanmış, hem de tam senin tezgâhının üstünde. Bir sonraki alışverişin ömrünün en kârlısı olabilir.',
+        etki: FalEtki.kuryeSansi),
+
+    // ── SADECE HİKÂYE (16) ──
+    Fal('Uzun bir yolculuk görüyorum ama ayakla değil, akılla. Bu dükkân seni çok yere götürecek evladım. Sabret, acele etme.'),
+    Fal('Kalbin temiz, o yüzden falın da temiz çıkıyor. Kötü bir şey göremiyorum. Bazen haber yokluğu en iyi haberdir.'),
+    Fal('Bir kedi görüyorum, dükkânın önünde dolanıyor. Uğurdur o, kovma sakın. Beslersen bereketi artar derler.'),
+    Fal('Geçmişte bıraktığın bir şey var, aklına takılıp duruyor. Bırak gitsin evladım. Yeni gelecek olan daha güzel.'),
+    Fal('Kalabalık görüyorum, hem de senin kapının önünde. Ama ne zaman, onu yıldızlar söylemiyor. Sen işini yap, gerisi gelir.'),
+    Fal('Suyun içinde bir yüzük var ama kimin bilmiyorum. Belki senin, belki bir müşterinin. Kısmet meselesi.'),
+    Fal('Çok konuşan biri girecek dükkânına. Dinle ama her söylediğine inanma. Kulağın açık, cüzdanın kapalı olsun.'),
+    Fal('Bir sayı beliriyor: yedi. Ne anlama geldiğini ben de bilmiyorum ama not et bir kenara. Zamanı gelince anlarsın.'),
+    Fal('Rüyalarında bir müzik duyuyorsun son zamanlarda. O eski bir oyunun sesi. Geçmişin seni özlemiş evladım.'),
+    Fal('İki yol var önünde, biri kısa biri uzun. Uzun olanı seç. Kısa yolların sonu hep aynı yere çıkar: pişmanlığa.'),
+    Fal('Elinin çizgisi çok net, hiç dallanmıyor. Bu inatçı olduğunu gösterir. İyi de bir şey, kötü de. Kullanmasını bil.'),
+    Fal('Bir mektup görüyorum ama gelmiyor, gidiyor. Birine bir şey söylemen gerekiyor ve söylemiyorsun. Ertelemekle geçiyor ömür.'),
+    Fal('Fincanın dibi bomboş. Bu ya çok sakin bir dönem demek, ya da yıldızlar bugün beni ciddiye almıyor. İkisi de olabilir.'),
+    Fal('Neşeli bir gün görüyorum, sebebi de küçük bir şey olacak. Büyük mutlulukları bekleyeyim derken küçükleri kaçırma.'),
+    Fal('Bir terazi beliriyor, iki kefe de denk. Hayatın dengede evladım. Bunu bozmaya çalışan olursa aldırma.'),
+    Fal('Yorgunluk görüyorum omuzlarında ama sırtın dik. Ayakta kalmayı biliyorsun. Bugün de kalacaksın, yarın da.'),
+  ];
 }
 
 // ─── YAŞ / CİNSİYET DUYARLI REPLİK SİSTEMİ ───────────────────────────────────
@@ -1856,8 +2021,11 @@ class GameState extends ChangeNotifier {
   int _ozelMusteriSayaci = 0;        // toplam müşteri sayacı (özel dahil değil)
   // Rotasyon: sadece "olay" tipli özel müşteriler. Toptancı Rıza BURADA DEĞİL —
   // onun kendi günlük programı var (_rizaGunuAyarla).
-  List<OzelMusteriTip> _ozelTipSirasi = [OzelMusteriTip.hirsiz, OzelMusteriTip.polis, OzelMusteriTip.vergici, OzelMusteriTip.kurye];
+  List<OzelMusteriTip> _ozelTipSirasi = [OzelMusteriTip.hirsiz, OzelMusteriTip.polis, OzelMusteriTip.vergici, OzelMusteriTip.kurye, OzelMusteriTip.falci];
   int _ozelTipIndex = 0;
+  /// Falcının kehaneti: bir sonraki özel müşteri bu tip olacak.
+  /// Sıradaki müşteride tüketilir (rotasyon bozulmaz, sadece araya girer).
+  OzelMusteriTip? zorunluOzelTip;
 
   void _ozelMusteriSayaciniAyarla() {
     _sonrakiOzelMusteriSayisi = _ozelMusteriSayaci + 10 + Random().nextInt(11); // 10-20 sonra
@@ -2352,6 +2520,11 @@ class GameState extends ChangeNotifier {
     // Rıza rotasyona sızmışsa çıkar (ara sürüm kayıtları için)
     _ozelTipSirasi.removeWhere((t) => t == OzelMusteriTip.toptanci);
     _ozelTipIndex = j['ozelTipIndex'] as int;
+    // Falcı kehaneti kayıtta bekliyor olabilir (fal bakıldı, müşteri gelmedi)
+    final zorunlu = j['zorunluOzelTip'] as String?;
+    zorunluOzelTip = zorunlu == null
+        ? null
+        : OzelMusteriTip.values.where((e) => e.name == zorunlu).firstOrNull;
     toplamTeklifSayisi = j['toplamTeklif'] as int;
     krediKalanTaksit = (j['krediKalanTaksit'] as int?) ?? 0;
     krediTaksitMiktar = (j['krediTaksitMiktar'] as int?) ?? 0;
@@ -2409,6 +2582,7 @@ class GameState extends ChangeNotifier {
     'ozelSayac': _ozelMusteriSayaci,
     'ozelTipSirasi': _ozelTipSirasi.map((t) => t.name).toList(),
     'ozelTipIndex': _ozelTipIndex,
+    'zorunluOzelTip': zorunluOzelTip?.name,
     'toplamTeklif': toplamTeklifSayisi,
     'krediKalanTaksit': krediKalanTaksit,
     'krediTaksitMiktar': krediTaksitMiktar,
@@ -2452,12 +2626,105 @@ class GameState extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Falın etkisini uygular. `satir` null ise fal sadece hikâyeydi ve ekstra
+  /// bir sonuç şeridi gösterilmez; `miktar` fal metnindeki `{X}` için kullanılır.
+  ///
+  /// ⚠️ Burada `notifyListeners()` ÇAĞRILMAZ — çağıran taraf falı gösterdikten
+  /// sonra tek seferde bildirir, popup açıkken ekran zıplamasın.
+  FalSonuc falUygula(Fal fal) {
+    final rng = Random();
+    int miktar = fal.max > fal.min ? fal.min + rng.nextInt(fal.max - fal.min + 1) : fal.min;
+    switch (fal.etki) {
+      case FalEtki.yok:
+        return const FalSonuc(null, 0);
+
+      case FalEtki.paraKazanc:
+        para += miktar;
+        return FalSonuc('💰 Kasana $miktar lira girdi!', miktar);
+
+      case FalEtki.paraKayip:
+        // Parayı eksiye düşürme — iflas falcı yüzünden olmasın.
+        if (miktar > para) miktar = para;
+        if (miktar <= 0) return const FalSonuc('💨 Kaybedecek paran bile yokmuş. Bu sefer ucuz atlattın.', 0);
+        para -= miktar;
+        return FalSonuc('💸 $miktar lira kaybettin!', miktar);
+
+      case FalEtki.dukkanBuyut:
+        if (aktifDukkan.seviye >= tumDukkanlar.length) {
+          // Zaten en büyük dükkandayız — kehanet boşa gitmesin, paraya çevir.
+          para += 500;
+          return const FalSonuc('🏠 Daha büyüğü yok! Faloya özür diledi, 500 lira bıraktı.', 500);
+        }
+        final yeni = tumDukkanlar[aktifDukkan.seviye]; // seviye 1-tabanlı → sonraki
+        aktifDukkan = yeni;
+        _slotlariSikistir();
+        return FalSonuc('🏠 Bedava taşındın: ${yeni.isim}!', yeni.seviye);
+
+      case FalEtki.kolonyaHediye:
+        kolonyaKullanim += 10;
+        return const FalSonuc('🧴 10 kullanımlık kolonya hediye!', 10);
+
+      case FalEtki.tamirSeti:
+        tamirSetiAdet += 2;
+        return const FalSonuc('🔧 2 tamir seti hediye!', 2);
+
+      case FalEtki.kapaliKutu:
+        if (_slotaKoy(kapaliKutuUret())) return const FalSonuc('🎁 Envanterine kapalı kutu kondu!', 1);
+        return const FalSonuc('🎁 Kutu getirmişti ama envanterin dolu. Faloya kutuyu geri aldı.', 0);
+
+      case FalEtki.urunCuruk:
+        final adaylar = <int>[];
+        for (int i = 0; i < acikSlotSayisi; i++) {
+          final u = slotlar[i];
+          if (u != null && !u.curuk && !u.kapaliKutu) adaylar.add(i);
+        }
+        if (adaylar.isEmpty) return const FalSonuc('🍀 Bozulacak malın yokmuş. Kehanet boşa çıktı.', 0);
+        final i = adaylar[rng.nextInt(adaylar.length)];
+        slotlar[i] = slotlar[i]!.kopyaWith(curuk: true);
+        return FalSonuc('🐀 ${slotlar[i]!.name} çürüdü!', 1);
+
+      case FalEtki.kuryeSansi:
+        kuryeBonusuAktif = true;
+        return const FalSonuc('🍀 Sıradaki müşteri çok cömert olacak!', 0);
+
+      // Kehanetler: sonuç şeridi YOK — sürpriz bozulmasın, kapıyı kendisi çalsın.
+      case FalEtki.vergiciGelecek:
+        zorunluOzelTip = OzelMusteriTip.vergici;
+        return const FalSonuc(null, 0);
+      case FalEtki.hirsizGelecek:
+        zorunluOzelTip = OzelMusteriTip.hirsiz;
+        return const FalSonuc(null, 0);
+      case FalEtki.polisGelecek:
+        zorunluOzelTip = OzelMusteriTip.polis;
+        return const FalSonuc(null, 0);
+      case FalEtki.kuryeGelecek:
+        zorunluOzelTip = OzelMusteriTip.kurye;
+        return const FalSonuc(null, 0);
+      case FalEtki.toptanciGelecek:
+        zorunluOzelTip = OzelMusteriTip.toptanci;
+        return const FalSonuc(null, 0);
+    }
+  }
+
   void yeniMusteriGonder() {
     _ozelMusteriSayaci++;
     // Toptancı Rıza günde bir uğrar (özel müşteri rotasyonundan bağımsız)
     if (!_rizaBugunGeldi && gunlukMusteriSayisi >= _rizaZiyaretSirasi) {
       _rizaBugunGeldi = true;
       aktifOzelMusteri = OzelMusteri.olustur(OzelMusteriTip.toptanci);
+      ozelMusteriGorunuyor = true;
+      musteriKabulBekliyor = true;
+      musteriSayisi++;
+      gunlukMusteriSayisi++;
+      mesaj = aktifOzelMusteri!.ilkMesaj;
+      notifyListeners();
+      return;
+    }
+    // Falcı kehaneti bekliyorsa sıradaki müşteri O — sayaç beklemeden gelir.
+    if (zorunluOzelTip != null) {
+      final tip = zorunluOzelTip!;
+      zorunluOzelTip = null;
+      aktifOzelMusteri = OzelMusteri.olustur(tip);
       ozelMusteriGorunuyor = true;
       musteriKabulBekliyor = true;
       musteriSayisi++;
@@ -4608,9 +4875,17 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
         return Scaffold(
           body: Stack(
             children: [
-              // 1. Sabit arka plan
+              // 1. Dükkan arka planı — seviyeye göre değişir, geçiş yumuşasın
+              //    diye AnimatedSwitcher ile çapraz solma yapılır.
               Positioned.fill(
-                child: Image.asset('assets/bgbos.png', fit: BoxFit.cover, alignment: Alignment.center),
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 700),
+                  child: Image.asset(
+                    _state.aktifDukkan.arkaplan,
+                    key: ValueKey(_state.aktifDukkan.arkaplan),
+                    fit: BoxFit.cover, alignment: Alignment.center,
+                  ),
+                ),
               ),
               // 2. Kapı gölgesi (müşteri yokken görünür)
               Positioned.fill(
@@ -4900,7 +5175,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
               color: Colors.black.withValues(alpha: 0.72),
               borderRadius: BorderRadius.circular(10),
               border: Border.all(color: _state.aktifOzelMusteri != null
-                ? ((_state.aktifOzelMusteri!.tip == OzelMusteriTip.hirsiz) ? Colors.redAccent : (_state.aktifOzelMusteri!.tip == OzelMusteriTip.polis) ? Colors.blueAccent : (_state.aktifOzelMusteri!.tip == OzelMusteriTip.kurye) ? const Color(0xFFFF8C00) : Colors.orangeAccent).withValues(alpha: 0.7)
+                ? _ozelMusteriRengi(_state.aktifOzelMusteri!.tip).withValues(alpha: 0.7)
                 : const Color(0xFFFFD700).withValues(alpha: 0.4)),
             ),
             child: _state.aktifMusteri != null && !_state.aktifMusteri!.musteriSatiyor &&
@@ -4931,7 +5206,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                   text: _kolonyaGeciciMesaj ?? _state.mesaj,
                   style: TextStyle(fontSize: 14,
                     color: _state.aktifOzelMusteri != null
-                      ? ((_state.aktifOzelMusteri!.tip == OzelMusteriTip.hirsiz) ? Colors.redAccent : (_state.aktifOzelMusteri!.tip == OzelMusteriTip.polis) ? Colors.blueAccent : (_state.aktifOzelMusteri!.tip == OzelMusteriTip.kurye) ? const Color(0xFFFF8C00) : Colors.orangeAccent)
+                      ? _ozelMusteriRengi(_state.aktifOzelMusteri!.tip)
                       : const Color(0xFFFFD700)),
                   textAlign: TextAlign.center,
                 ),
@@ -4941,17 +5216,23 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     );
   }
 
+  /// Özel müşterinin tema rengi. Balon çerçevesi, isim etiketi ve vurgular
+  /// bunu kullanır — yeni bir tip eklenince tek yerden renk verilir.
+  static Color _ozelMusteriRengi(OzelMusteriTip tip) {
+    switch (tip) {
+      case OzelMusteriTip.hirsiz:   return Colors.redAccent;
+      case OzelMusteriTip.polis:    return Colors.blueAccent;
+      case OzelMusteriTip.vergici:  return Colors.orangeAccent;
+      case OzelMusteriTip.kurye:    return const Color(0xFFFF8C00); // parlak turuncu
+      case OzelMusteriTip.toptanci: return const Color(0xFFd29922); // toptancı altın sarısı
+      case OzelMusteriTip.falci:    return const Color(0xFFB967FF); // falcı moru
+    }
+  }
+
   /// Özel müşteri isim etiketi. Konumu normal müşteriyle ORTAK kod tarafından
   /// (SahneMetrik + kIsimAlti) verilir — burada sadece görünüm var.
   Widget _ozelMusteriIsimEtiketi(OzelMusteri om) {
-    Color renk;
-    switch (om.tip) {
-      case OzelMusteriTip.hirsiz:   renk = Colors.redAccent; break;
-      case OzelMusteriTip.polis:    renk = Colors.blueAccent; break;
-      case OzelMusteriTip.vergici:  renk = Colors.orangeAccent; break;
-      case OzelMusteriTip.kurye:    renk = const Color(0xFFFF8C00); break; // parlak turuncu
-      case OzelMusteriTip.toptanci: renk = const Color(0xFFd29922); break; // toptancı altın sarısı
-    }
+    final renk = _ozelMusteriRengi(om.tip);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
@@ -5546,6 +5827,59 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     });
   }
 
+  /// Fal ekranı. Üstte falcı emojisi, ortada 2-3 cümlelik fal metni,
+  /// altta (varsa) etkiyi anlatan tek satırlık sonuç şeridi.
+  Future<void> _falPopup(Fal fal, FalSonuc fs) {
+    final metin = fal.metniDoldur(fs.miktar);
+    final sonuc = fs.satir;
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1a0f1c),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: Color(0xFFB967FF), width: 2),
+        ),
+        title: const Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('🔮', textAlign: TextAlign.center, style: TextStyle(fontSize: 44)),
+            SizedBox(height: 4),
+            Text('FALIN', textAlign: TextAlign.center,
+              style: TextStyle(color: Color(0xFFB967FF), fontSize: 20, fontWeight: FontWeight.bold, letterSpacing: 2)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(metin, textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.white70, fontSize: 15, height: 1.4)),
+            if (sonuc != null) ...[
+              const SizedBox(height: 14),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFB967FF).withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFFB967FF).withValues(alpha: 0.5)),
+                ),
+                child: Text(sonuc, textAlign: TextAlign.center,
+                  style: const TextStyle(color: Color(0xFFE9C9FF), fontSize: 15, fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ],
+        ),
+        actions: [Center(child: ElevatedButton(
+          onPressed: () => Navigator.pop(ctx),
+          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFB967FF), foregroundColor: Colors.black),
+          child: const Text('Eyvallah', style: TextStyle(fontWeight: FontWeight.bold)),
+        ))],
+      ),
+    );
+  }
+
   void _ozelMusteriEvetPopup(OzelMusteri om) {
     final rng = Random();
     String mesaj = '';
@@ -5612,6 +5946,46 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       _kuryeTimer?.cancel();
       _kuryeTimer = Timer(const Duration(seconds: 3), () {
         if (mounted) _ozelMusteriGonder();
+      });
+      return;
+    }
+
+    if (om.tip == OzelMusteriTip.falci) {
+      // Parası yetmiyorsa ücret ALINMAZ — fal isteğe bağlı, oyuncuyu buradan
+      // iflasa sürüklemek olmaz. (Hırsız/polis zorla alır, falcı almaz.)
+      if (_state.para < om.ilkMiktar) {
+        _state.musteriKabulBekliyor = false;
+        _state.mesaj = 'Cebinde o kadar yok evladım. Fal başka bahara kalsın.';
+        _state.notifyListeners();
+        _kuryeTimer?.cancel();
+        _kuryeTimer = Timer(const Duration(milliseconds: 1800), () {
+          if (mounted) _ozelMusteriGonder();
+        });
+        return;
+      }
+      // Ücreti al, falı seç, popup'ta göster. Etki popup kapanınca değil
+      // popup AÇILIRKEN uygulanır — sonuç satırı da aynı ekranda görünsün.
+      _state.para -= om.ilkMiktar;
+      SesServisi.paraGirdi();
+      _state.musteriKabulBekliyor = false;
+      final fal = Fal.havuz[rng.nextInt(Fal.havuz.length)];
+      final sonuc = _state.falUygula(fal);
+      _state.mesaj = 'Bakalım yıldızlar ne diyor...';
+      _state.notifyListeners();
+      _falPopup(fal, sonuc).then((_) {
+        if (!mounted) return;
+        const vedalar = [
+          'Gaipten haber verdim, gerisi sana kalmış. Eyvallah!',
+          'Yıldızlar yalan söylemez evladım. Hadi bana müsaade.',
+          'Falına baktım, bahtına küsme. Görüşürüz!',
+          'Ben gidiyorum ama söylediklerim kalıyor. Kendine iyi bak.',
+        ];
+        _state.mesaj = vedalar[Random().nextInt(vedalar.length)];
+        _state.notifyListeners();
+        _kuryeTimer?.cancel();
+        _kuryeTimer = Timer(const Duration(milliseconds: 1800), () {
+          if (mounted) _ozelMusteriGonder();
+        });
       });
       return;
     }
@@ -5709,6 +6083,24 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       return;
     }
 
+    if (om.tip == OzelMusteriTip.falci) {
+      _state.musteriKabulBekliyor = false;
+      const redMesajlar = [
+        'İnanmayana fal bakılmaz zaten. Eyvallah!',
+        'Nasıl istersen evladım. Ama merak edeceksin, bilirim.',
+        'Peki peki, zorla güzellik olmaz. Hoşça kal!',
+        'Kaderin senden saklı kalsın öyleyse. Görüşürüz!',
+        'Param yoksa kaderim de yok mu diyorsun? Neyse, gidiyorum.',
+      ];
+      _state.mesaj = redMesajlar[rng.nextInt(redMesajlar.length)];
+      _state.notifyListeners();
+      _kuryeTimer?.cancel();
+      _kuryeTimer = Timer(const Duration(milliseconds: 1800), () {
+        if (mounted) _ozelMusteriGonder();
+      });
+      return;
+    }
+
     if (om.tip == OzelMusteriTip.toptanci) {
       _state.musteriKabulBekliyor = false;
       const redMesajlar = [
@@ -5762,7 +6154,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       // Özel müşteriye ikram: 3 sn sonra müşteriyi parasız gönder
       // Tehdit eden tipler (hırsız/polis/vergici) "affediyorum" der; kurye/toptancı sadece teşekkür eder.
       final tip = _state.aktifOzelMusteri!.tip;
-      final dostane = tip == OzelMusteriTip.kurye || tip == OzelMusteriTip.toptanci;
+      final dostane = tip == OzelMusteriTip.kurye || tip == OzelMusteriTip.toptanci || tip == OzelMusteriTip.falci;
       setState(() => _kolonyaGeciciMesaj = dostane
           ? 'Ellerine sağlık patron, mis gibi! Ben kaçtım.'
           : 'Vay, çok naziksin, seni bu seferlik rahat bırakıyorum!');
