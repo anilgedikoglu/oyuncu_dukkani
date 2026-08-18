@@ -934,6 +934,18 @@ Bu flag deprecated uyarÄ±sÄ± verir ama hÃ¢lÃ¢ Ã§alÄ±ÅŸÄ±r.
 - **EmÃ¼latÃ¶r sÄ±kÄ±ÅŸÄ±rsa**: Tamamen kapat â†’ Cold Boot (`-wipe-data` veya AVD Manager'dan "Wipe Data")
 - **GerÃ§ek cihazda** ANR olmaz; emÃ¼latÃ¶r spesifik
 
+### ⚠️ Git Bash + adb: `/sdcard/` yolu bozulur
+Git Bash, argümandaki POSIX yolunu Windows yoluna çevirir → `adb shell screencap -p /sdcard/e.png`
+`C:/Program Files/Git/sdcard/e.png` olur ve **screencap usage hatası** verir.
+Başına `MSYS_NO_PATHCONV=1` koy:
+
+```bash
+MSYS_NO_PATHCONV=1 adb shell screencap -p /sdcard/e.png && MSYS_NO_PATHCONV=1 adb pull /sdcard/e.png
+```
+
+Aynı sebeple `adb shell 'sleep 5'` tırnak içinde yazılmalı (Bash tool ön planda
+`sleep` çalıştırmayı engelliyor; beklemeyi cihaza yaptır).
+
 ### Build Ã‡Ä±ktÄ±larÄ± (post-optimizasyon)
 ```
 app-armeabi-v7a-release.apk : 32.4MB
