@@ -30,6 +30,7 @@ Flutter ile geliÅŸtirilmiÅŸ bir mobil oyun. Oyuncu bir oyun dÃ¼kkanÄ± y�
 lib/main.dart          — oyun mantığının tamamı
 lib/kirgec_oyunu.dart  — KIRGEÇ mini oyunu (breakout, oynanabilir CD)
 lib/itele_oyunu.dart   — İTELE mini oyunu (pong, oynanabilir CD)
+lib/tisss_oyunu.dart   — TISSS mini oyunu (yılan, oynanabilir CD)
 assets/                â€” gÃ¶rseller ve sesler
   bg1.png              â€” masa (bilgisayarsÄ±z)
   bg2.png              â€” masa (bilgisayarlÄ± / iMac alÄ±ndÄ±ktan sonra)
@@ -39,7 +40,7 @@ assets/                â€” gÃ¶rseller ve sesler
   kapidaki.png         — kapıda bekleyen silüet (müşteri yokken; dükkana göre konumlanır)
   musteri_1..28.png    — müşteri karakterleri (28 adet, yaş/cinsiyet musteriHavuzu içinde)
   hirsiz/polis/vergici/kurye/toptanci/falci.png — özel müşteri karakterleri
-  CD_1..16.png         — 16 CD ürünü (CD_15 KIRGEÇ, CD_16 İTELE = oynanabilir)
+  CD_1..17.png         — 17 CD ürünü (CD_15/16/17 = KIRGEÇ, İTELE, TISSS: oynanabilir)
   konsol_1..7.png      â€” konsol Ã¼rÃ¼nleri (PlayStatyon, Ninetendo, Ateri, El Konsolu x3, son sistem)
   durum.png            â€” kurye'nin getirdiÄŸi yemek gÃ¶rseli
   kolonya.png          â€” kolonya gÃ¶rseli (envanter + buton ikonu)
@@ -141,6 +142,7 @@ Toplanan **puan birebir paraya çevrilip** ana oyundaki bakiyeye eklenir.
 |---|---|---|---|
 | `cd15` KIRGEÇ | breakout | `lib/kirgec_oyunu.dart` | tam temizlik ≈ 386 lira |
 | `cd16` İTELE | pong (tek kişilik) | `lib/itele_oyunu.dart` | galibiyet = 100 lira |
+| `cd17` TISSS | yılan | `lib/tisss_oyunu.dart` | yem başına 5 lira |
 
 ### Kurallar
 - **GÜNDE 1 KEZ.** `GameState.bugunOynananOyunlar` (Set), `gunuBitir()` içinde
@@ -154,10 +156,19 @@ Toplanan **puan birebir paraya çevrilip** ana oyundaki bakiyeye eklenir.
 - **Fiyat**: oynanabilir oyunlar normal CD ortalamasının (~134) **2 katı** = 270.
 - Çürük CD oynanmaz — önce tamir edilmeli.
 
-### Kontrol şeması (iki oyunda da aynı)
-Ekranın **sağ yarısına basılı tut** → sağa, **sol yarısına** → sola.
-`Listener` + `onPointerDown/Move/Up` ile; `GestureDetector` tek dokunuş verir,
-çubuk topa yetişemezdi.
+### Kontrol şeması
+| Oyun | Kontrol |
+|---|---|
+| KIRGEÇ / İTELE | Sağ yarıya **basılı tut** → sağa, sol yarıya → sola (sürekli hareket) |
+| TISSS | Sağ yarıya **her dokunuş** → 90° sağa, sol yarıya → 90° sola (göreceli dönüş) |
+
+Kırgeç/İtele `Listener` + `onPointerDown/Move/Up` kullanır; `GestureDetector`
+tek dokunuş verdiği için çubuk topa yetişemiyordu. TISSS'te ise dokunuş zaten
+tek seferlik olduğu için `onTapDown` yeterli.
+
+> TISSS'te dönüşler kuyruğa alınır (`_bekleyenDonusler`, en fazla 2) ve adım
+> başına biri uygulanır. Doğrudan uygulansa aynı adım içindeki iki dokunuş
+> yılanı kendi üstüne katlayabiliyordu.
 
 ### Teknik
 - Her oyun `Navigator.push` ile açılır, `Navigator.pop(context, puan)` ile
@@ -1454,6 +1465,7 @@ Base ratio hÃ¢lÃ¢ `_clamp(0.18 - progress * 0.15, 0.02, 0.18)`.
 ## Versiyon GeÃ§miÅŸi (son)
 | Commit | AÃ§Ä±klama |
 |--------|----------|
+| v107 | **TISSS** (yılan) üçüncü oynanabilir oyun olarak eklendi — `lib/tisss_oyunu.dart`, `cd17`. 15×21 ızgara, yem başına 5 puan, her yemde hafif hızlanma, duvara/kendine çarpınca biter. **Kontrol farkı**: Kırgeç/İtele basılı tutmayla sürekli kayarken TISSS'te her dokunuş 90° göreceli dönüş (sağ yarı sağa, sol yarı sola); dönüşler kuyruğa alınıp adım başına biri uygulanıyor ki aynı adımda iki dokunuş yılanı kendi üstüne katlamasın. Aynı gün-sınırı, para tavanı ve nadirlik kuralları geçerli |
 | v106 | **Oynanabilir ürünler**: bazı CD'ler gerçekten oynanıyor. `KIRGEÇ` (breakout, `lib/kirgec_oyunu.dart`) ve `İTELE` (tek kişilik pong, `lib/itele_oyunu.dart`). Envanterde köşede ⭐, tıkla → "oynamak ister misin?" → tam ekran oyun; toplanan puan birebir paraya çevrilip bakiyeye eklenir. **Günde 1 kez** (`bugunOynananOyunlar`, `gunuBitir`'de temizlenir, oyuna girer girmez hak yanar), para tavanı 1000, %5 nadirlik, toptancı/kutudan çıkmaz, fiyat normal CD ortalamasının 2 katı (270). Kontrol iki oyunda da aynı: ekranın sağ/sol yarısına basılı tut. `test/kirgec_test.dart` (10 test) |
 | v105 | **Pazarlık hataları düzeltildi**: geçersiz girdide sessiz `return` (buton artık pasif+soluk), `teklifVer` hata atınca popup kapanmıyordu (`pop` artık `finally` içinde). **Teklif yön kuralı**: müşteri reddettikten sonra oyuncu alıyorsa ▼, satıyorsa ▲ pasif; ilk turda serbest. **Polis alkol testi** (%50): rastgele işlem + 2 şık, doğruysa ceza yok, yanlışsa 40-250 ceza. **"Yemeği Ye"** butonu (kuryeden yemek alınca alt barın en altında): envanterdeki tüm hasarlı ürünleri onarır. **Müşteriler 1/3 ihtimalle hasarlı ürün satıyor** — `GameItem.curukOran` ile müşteri malı %50-75 (toptancı hurdası %35). **Toptancı**: browser menüsünden kaldırıldı, kolonya ikramında gitmiyor, Kapat butonu sabit. **Müşteri Çağır** ekranda biri varken kilitli (Rıza'nın tekrar gelme bug'ı). Ana menüde **en yüksek kazanç** rekoru. `test/oynanis_test.dart` (9 test) |
 | v104 | **Falcı Faloya** özel müşterisi: 40-140 liraya fal bakar, 50 fal metni, 14 etki türü (para kazanç/kayıp, bedava dükkan büyütme, "benden sonra vergici gelecek" kehanetleri, kolonya/tamir seti/kutu hediyesi, ürün çürütme, cömert müşteri şansı); parası yetmezse ücret alınmaz. **Dükkana göre arka plan**: 3 yeni görsel (JPEG, +1.1MB APK), seviye 2/3/4-5'e atandı, AnimatedSwitcher ile çapraz solma. **Kapı silüeti yeniden yazıldı**: `biri.png` tam ekran cover yerine `kapidaki.png` sprite'ı, arka planın cover kutusuna göre dükkan başına konumlanıyor (seviye 1 birebir aynı kaldı). `test/fal_test.dart` (11 test) |

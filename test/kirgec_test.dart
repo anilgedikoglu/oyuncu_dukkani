@@ -49,6 +49,13 @@ void main() {
     expect(k.kopya().oynanabilir, isTrue);
   });
 
+  test('TISSS de oynanabilir', () {
+    final t = GameState.koleksiyonUrunleri.firstWhere((u) => u.id == 'cd17');
+    expect(t.name, 'TISSS');
+    expect(t.oynanabilir, isTrue);
+    expect(t.gorsel, 'assets/CD_17.png');
+  });
+
   test('İTELE de oynanabilir ve aynı fiyat kuralında', () {
     final itele = GameState.koleksiyonUrunleri.firstWhere((u) => u.id == 'cd16');
     expect(itele.name, 'İTELE');

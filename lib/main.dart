@@ -14,6 +14,7 @@ import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'itele_oyunu.dart';
 import 'kirgec_oyunu.dart';
+import 'tisss_oyunu.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -2306,6 +2307,7 @@ class GameState extends ChangeNotifier {
     // aynı orana uy.
     GameItem(id: 'cd15',     name: 'KIRGEÇ',             gorsel: 'assets/CD_15.png',               category: ItemCategory.cd,      basePrice: 270,  kondisyon: 5, oynanabilir: true),
     GameItem(id: 'cd16',     name: 'İTELE',              gorsel: 'assets/CD_16.png',               category: ItemCategory.cd,      basePrice: 270,  kondisyon: 5, oynanabilir: true),
+    GameItem(id: 'cd17',     name: 'TISSS',              gorsel: 'assets/CD_17.png',               category: ItemCategory.cd,      basePrice: 270,  kondisyon: 5, oynanabilir: true),
     GameItem(id: 'konsol1',  name: 'PlayStatyon',          gorsel: 'assets/konsol_1.png',          category: ItemCategory.konsol,  basePrice: 900,  kondisyon: 4),
     GameItem(id: 'konsol2',  name: 'Ninetendo',            gorsel: 'assets/konsol_2.png',          category: ItemCategory.konsol,  basePrice: 750,  kondisyon: 3),
     GameItem(id: 'konsol3',  name: 'Ateri',                gorsel: 'assets/konsol_3.png',          category: ItemCategory.konsol,  basePrice: 500,  kondisyon: 2),
@@ -6089,6 +6091,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     switch (urunId) {
       case 'cd15': return const KirgecOyunu();
       case 'cd16': return const IteleOyunu();
+      case 'cd17': return const TisssOyunu();
       default:     return null;
     }
   }
