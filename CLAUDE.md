@@ -215,42 +215,41 @@ sprite'ı o dükkanın kapı oranlarına yerleştiriyor:
 
 ```dart
 // DukkanSeviye alanları
-arkaplanOrani                   // en/boy — cover kutusu icin
-kapiSol, kapiUst, kapiGen       // silüetin arka plan İÇİNDEKİ yeri (0..1)
-const kKapidakiOrani = 38 / 81; // sprite'ın kendi oranı
+arkaplanOrani                            // en/boy — cover kutusu icin
+kapiSol, kapiUst, kapiGen, kapiYuk       // KAPI CAMININ arka plan İÇİNDEKİ yeri (0..1)
 ```
 
-> ⚠️ **`kapiYuk` YOK, bilinçli.** Yükseklik `genislik / kKapidakiOrani` ile
-> türetiliyor. Yükseklik de elle verilseydi kapısı dar olan dükkanlarda
-> (yeni görsellerin kapıları bgbos'a göre daha dar ve uzun) silüet yatay
-> ezilirdi — ilk denemede %27'ye varan bir sıkışma çıktı.
+Silüet bu kutuya `BoxFit.fill` ile gerilir → camı boşluksuz doldurur.
 
-Seviye 1'in oranları **`biri.png`'in alfa kutusundan birebir** alındı
-(0.3167 / 0.0898 / 0.1114) → eski görünüm zerre değişmedi, emülatörde
-önce/sonra karşılaştırmasıyla doğrulandı.
+> ⚠️ **Yüksekliği sprite oranından türetme.** Bir ara `kapiYuk` kaldırılıp
+> yükseklik `genislik / spriteOrani` ile hesaplandı; camlar sprite'tan daha
+> uzun olduğu için altta gözle görülür boşluk kaldı. Cam dikdörtgeninin dört
+> kenarı da elle verilmeli.
 
-### Ölçüm kuralı: silüet dikdörtgeni = KAPI CAMI dikdörtgeni
-Seviye 1'de `biri.png`'in alfa kutusu (0.3167–0.4281 / 0.0898–0.2479) ile
-`bgbos.png`'in kapı camı (≈0.312–0.425 / 0.088–0.245) **birebir çakışıyor**.
-Yani ölçülecek şey kapı çerçevesi değil, **camın kendisi**.
+### Ölçüm kuralı: kutu = KAPI CAMI dikdörtgeni
+Ölçülecek şey kapı çerçevesi değil, **camın kendisi** — dışarısının göründüğü
+parlak alan.
 
 **Yeni arka plan eklerken:**
 1. Görseli TEK BAŞINA, büyük bir panele (≥900px) `%1`'lik ızgarayla bas.
-2. Kapı **camının** sol / üst / genişlik oranını oku.
-3. `BoxFit.cover` matematiğini taklit eden simülasyonla kontrol et.
-4. Emülatörde gerçekten aç ve bak.
+2. Kapı **camının** sol / üst / genişlik / yükseklik oranını oku.
+3. Bulduğun dikdörtgeni görselin üstüne ÇİZDİR ve bak — okuma hatası ancak
+   böyle yakalanıyor.
+4. Emülatörde dükkanı gerçekten kirala ve bak.
 
-> ⚠️ **Bu adımların hepsi gerekli, kısayol yok.** İlk denemede 4 görseli tek
-> kontak sayfasında yan yana koyup ölçtüm; panel başına 420px düştüğü için
-> okuma 0.06'ya varan hata verdi ve silüetler kapının yanına düştü. Küçük
-> önizlemeden oran okuma — her görseli ayrı ayrı, büyük bas.
+> ⚠️ **Kısayol yok, üç kez yanıldım:**
+> - 4 görseli tek kontak sayfasında yan yana ölçtüm → panel başına 420px
+>   düştü, okuma 0.06 hata verdi, silüetler kapının yanına düştü.
+> - Parlaklık projeksiyonuyla otomatik ölçüm sv2/sv3'te camı tam yakaladı ama
+>   **sv1'de açık ahşap çerçeveyi, sv4'te kapı üstündeki beyaz duvarı** cam
+>   sandı. Otomatik ölçüme tek başına güvenme, mutlaka çizdirip doğrula.
 
-| Seviye | kapiSol | kapiUst | kapiGen |
-|---|---|---|---|
-| 1 | 0.3167 | 0.0898 | 0.1114 |
-| 2 | 0.3381 | 0.1193 | 0.1246 |
-| 3 | 0.3600 | 0.1360 | 0.1120 |
-| 4, 5 | 0.3350 | 0.1517 | 0.1160 |
+| Seviye | kapiSol | kapiUst | kapiGen | kapiYuk |
+|---|---|---|---|---|
+| 1 | 0.3157 | 0.0880 | 0.1330 | 0.1593 |
+| 2 | 0.3380 | 0.1228 | 0.1224 | 0.1667 |
+| 3 | 0.3588 | 0.1385 | 0.1113 | 0.1541 |
+| 4, 5 | 0.3350 | 0.1517 | 0.1160 | 0.1582 |
 
 Dördü de emülatörde tek tek açılıp doğrulandı.
 

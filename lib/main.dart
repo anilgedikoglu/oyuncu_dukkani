@@ -145,18 +145,18 @@ class DukkanSeviye {
   /// için gerekli — kapı gölgesi bu kutuya göre konumlanır.
   final double arkaplanOrani;
   /// Kapıda bekleyen silüetin (`kapidaki.png`) arka plan görseli İÇİNDEKİ
-  /// yeri: sol kenar, üst kenar ve genişlik — hepsi 0..1 oranı.
-  /// Her dükkanın kapısı farklı yerde ve farklı genişlikte, görsel başına ölçüldü.
+  /// yeri: sol, üst, genişlik, yükseklik — hepsi 0..1 oranı.
   ///
-  /// Yükseklik BURADA YOK, bilinçli: sprite'ın kendi en/boy oranından
-  /// türetiliyor (`kKapidakiOrani`). Yükseklik de elle verilseydi kapısı dar
-  /// olan dükkanlarda silüet yatay ezilirdi.
-  final double kapiSol, kapiUst, kapiGen;
+  /// Bu dörtlü **kapı camının kendisi**. Silüet `BoxFit.fill` ile bu kutuya
+  /// gerilir, yani camı boşluk bırakmadan doldurur. Yükseklik sprite oranından
+  /// türetilseydi (denendi) camlar sprite'tan uzun olduğu için altta boşluk
+  /// kalıyordu.
+  final double kapiSol, kapiUst, kapiGen, kapiYuk;
 
   const DukkanSeviye({
     required this.seviye, required this.isim, required this.kira, required this.minGun,
     required this.arkaplan, required this.arkaplanOrani,
-    required this.kapiSol, required this.kapiUst, required this.kapiGen,
+    required this.kapiSol, required this.kapiUst, required this.kapiGen, required this.kapiYuk,
   });
 
   /// Günlük müşteri sayısını ağırlıklı random ile belirle
@@ -176,24 +176,20 @@ class DukkanSeviye {
   String get yildizlar => '★' * seviye + '☆' * (5 - seviye);
 }
 
-/// `kapidaki.png` sprite'ının en/boy oranı (38 × 81 piksel).
-/// Silüetin yüksekliği bundan türetilir — hiçbir dükkanda ezilmez.
-const double kKapidakiOrani = 38 / 81;
-
-// Kapı oranları: seviye 1'inki `biri.png`'in alfa kutusundan birebir alındı
-// (o yüzden eski görünüm ZERRE değişmedi). Diğerleri görselin kapı camı
-// ölçülüp aynı bağıl yerleşim uygulanarak bulundu.
+// Kapı oranları = kapı CAMININ dikdörtgeni. Her görsel tek başına, 900px'lik
+// panelde %1'lik ızgarayla ölçüldü; ayrıca parlaklık projeksiyonuyla otomatik
+// doğrulandı ve dördü de emülatörde tek tek açılıp kontrol edildi.
 const List<DukkanSeviye> tumDukkanlar = [
   DukkanSeviye(seviye: 1, isim: 'Bodrum Kat Dükkan',    kira: 300,  minGun: 1,  arkaplan: 'assets/bgbos.png',   arkaplanOrani: 719 / 1080,
-    kapiSol: 0.3167, kapiUst: 0.0898, kapiGen: 0.1114),
+    kapiSol: 0.3157, kapiUst: 0.0880, kapiGen: 0.1330, kapiYuk: 0.1593),
   DukkanSeviye(seviye: 2, isim: 'Mahalle Köşe Dükkanı', kira: 600,  minGun: 3,  arkaplan: 'assets/bgbos_2.jpg', arkaplanOrani: 719 / 1278,
-    kapiSol: 0.3381, kapiUst: 0.1193, kapiGen: 0.1246),
+    kapiSol: 0.3380, kapiUst: 0.1228, kapiGen: 0.1224, kapiYuk: 0.1667),
   DukkanSeviye(seviye: 3, isim: 'Cadde Dükkanı',        kira: 900,  minGun: 5,  arkaplan: 'assets/bgbos_3.jpg', arkaplanOrani: 719 / 1278,
-    kapiSol: 0.3600, kapiUst: 0.1360, kapiGen: 0.1120),
+    kapiSol: 0.3588, kapiUst: 0.1385, kapiGen: 0.1113, kapiYuk: 0.1541),
   DukkanSeviye(seviye: 4, isim: 'Çarşı Dükkanı',        kira: 1200, minGun: 8,  arkaplan: 'assets/bgbos_4.jpg', arkaplanOrani: 719 / 1278,
-    kapiSol: 0.3350, kapiUst: 0.1517, kapiGen: 0.1160),
+    kapiSol: 0.3350, kapiUst: 0.1517, kapiGen: 0.1160, kapiYuk: 0.1582),
   DukkanSeviye(seviye: 5, isim: 'AVM Dükkanı',          kira: 1500, minGun: 10, arkaplan: 'assets/bgbos_4.jpg', arkaplanOrani: 719 / 1278,
-    kapiSol: 0.3350, kapiUst: 0.1517, kapiGen: 0.1160),
+    kapiSol: 0.3350, kapiUst: 0.1517, kapiGen: 0.1160, kapiYuk: 0.1582),
 ];
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -4947,16 +4943,14 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
         dh = sh; dw = sh * gorselOrani;
       }
       final sol = (sw - dw) / 2, ust = (sh - dh) / 2;
-      // Genişlik kapı camına göre, yükseklik sprite'ın oranından → ezilme yok.
-      final gen = d.kapiGen * dw;
-      final yuk = gen / kKapidakiOrani;
+      // Kutu = kapı camı. `fill` ile silüet camı boşluksuz doldurur.
       return Stack(children: [
         Positioned(
           left:   sol + d.kapiSol * dw,
           top:    ust + d.kapiUst * dh,
-          width:  gen,
-          height: yuk,
-          child: Image.asset('assets/kapidaki.png', fit: BoxFit.contain),
+          width:  d.kapiGen * dw,
+          height: d.kapiYuk * dh,
+          child: Image.asset('assets/kapidaki.png', fit: BoxFit.fill),
         ),
       ]);
     });
