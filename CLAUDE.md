@@ -27,7 +27,9 @@ Flutter ile geliÅŸtirilmiÅŸ bir mobil oyun. Oyuncu bir oyun dÃ¼kkanÄ± y�
 
 ## Dosya YapÄ±sÄ±
 ```
-lib/main.dart          â€” tÃ¼m oyun mantÄ±ÄŸÄ± tek dosyada
+lib/main.dart          — oyun mantığının tamamı
+lib/kirgec_oyunu.dart  — KIRGEÇ mini oyunu (breakout, oynanabilir CD)
+lib/itele_oyunu.dart   — İTELE mini oyunu (pong, oynanabilir CD)
 assets/                â€” gÃ¶rseller ve sesler
   bg1.png              â€” masa (bilgisayarsÄ±z)
   bg2.png              â€” masa (bilgisayarlÄ± / iMac alÄ±ndÄ±ktan sonra)
@@ -37,7 +39,7 @@ assets/                â€” gÃ¶rseller ve sesler
   kapidaki.png         — kapıda bekleyen silüet (müşteri yokken; dükkana göre konumlanır)
   musteri_1..28.png    — müşteri karakterleri (28 adet, yaş/cinsiyet musteriHavuzu içinde)
   hirsiz/polis/vergici/kurye/toptanci/falci.png — özel müşteri karakterleri
-  CD_1..14.png         â€” 14 farklÄ± CD Ã¼rÃ¼nÃ¼
+  CD_1..16.png         — 16 CD ürünü (CD_15 KIRGEÇ, CD_16 İTELE = oynanabilir)
   konsol_1..7.png      â€” konsol Ã¼rÃ¼nleri (PlayStatyon, Ninetendo, Ateri, El Konsolu x3, son sistem)
   durum.png            â€” kurye'nin getirdiÄŸi yemek gÃ¶rseli
   kolonya.png          â€” kolonya gÃ¶rseli (envanter + buton ikonu)
@@ -126,6 +128,49 @@ Toplu iş + kontak sayfası için: `tools/toplu_isle.ps1`
 
 > ℹ️ Ayak altındaki küçük gölge izleri **önemsiz** — müşteri masanın arkasında
 > göğsünden kesiliyor (`kMusteriUstu` 0.2183 → masa 0.4833), ayaklar hiç görünmüyor.
+
+---
+
+## 🕹️ OYNANABİLİR ÜRÜNLER — MİNİ OYUNLAR (v106)
+
+Bazı CD'ler gerçekten **oynanabilir**. Envanterde köşelerinde ⭐ vardır,
+tıklanınca "oynamak ister misin?" çıkar, EVET denince tam ekran mini oyun açılır.
+Toplanan **puan birebir paraya çevrilip** ana oyundaki bakiyeye eklenir.
+
+| Ürün | Oyun | Dosya | Kazanç |
+|---|---|---|---|
+| `cd15` KIRGEÇ | breakout | `lib/kirgec_oyunu.dart` | tam temizlik ≈ 386 lira |
+| `cd16` İTELE | pong (tek kişilik) | `lib/itele_oyunu.dart` | galibiyet = 100 lira |
+
+### Kurallar
+- **GÜNDE 1 KEZ.** `GameState.bugunOynananOyunlar` (Set), `gunuBitir()` içinde
+  temizlenir, kayıtta saklanır. İkinci denemede *"Bugün X oyunu oynandı.
+  Bir sonraki oyun için yarın gel."* çıkar.
+  > Hak, oyuna **girer girmez** yanar — yoksa oyuncu kötü skoru görüp geri
+  > çıkar, tekrar girerdi.
+- **Para tavanı** `GameState.oyunPuanTavani` = 1000 (oyun başına).
+- **NADİR gelir**: satıcı müşteride %5 ihtimalle oynanabilir havuzdan seçilir
+  (`yeniMusteriGonder`). Toptancıdan ve kapalı kutudan **hiç çıkmaz**.
+- **Fiyat**: oynanabilir oyunlar normal CD ortalamasının (~134) **2 katı** = 270.
+- Çürük CD oynanmaz — önce tamir edilmeli.
+
+### Kontrol şeması (iki oyunda da aynı)
+Ekranın **sağ yarısına basılı tut** → sağa, **sol yarısına** → sola.
+`Listener` + `onPointerDown/Move/Up` ile; `GestureDetector` tek dokunuş verir,
+çubuk topa yetişemezdi.
+
+### Teknik
+- Her oyun `Navigator.push` ile açılır, `Navigator.pop(context, puan)` ile
+  puanı döner. Ana oyun state'i bozulmaz, kalınan yere dönülür.
+- `PopScope(canPop: false)` — geri tuşuyla çıkılsa da puan kaybolmaz.
+- Oyun alanı mantıksal **100×140 birim**; `LayoutBuilder` + ölçek ile ekrana
+  sığdırılır. Sabit piksel yok, `CustomPaint` ile çizilir.
+- `Ticker` tabanlı döngü; `dt` `1/30` ile sınırlı (kare atlarsa fizik patlamasın).
+
+### Yeni oynanabilir ürün eklerken
+1. `GameItem(... oynanabilir: true)` — fiyat: normal ortalamanın 2 katı
+2. `_oyunEkrani(urunId)` switch'ine bir satır
+3. Oyun dosyasını `lib/` altına yaz, puanı `pop` ile döndür
 
 ---
 
@@ -1409,6 +1454,7 @@ Base ratio hÃ¢lÃ¢ `_clamp(0.18 - progress * 0.15, 0.02, 0.18)`.
 ## Versiyon GeÃ§miÅŸi (son)
 | Commit | AÃ§Ä±klama |
 |--------|----------|
+| v106 | **Oynanabilir ürünler**: bazı CD'ler gerçekten oynanıyor. `KIRGEÇ` (breakout, `lib/kirgec_oyunu.dart`) ve `İTELE` (tek kişilik pong, `lib/itele_oyunu.dart`). Envanterde köşede ⭐, tıkla → "oynamak ister misin?" → tam ekran oyun; toplanan puan birebir paraya çevrilip bakiyeye eklenir. **Günde 1 kez** (`bugunOynananOyunlar`, `gunuBitir`'de temizlenir, oyuna girer girmez hak yanar), para tavanı 1000, %5 nadirlik, toptancı/kutudan çıkmaz, fiyat normal CD ortalamasının 2 katı (270). Kontrol iki oyunda da aynı: ekranın sağ/sol yarısına basılı tut. `test/kirgec_test.dart` (10 test) |
 | v105 | **Pazarlık hataları düzeltildi**: geçersiz girdide sessiz `return` (buton artık pasif+soluk), `teklifVer` hata atınca popup kapanmıyordu (`pop` artık `finally` içinde). **Teklif yön kuralı**: müşteri reddettikten sonra oyuncu alıyorsa ▼, satıyorsa ▲ pasif; ilk turda serbest. **Polis alkol testi** (%50): rastgele işlem + 2 şık, doğruysa ceza yok, yanlışsa 40-250 ceza. **"Yemeği Ye"** butonu (kuryeden yemek alınca alt barın en altında): envanterdeki tüm hasarlı ürünleri onarır. **Müşteriler 1/3 ihtimalle hasarlı ürün satıyor** — `GameItem.curukOran` ile müşteri malı %50-75 (toptancı hurdası %35). **Toptancı**: browser menüsünden kaldırıldı, kolonya ikramında gitmiyor, Kapat butonu sabit. **Müşteri Çağır** ekranda biri varken kilitli (Rıza'nın tekrar gelme bug'ı). Ana menüde **en yüksek kazanç** rekoru. `test/oynanis_test.dart` (9 test) |
 | v104 | **Falcı Faloya** özel müşterisi: 40-140 liraya fal bakar, 50 fal metni, 14 etki türü (para kazanç/kayıp, bedava dükkan büyütme, "benden sonra vergici gelecek" kehanetleri, kolonya/tamir seti/kutu hediyesi, ürün çürütme, cömert müşteri şansı); parası yetmezse ücret alınmaz. **Dükkana göre arka plan**: 3 yeni görsel (JPEG, +1.1MB APK), seviye 2/3/4-5'e atandı, AnimatedSwitcher ile çapraz solma. **Kapı silüeti yeniden yazıldı**: `biri.png` tam ekran cover yerine `kapidaki.png` sprite'ı, arka planın cover kutusuna göre dükkan başına konumlanıyor (seviye 1 birebir aynı kaldı). `test/fal_test.dart` (11 test) |
 | v103 | **Yaş/cinsiyet duyarlı replik sistemi**: `enum YasGrubu` (cocuk/genc/yetiskin/yasli) + `Replik{metin,yas,cinsiyet}` kaydı + `replikSec` filtresi (uyan→nötr→tüm havuz güvenlik zinciri); 28 karakterin hepsine yaş etiketi; TÜM replik havuzları `List<String>`→`List<Replik>`; selamlama 20→39, karşı teklif 25→48/46, kabul 26→42, gitme 18/18/12→27/26/19; `test/yas_replik_test.dart` regresyon testi (6 test). Ayrıca: 17 yeni karakter görseli kullanıcının kendi kesimiyle değiştirildi (işlenmeden kopyalandı), kaynakta md5 tekrarı ve bir eksik karakter yüzünden roster 29→28, `musteri_29.png` silindi |

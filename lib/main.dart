@@ -12,6 +12,8 @@ import 'package:flutter/services.dart' show HapticFeedback; // dokunsal geri bil
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'itele_oyunu.dart';
+import 'kirgec_oyunu.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -1728,8 +1730,11 @@ class GameItem {
   /// Müşterinin getirdiği hasarlı mal toptancı hurdası kadar ucuz olmasın diye
   /// ürün başına verilebiliyor.
   final double? curukOran;
+  /// Bu ürün gerçekten OYNANABİLİR bir mini oyun içeriyor. Envanterde köşesine
+  /// yıldız konur, tıklanınca oynama teklifi çıkar.
+  final bool oynanabilir;
 
-  GameItem({required this.id, required this.name, required this.gorsel, required this.category, required this.basePrice, required this.kondisyon, this.maliyet, this.curuk = false, this.kapaliKutu = false, this.curukOran});
+  GameItem({required this.id, required this.name, required this.gorsel, required this.category, required this.basePrice, required this.kondisyon, this.maliyet, this.curuk = false, this.kapaliKutu = false, this.curukOran, this.oynanabilir = false});
 
   /// Çürük ürünün piyasa değeri düşer. Tüm pazarlık hesapları bunu kullanır.
   static const double curukCarpani = 0.35;
@@ -1737,7 +1742,7 @@ class GameItem {
 
   String get kondisyonYildiz => '★' * kondisyon + '☆' * (5 - kondisyon);
 
-  GameItem kopya() => GameItem(id: id, name: name, gorsel: gorsel, category: category, basePrice: basePrice, kondisyon: kondisyon, maliyet: maliyet, curuk: curuk, kapaliKutu: kapaliKutu, curukOran: curukOran);
+  GameItem kopya() => GameItem(id: id, name: name, gorsel: gorsel, category: category, basePrice: basePrice, kondisyon: kondisyon, maliyet: maliyet, curuk: curuk, kapaliKutu: kapaliKutu, curukOran: curukOran, oynanabilir: oynanabilir);
 
   /// Alan bazlı kopya (tamir, çürütme, maliyet atama için)
   GameItem kopyaWith({int? kondisyon, int? maliyet, bool? curuk, bool? kapaliKutu, double? curukOran}) => GameItem(
@@ -1747,6 +1752,7 @@ class GameItem {
     curuk: curuk ?? this.curuk,
     kapaliKutu: kapaliKutu ?? this.kapaliKutu,
     curukOran: curukOran ?? this.curukOran,
+    oynanabilir: oynanabilir,
   );
 
   Map<String, dynamic> toJson() => {
@@ -1756,6 +1762,7 @@ class GameItem {
     if (curuk) 'curuk': true,
     if (kapaliKutu) 'kapaliKutu': true,
     if (curukOran != null) 'curukOran': curukOran,
+    if (oynanabilir) 'oynanabilir': true,
   };
 
   factory GameItem.fromJson(Map<String, dynamic> j) => GameItem(
@@ -1766,6 +1773,7 @@ class GameItem {
     curuk: (j['curuk'] as bool?) ?? false,
     kapaliKutu: (j['kapaliKutu'] as bool?) ?? false,
     curukOran: (j['curukOran'] as num?)?.toDouble(),
+    oynanabilir: (j['oynanabilir'] as bool?) ?? false,
   );
 }
 
@@ -2164,6 +2172,15 @@ class GameState extends ChangeNotifier {
   /// yenince envanterdeki bütün çürük ürünler tamir olur.
   bool yemekVar = false;
 
+  /// Bugün oynanmış oynanabilir ürünlerin id'leri.
+  ///
+  /// ⚠️ Her oyun GÜNDE 1 KEZ oynanabilir. Sınır olmasaydı oyuncu aynı CD'yi
+  /// üst üste oynayıp sınırsız para basardı. `gunuBitir()` içinde temizlenir.
+  Set<String> bugunOynananOyunlar = {};
+
+  /// Mini oyunlardan bir günde kazanılabilecek para tavanı (oyun başına).
+  static const int oyunPuanTavani = 1000;
+
   /// Yemeği ye: keyif yerine gelir, tüm hasarlı ekipman tamir olur.
   /// Kaç ürünün onarıldığını döner (0 ise gösterilecek bir şey yok demektir).
   int yemegiYe() {
@@ -2282,6 +2299,13 @@ class GameState extends ChangeNotifier {
     GameItem(id: 'cd12',     name: 'KISPET',             gorsel: 'assets/CD_12.png',               category: ItemCategory.cd,      basePrice: 175,  kondisyon: 3),
     GameItem(id: 'cd13',     name: 'UÇARSOKAR',          gorsel: 'assets/CD_13.png',               category: ItemCategory.cd,      basePrice: 120,  kondisyon: 5),
     GameItem(id: 'cd14',     name: 'DÜTTÜRÜ',            gorsel: 'assets/CD_14.png',               category: ItemCategory.cd,      basePrice: 85,   kondisyon: 4),
+    // ⭐ OYNANABİLİR — envanterde tıklanınca gerçekten Kırgeç oynanır.
+    // NADİR gelir (bkz. yeniMusteriGonder), toptancı/kutudan hiç çıkmaz.
+    // FİYAT KURALI: oynanabilir oyunlar normal oyunların ~2 KATI pahalıdır
+    // (normal CD ortalaması ≈ 134 → 270). Yeni oynanabilir ürün eklenirse
+    // aynı orana uy.
+    GameItem(id: 'cd15',     name: 'KIRGEÇ',             gorsel: 'assets/CD_15.png',               category: ItemCategory.cd,      basePrice: 270,  kondisyon: 5, oynanabilir: true),
+    GameItem(id: 'cd16',     name: 'İTELE',              gorsel: 'assets/CD_16.png',               category: ItemCategory.cd,      basePrice: 270,  kondisyon: 5, oynanabilir: true),
     GameItem(id: 'konsol1',  name: 'PlayStatyon',          gorsel: 'assets/konsol_1.png',          category: ItemCategory.konsol,  basePrice: 900,  kondisyon: 4),
     GameItem(id: 'konsol2',  name: 'Ninetendo',            gorsel: 'assets/konsol_2.png',          category: ItemCategory.konsol,  basePrice: 750,  kondisyon: 3),
     GameItem(id: 'konsol3',  name: 'Ateri',                gorsel: 'assets/konsol_3.png',          category: ItemCategory.konsol,  basePrice: 500,  kondisyon: 2),
@@ -2393,7 +2417,7 @@ class GameState extends ChangeNotifier {
     if (toptanciStokGunu == gun && toptanciStok.isNotEmpty) return;
     final rng = Random();
     final indirim = (gunlukToptanciIndirim + toptanciKaliciIndirim).clamp(0.0, 0.60);
-    final havuz = _baslangicUrunler.where((u) => u.id != 'kolonya').toList();
+    final havuz = _baslangicUrunler.where((u) => u.id != 'kolonya' && !u.oynanabilir).toList(); // Kırgeç Rıza'da çıkmaz
     final liste = <ToptanciUrun>[];
 
     // Her gün 1 tamir seti bulunur (5 kullanımlık)
@@ -2477,7 +2501,7 @@ class GameState extends ChangeNotifier {
     final kutu = slotlar[slotIndex];
     if (kutu == null || !kutu.kapaliKutu) return null;
     final rng = Random();
-    final havuz = _baslangicUrunler.where((u) => u.id != 'kolonya').toList();
+    final havuz = _baslangicUrunler.where((u) => u.id != 'kolonya' && !u.oynanabilir).toList(); // Kırgeç kutudan çıkmaz
     final base = havuz[rng.nextInt(havuz.length)];
     final curukMu = rng.nextDouble() < kutuCurukSansi;
     final cikan = base.kopyaWith(
@@ -2675,6 +2699,7 @@ class GameState extends ChangeNotifier {
     // ── Yeni alanlar (eski kayıtlarda yoksa güvenli varsayılan) ──
     tamirSetiAdet          = (j['tamirSetiAdet'] as int?) ?? 0;
     yemekVar               = (j['yemekVar'] as bool?) ?? false;
+    bugunOynananOyunlar    = ((j['bugunOynananOyunlar'] as List?) ?? const []).map((e) => e as String).toSet();
     toptanciStokGunu       = (j['toptanciStokGunu'] as int?) ?? 0;
     final rawStok          = j['toptanciStok'] as List?;
     toptanciStok           = rawStok == null ? [] :
@@ -2722,6 +2747,7 @@ class GameState extends ChangeNotifier {
     'kolonyaKullanim': kolonyaKullanim,
     'tamirSetiAdet': tamirSetiAdet,
     'yemekVar': yemekVar,
+    'bugunOynananOyunlar': bugunOynananOyunlar.toList(),
     'toptanciStok': toptanciStok.map((t) => t.toJson()).toList(),
     'toptanciStokGunu': toptanciStokGunu,
     'gunlukOlayId': gunlukOlayId,
@@ -2912,7 +2938,13 @@ class GameState extends ChangeNotifier {
           : _baslangicUrunler.toList();
       // Ardışık aynı ürün engeli: bir önceki ürün havuzdan çıkar (birden fazla varsa)
       final satisHavuzu = tumHavuz.length > 1 ? tumHavuz.where((u) => u.id != _sonUrunId).toList() : tumHavuz;
-      secilenUrun = satisHavuzu[rng.nextInt(satisHavuzu.length)];
+      // Oynanabilir ürünler (Kırgeç) NADİR: normal havuzla aynı olasılıkta
+      // gelseler sıradanlaşırdı. %5 ihtimalle nadir havuzdan seçilir.
+      final normaller = satisHavuzu.where((u) => !u.oynanabilir).toList();
+      final nadirler  = satisHavuzu.where((u) => u.oynanabilir).toList();
+      secilenUrun = (nadirler.isNotEmpty && normaller.isNotEmpty && rng.nextInt(100) < 5)
+          ? nadirler[rng.nextInt(nadirler.length)]
+          : (normaller.isNotEmpty ? normaller[rng.nextInt(normaller.length)] : satisHavuzu[rng.nextInt(satisHavuzu.length)]);
       // Getirdiği mal 1/3 ihtimalle hasarlı olur. Toptancı hurdasından (%35)
       // daha değerli: piyasanın %50-75'i. Kolonya hasarlı gelmez.
       if (secilenUrun.id != 'kolonya' && rng.nextInt(3) == 0) {
@@ -3105,6 +3137,7 @@ class GameState extends ChangeNotifier {
     gun++;
     gunlukMusteriSayisi = 0;
     gunlukMusteriLimiti = aktifDukkan.gunlukMusteriSayisiUret();
+    bugunOynananOyunlar.clear(); // yeni gün → mini oyunlar tekrar oynanabilir
     para -= kira;
     SesServisi.paraGirdi();
     int krediKesinti = 0;
@@ -5829,6 +5862,17 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                         i >= 25 ? ekKartlar[i - 25] : _buildSlotKart(i),
                   ),
                 ),
+                // Oynanabilir ürünler için küçük ipucu — yıldızın ne demek
+                // olduğu başka hiçbir yerde yazmıyor.
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+                  child: const Text(
+                    '⭐ Yıldızlı oyunlar tıklanıp oynanabilir',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 10, color: Color(0xFF7fdfff), fontWeight: FontWeight.w600),
+                  ),
+                ),
               ]),
             ),
           ),
@@ -5990,8 +6034,13 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
 
     // ── Normal / çürük ürün ──
     final curuk = item.curuk;
+    // Oynanabilir ürün: köşesinde yıldız, tıklanınca oyun teklifi.
+    // Çürükse önce tamir edilmeli — bozuk CD oynanmaz.
+    final oynanir = item.oynanabilir && !curuk;
     return GestureDetector(
-      onTap: curuk ? () => _tamirPopup(slotIndex) : null,
+      onTap: curuk
+          ? () => _tamirPopup(slotIndex)
+          : (oynanir ? () => _oyunuAcPopup(slotIndex) : null),
       child: Container(
         padding: const EdgeInsets.all(4),
         decoration: BoxDecoration(
@@ -5999,7 +6048,12 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
           borderRadius: BorderRadius.circular(10),
           border: Border.all(color: curuk
               ? const Color(0xFFcc3311).withValues(alpha: 0.8)
-              : const Color(0xFFFFD700).withValues(alpha: 0.5), width: curuk ? 1.3 : 1),
+              : (oynanir ? const Color(0xFF00e5ff).withValues(alpha: 0.85)
+                         : const Color(0xFFFFD700).withValues(alpha: 0.5)),
+              width: curuk ? 1.3 : (oynanir ? 1.4 : 1)),
+          boxShadow: oynanir
+              ? [BoxShadow(color: const Color(0xFF00e5ff).withValues(alpha: 0.20), blurRadius: 7)]
+              : null,
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -6012,6 +6066,10 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                   decoration: BoxDecoration(color: const Color(0xFFcc3311), borderRadius: BorderRadius.circular(3)),
                   child: const Text('ÇÜRÜK', style: TextStyle(fontSize: 6, fontWeight: FontWeight.bold, color: Colors.white)),
                 )),
+              // ⭐ Oynanabilir işareti — kartın sağ üst köşesi
+              if (oynanir)
+                const Positioned(top: 0, right: 0,
+                  child: Text('⭐', style: TextStyle(fontSize: 13, shadows: [Shadow(color: Colors.black, blurRadius: 3)]))),
               if (curuk && _state.tamirSetiAdet > 0)
                 const Positioned(bottom: 0, right: 0, child: Text('🔧', style: TextStyle(fontSize: 11))),
             ])),
@@ -6021,6 +6079,148 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
             Text(item.kondisyonYildiz, style: const TextStyle(fontSize: 8, color: Color(0xFFFFD700), letterSpacing: 0.5)),
           ],
         ),
+      ),
+    );
+  }
+
+  /// Oynanabilir ürünün id'sine göre açılacak oyun ekranı.
+  /// Yeni oynanabilir ürün eklenince buraya bir satır yazmak yeterli.
+  Widget? _oyunEkrani(String urunId) {
+    switch (urunId) {
+      case 'cd15': return const KirgecOyunu();
+      case 'cd16': return const IteleOyunu();
+      default:     return null;
+    }
+  }
+
+  // ── Oynanabilir ürün: "oynamak ister misin?" ──
+  void _oyunuAcPopup(int slotIndex) {
+    final item = _state.slotlar[slotIndex];
+    if (item == null || !item.oynanabilir) return;
+
+    // GÜNDE 1 KEZ. Sınır olmasa aynı CD üst üste oynanıp para basılırdı.
+    if (_state.bugunOynananOyunlar.contains(item.id)) {
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: const Color(0xFF0d0a18),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: const BorderSide(color: Color(0xFF6b7280), width: 2),
+          ),
+          title: const Column(mainAxisSize: MainAxisSize.min, children: [
+            Text('🌙', style: TextStyle(fontSize: 40)),
+            SizedBox(height: 4),
+            Text('BUGÜNLÜK BU KADAR', textAlign: TextAlign.center,
+              style: TextStyle(color: Color(0xFF9ca3af), fontSize: 17, fontWeight: FontWeight.bold, letterSpacing: 1)),
+          ]),
+          content: Text(
+            'Bugün ${item.name} oyunu oynandı.\nBir sonraki oyun için yarın gel.',
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Colors.white70, fontSize: 14, height: 1.4),
+          ),
+          actions: [Center(child: ElevatedButton(
+            onPressed: () => Navigator.pop(ctx),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF6b7280), foregroundColor: Colors.white),
+            child: const Text('Tamam', style: TextStyle(fontWeight: FontWeight.bold)),
+          ))],
+        ),
+      );
+      return;
+    }
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF0d0a18),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: Color(0xFF00e5ff), width: 2),
+        ),
+        title: Column(mainAxisSize: MainAxisSize.min, children: [
+          Image.asset(item.gorsel, width: 96, height: 96, fit: BoxFit.contain),
+          const SizedBox(height: 6),
+          Text("${item.name}'i oynamak ister misin?",
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Color(0xFF00e5ff), fontSize: 17, fontWeight: FontWeight.bold)),
+        ]),
+        content: const Text(
+          'Topladığın her puan kadar para kazanırsın.\nHer oyun günde bir kez oynanabilir.',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: Colors.white70, fontSize: 13, height: 1.4),
+        ),
+        actions: [Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Hayır', style: TextStyle(color: Colors.white38)),
+          ),
+          const SizedBox(width: 8),
+          ElevatedButton(
+            onPressed: () { Navigator.pop(ctx); _oyunuBaslat(slotIndex); },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF00e5ff), foregroundColor: Colors.black),
+            child: const Text('Evet', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ])],
+      ),
+    );
+  }
+
+  /// Mini oyunu ayrı bir ekranda açar; oyun bitince toplanan puan kadar para
+  /// bakiyeye eklenir ve dükkana kalınan yerden dönülür.
+  Future<void> _oyunuBaslat(int slotIndex) async {
+    final item = _state.slotlar[slotIndex];
+    if (item == null) return;
+    final ekran = _oyunEkrani(item.id);
+    if (ekran == null) return;
+
+    final urunId = item.name;
+    // Oyuna girer girmez işaretle: oyuncu ortada çıksa da gün hakkı yanar,
+    // yoksa "beğenmediğim skoru sıfırlayıp tekrar gireyim" sömürüsü olurdu.
+    _state.bugunOynananOyunlar.add(item.id);
+    setState(() => _envanterAcik = false); // envanter kapansın, oyun tam ekran
+
+    final puan = await Navigator.of(context).push<int>(
+      MaterialPageRoute(builder: (_) => ekran),
+    );
+    if (!mounted) return;
+    // Tavan: tek oyundan çıkabilecek en yüksek para
+    final kazanilan = (puan ?? 0).clamp(0, GameState.oyunPuanTavani);
+
+    if (kazanilan > 0) {
+      _state.para += kazanilan;
+      SesServisi.paraGirdi();
+    }
+    _state.notifyListeners();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF0d0a18),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: Color(0xFF00e5ff), width: 2),
+        ),
+        title: const Column(mainAxisSize: MainAxisSize.min, children: [
+          Text('🕹️', style: TextStyle(fontSize: 40)),
+          SizedBox(height: 4),
+          Text('OYUN BİTTİ', textAlign: TextAlign.center,
+            style: TextStyle(color: Color(0xFF00e5ff), fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
+        ]),
+        content: Text(
+          kazanilan > 0
+              ? '$urunId oyunundan $kazanilan puan topladın!\n\n💰 Kasana $kazanilan lira eklendi.'
+              : 'Hiç puan toplayamadın. Yarın tekrar dene!',
+          textAlign: TextAlign.center,
+          style: const TextStyle(color: Colors.white70, fontSize: 14, height: 1.4),
+        ),
+        actions: [Center(child: ElevatedButton(
+          onPressed: () => Navigator.pop(ctx),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF00e5ff), foregroundColor: Colors.black),
+          child: const Text('Tamam', style: TextStyle(fontWeight: FontWeight.bold)),
+        ))],
       ),
     );
   }
