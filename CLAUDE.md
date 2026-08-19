@@ -150,19 +150,25 @@ try {
 ```
 Ayrıca `_bitti` bayrağı çift dokunuşu engelliyor.
 
-### Teklif geçerlilik kuralı
-Müşteri bir fiyatı reddettikten sonra ters yöne gitmek anlamsız:
+### Teklif geçerlilik kuralı — SINIR bazlı, yön bazlı DEĞİL
+Müşteri bir fiyatı reddettikten sonra o rakamın ötesine geçmek anlamsız.
+Kural tek yönlü bir **sınır** koyar, oyuncu sınırın beri tarafında serbesttir:
 
-| Oyuncu | Geçerli yeni teklif | Pasif ok |
+| Oyuncu | `_minTeklif` | `_maxTeklif` |
 |---|---|---|
-| ALIYOR (müşteri satıyor) | öncekinden **büyük** | ▼ |
-| SATIYOR (müşteri alıyor) | öncekinden **küçük** | ▲ |
+| ALIYOR (müşteri satıyor) | `oyuncuTeklif + 1` | — |
+| SATIYOR (müşteri alıyor) | 1 | `oyuncuTeklif - 1` |
 
-- `_teklifGecerliMi()` / `_okAktif()` — **ilk turda (`turSayisi == 0`) kısıt yok**,
-  oyuncu istediği yerden başlasın.
-- Geçersizken "Teklif Ver" butonu `onPressed: null` + soluk renk.
-- `TextField`'a `onChanged: (_) => setState(...)` — yoksa buton her tuşta
-  güncellenmiyordu.
+- İlk turda (`turSayisi == 0`) sınır yok, oyuncu istediği yerden başlasın.
+- `_okAktif()` mevcut kutu değerine bakar: `azalt ? val > min : val < max`.
+- `_okAdim()` sınırın ötesine geçmez, `clamp` ile sınıra yapışır.
+- Geçersizken "Teklif Ver" `onPressed: null` + soluk renk.
+- `TextField`'a `onChanged: (_) => setState(...)` — yoksa elle yazınca ok ve
+  buton durumları güncellenmiyor.
+
+> ⚠️ İlk yazılışında ok'lar **yön bazlıydı** (`alıyorsa ▼ hep pasif`). O zaman
+> oyuncu ▲ ile 273→303'e çıksa bile aşağı inemiyordu. Ok'lar mevcut değere
+> göre hesaplanmalı: 303'te ▼ açık, 274'e inince kapanır.
 
 ### 👮 Polis alkol testi
 `OzelMusteri.olustur(polis)` **%50 ihtimalle** ceza yerine matematik sorar:

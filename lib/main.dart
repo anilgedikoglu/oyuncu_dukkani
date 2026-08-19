@@ -6583,28 +6583,45 @@ class _PazarlikDialogState extends State<_PazarlikDialog> {
   @override
   void dispose() { _teklifController.dispose(); super.dispose(); }
 
-  /// Girilen teklif oyuna gönderilebilir mi?
+  static const int _teklifTavani = 999999;
+
+  /// Bu turda girilebilecek EN DÜŞÜK teklif.
   ///
-  /// Kural: müşteri REDDETTİKTEN sonra ters yöne gitmek anlamsız.
-  ///  - Oyuncu ALIYORSA (müşteri satıyor)  → yeni teklif öncekinden BÜYÜK olmalı
-  ///  - Oyuncu SATIYORSA (müşteri alıyor)  → yeni teklif öncekinden KÜÇÜK olmalı
-  /// İlk turda (henüz teklif verilmemişken) kısıt yok — oyuncu istediği yerden
-  /// başlayabilsin.
-  bool _teklifGecerliMi(int? teklif) {
-    if (teklif == null || teklif <= 0) return false;
+  /// Müşteri son teklifi reddetti; oyuncu ALIYORSA o rakamın altına inmek
+  /// anlamsız (zaten kabul etmedi). Sınır tek yönlü: oyuncu bu sınırın
+  /// üstünde istediği gibi aşağı yukarı gezinebilir.
+  int get _minTeklif {
     final p = widget.state.aktifPazarlik;
-    if (p == null || p.turSayisi == 0) return true; // ilk teklif serbest
-    return widget.musteri.musteriSatiyor
-        ? teklif > p.oyuncuTeklif
-        : teklif < p.oyuncuTeklif;
+    if (p == null || p.turSayisi == 0) return 1; // ilk teklif serbest
+    return widget.musteri.musteriSatiyor ? p.oyuncuTeklif + 1 : 1;
   }
 
-  /// Artır/azalt oku basılabilir mi? Pazarlığın gidebileceği yön tek: oyuncu
-  /// alıyorsa yukarı, satıyorsa aşağı. İlk turda iki yön de serbest.
-  bool _okAktif({required bool azalt}) {
+  /// Bu turda girilebilecek EN YÜKSEK teklif (satarken reddedilen fiyatın altı).
+  int get _maxTeklif {
     final p = widget.state.aktifPazarlik;
-    if (p == null || p.turSayisi == 0) return true;
-    return widget.musteri.musteriSatiyor ? !azalt : azalt;
+    if (p == null || p.turSayisi == 0) return _teklifTavani;
+    return widget.musteri.musteriSatiyor ? _teklifTavani : p.oyuncuTeklif - 1;
+  }
+
+  /// Girilen teklif oyuna gönderilebilir mi? Geçerli aralığın içinde olmalı.
+  bool _teklifGecerliMi(int? teklif) =>
+      teklif != null && teklif >= _minTeklif && teklif <= _maxTeklif;
+
+  /// Artır/azalt oku basılabilir mi?
+  ///
+  /// ⚠️ Yön bazlı DEĞİL, SINIR bazlı. Eskiden "oyuncu alıyorsa ▼ hep pasif"
+  /// deniyordu; oyuncu ▲ ile yukarı çıktığında bile aşağı inemiyordu. Artık
+  /// mevcut değer sınıra dayanmadıkça iki ok da çalışır.
+  bool _okAktif({required bool azalt}) {
+    final val = int.tryParse(_teklifController.text.trim()) ?? 0;
+    return azalt ? val > _minTeklif : val < _maxTeklif;
+  }
+
+  /// Oku bir adım oynat — sınırın ötesine geçmez, sınıra yapışır.
+  void _okAdim({required bool azalt}) {
+    final val = int.tryParse(_teklifController.text.trim()) ?? _minTeklif;
+    final yeni = (azalt ? val - 10 : val + 10).clamp(_minTeklif, _maxTeklif);
+    setState(() => _teklifController.text = '$yeni');
   }
 
   void _teklifGonder() {
@@ -6743,15 +6760,11 @@ class _PazarlikDialogState extends State<_PazarlikDialog> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Row(children: [
-                    // ▼ Oyuncu ALIRKEN pasif: müşteri bu fiyatı zaten reddetti,
-                    //   daha aşağısını hiç kabul etmez.
+                    // ▼ Sınıra (reddedilen fiyata) dayanınca pasifleşir.
                     Builder(builder: (_) {
                       final aktif = _okAktif(azalt: true);
                       return GestureDetector(
-                        onTap: aktif ? () {
-                          final val = int.tryParse(_teklifController.text) ?? 0;
-                          setState(() => _teklifController.text = (val - 10).clamp(1, 999999).toString());
-                        } : null,
+                        onTap: aktif ? () => _okAdim(azalt: true) : null,
                         child: Container(
                           width: 44, height: 54,
                           decoration: const BoxDecoration(color: Color(0xFF2a1a0a), borderRadius: BorderRadius.horizontal(left: Radius.circular(7))),
@@ -6777,14 +6790,11 @@ class _PazarlikDialogState extends State<_PazarlikDialog> {
                         ),
                       ),
                     ),
-                    // ▲ Oyuncu SATARKEN pasif — aynı mantığın simetriği.
+                    // ▲ Satarken sınır reddedilen fiyatın bir altı; alırken yok.
                     Builder(builder: (_) {
                       final aktif = _okAktif(azalt: false);
                       return GestureDetector(
-                        onTap: aktif ? () {
-                          final val = int.tryParse(_teklifController.text) ?? 0;
-                          setState(() => _teklifController.text = (val + 10).toString());
-                        } : null,
+                        onTap: aktif ? () => _okAdim(azalt: false) : null,
                         child: Container(
                           width: 44, height: 54,
                           decoration: const BoxDecoration(color: Color(0xFF2a1a0a), borderRadius: BorderRadius.horizontal(right: Radius.circular(7))),
