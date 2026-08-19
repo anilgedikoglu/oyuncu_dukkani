@@ -238,6 +238,33 @@ seviye 1 birebir tutuyorsa simülasyon doğrudur, diğerlerine güvenebilirsin.
 > ⚠️ Sabit piksel YOK — sahne metriği felsefesiyle aynı: her şey arka planın
 > ekrandaki kutusuna oranla veriliyor, çözünürlük/en-boy değişse de kaymıyor.
 
+### 🪤 TUZAK: AnimatedSwitcher çocuğu ekranı KAPLAMAZ
+Arka plana çapraz solma eklerken silüet kapının soluna kaydı. Sebep:
+
+```dart
+// AnimatedSwitcher'in VARSAYILAN layoutBuilder'i:
+Stack(alignment: Alignment.center, children: [...])   // fit: StackFit.LOOSE
+```
+
+`Positioned.fill` dıştaki AnimatedSwitcher'a **tight** kısıt verir ama içteki
+Stack loose olduğu için `Image` kendi doğal boyutuna küçülür → arka plan ekranı
+kaplamaz, uzaklaşmış gibi görünür. Kapı silüeti tam ekran kutuya göre
+konumlandığı için ikisi ayrışır.
+
+**Çözüm** — layoutBuilder'ı `StackFit.expand` ile ez:
+```dart
+AnimatedSwitcher(
+  layoutBuilder: (current, previous) => Stack(
+    fit: StackFit.expand, alignment: Alignment.center,
+    children: [...previous, if (current != null) current],
+  ),
+  child: Image.asset(..., fit: BoxFit.cover),
+)
+```
+
+> Masa katmanındaki AnimatedSwitcher bu tuzağa düşmüyor çünkü çocukları zaten
+> `Align`+`Transform` ile sarılı — oraya DOKUNMA.
+
 ---
 
 ## 🎂 YAŞ / CİNSİYET DUYARLI REPLİK SİSTEMİ (v103) — TAMAMLANDI

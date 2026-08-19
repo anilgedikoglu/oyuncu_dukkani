@@ -4941,9 +4941,20 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
             children: [
               // 1. Dükkan arka planı — seviyeye göre değişir, geçiş yumuşasın
               //    diye AnimatedSwitcher ile çapraz solma yapılır.
+              //
+              //    ⚠️ layoutBuilder ŞART: AnimatedSwitcher'ın varsayılanı
+              //    `StackFit.loose` bir Stack. Loose kısıtta Image kendi doğal
+              //    boyutuna küçülür, arka plan ekranı KAPLAMAZ ve kapı silüeti
+              //    (tam ekran kutuya göre konumlanıyor) kayar. expand ile
+              //    çocuklar tam ekran kalır, cover eskisi gibi çalışır.
               Positioned.fill(
                 child: AnimatedSwitcher(
                   duration: const Duration(milliseconds: 700),
+                  layoutBuilder: (current, previous) => Stack(
+                    fit: StackFit.expand,
+                    alignment: Alignment.center,
+                    children: [...previous, if (current != null) current],
+                  ),
                   child: Image.asset(
                     _state.aktifDukkan.arkaplan,
                     key: ValueKey(_state.aktifDukkan.arkaplan),
