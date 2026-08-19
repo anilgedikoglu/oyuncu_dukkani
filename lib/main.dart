@@ -187,13 +187,13 @@ const List<DukkanSeviye> tumDukkanlar = [
   DukkanSeviye(seviye: 1, isim: 'Bodrum Kat Dükkan',    kira: 300,  minGun: 1,  arkaplan: 'assets/bgbos.png',   arkaplanOrani: 719 / 1080,
     kapiSol: 0.3167, kapiUst: 0.0898, kapiGen: 0.1114),
   DukkanSeviye(seviye: 2, isim: 'Mahalle Köşe Dükkanı', kira: 600,  minGun: 3,  arkaplan: 'assets/bgbos_2.jpg', arkaplanOrani: 719 / 1278,
-    kapiSol: 0.3987, kapiUst: 0.1287, kapiGen: 0.0912),
+    kapiSol: 0.3381, kapiUst: 0.1193, kapiGen: 0.1246),
   DukkanSeviye(seviye: 3, isim: 'Cadde Dükkanı',        kira: 900,  minGun: 5,  arkaplan: 'assets/bgbos_3.jpg', arkaplanOrani: 719 / 1278,
-    kapiSol: 0.3902, kapiUst: 0.1280, kapiGen: 0.1013),
+    kapiSol: 0.3600, kapiUst: 0.1360, kapiGen: 0.1120),
   DukkanSeviye(seviye: 4, isim: 'Çarşı Dükkanı',        kira: 1200, minGun: 8,  arkaplan: 'assets/bgbos_4.jpg', arkaplanOrani: 719 / 1278,
-    kapiSol: 0.3887, kapiUst: 0.1290, kapiGen: 0.0912),
+    kapiSol: 0.3350, kapiUst: 0.1517, kapiGen: 0.1160),
   DukkanSeviye(seviye: 5, isim: 'AVM Dükkanı',          kira: 1500, minGun: 10, arkaplan: 'assets/bgbos_4.jpg', arkaplanOrani: 719 / 1278,
-    kapiSol: 0.3887, kapiUst: 0.1290, kapiGen: 0.0912),
+    kapiSol: 0.3350, kapiUst: 0.1517, kapiGen: 0.1160),
 ];
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -3345,6 +3345,40 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     });
   }
 
+  /// Dialog İÇİNDEN gösterilen kısa bildirim (toptancı, tamir vb.).
+  ///
+  /// Neden `_toastGoster` değil: o kart ana `Stack`'te render ediliyor, dialog
+  /// açıkken onun ALTINDA kalır ve görünmez. SnackBar `Overlay`'de çıktığı için
+  /// dialog'un üstünde görünür.
+  ///
+  /// ⚠️ Material'in VARSAYILAN renklerine güvenme: koyu temada yazı rengi de
+  /// koyu geliyor, koyu zeminle kaynaşıyor ve metin okunmuyordu. Renkler burada
+  /// açıkça veriliyor — zemin/çerçeve/yazı `_buildToast` ile aynı dilde.
+  void _dialogBildirim(BuildContext ctx, String metin, {bool hata = false}) {
+    final renk = hata ? const Color(0xFFff6b6b) : const Color(0xFF4ade80);
+    ScaffoldMessenger.of(ctx)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: const Color(0xFF241a10),
+        elevation: 8,
+        duration: const Duration(seconds: 2),
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(color: renk, width: 2),
+        ),
+        content: Text(
+          metin,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            color: Colors.white, fontSize: 15, fontWeight: FontWeight.w900,
+            shadows: [Shadow(color: Colors.black, blurRadius: 3, offset: Offset(0, 1))],
+          ),
+        ),
+      ));
+  }
+
   /// Oyun temasına uygun, animasyonlu bildirim kartı.
   /// Aşağıdan yukarı süzülerek gelir, hafif zıplar, sonra kaybolur.
   Widget _buildToast() {
@@ -3924,9 +3958,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                     final hata = _state.toptanciSatinAl(index);
                     if (hata != null) {
                       SesServisi.hata();
-                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                        content: Text(hata), duration: const Duration(seconds: 2),
-                        backgroundColor: const Color(0xFF8B0000)));
+                      _dialogBildirim(context, hata, hata: true);
                     }
                     setDlg(() {});
                   } : null,
@@ -5881,9 +5913,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
             onPressed: setVar ? () {
               Navigator.pop(ctx);
               if (_state.tamirEt(slotIndex)) {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                  content: Text('🔧 Ürün tamir edildi!'), duration: Duration(seconds: 2),
-                  backgroundColor: Color(0xFF1a6b32)));
+                _dialogBildirim(context, '🔧 Ürün tamir edildi!');
               }
             } : null,
             style: ElevatedButton.styleFrom(

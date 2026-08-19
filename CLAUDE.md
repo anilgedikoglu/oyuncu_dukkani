@@ -229,11 +229,30 @@ Seviye 1'in oranları **`biri.png`'in alfa kutusundan birebir** alındı
 (0.3167 / 0.0898 / 0.1114) → eski görünüm zerre değişmedi, emülatörde
 önce/sonra karşılaştırmasıyla doğrulandı.
 
-**Yeni arka plan eklerken:** görselin kapı camını ölç, silüeti camın içine
-oturtacak 3 oranı yaz (sol/üst/genişlik). Ölçüm yöntemi: görseli %2'lik
-ızgarayla bas, kapı camının sol/üst/genişlik oranını oku. Sonra
-`BoxFit.cover` matematiğini taklit eden bir simülasyonla kontrol et —
-seviye 1 birebir tutuyorsa simülasyon doğrudur, diğerlerine güvenebilirsin.
+### Ölçüm kuralı: silüet dikdörtgeni = KAPI CAMI dikdörtgeni
+Seviye 1'de `biri.png`'in alfa kutusu (0.3167–0.4281 / 0.0898–0.2479) ile
+`bgbos.png`'in kapı camı (≈0.312–0.425 / 0.088–0.245) **birebir çakışıyor**.
+Yani ölçülecek şey kapı çerçevesi değil, **camın kendisi**.
+
+**Yeni arka plan eklerken:**
+1. Görseli TEK BAŞINA, büyük bir panele (≥900px) `%1`'lik ızgarayla bas.
+2. Kapı **camının** sol / üst / genişlik oranını oku.
+3. `BoxFit.cover` matematiğini taklit eden simülasyonla kontrol et.
+4. Emülatörde gerçekten aç ve bak.
+
+> ⚠️ **Bu adımların hepsi gerekli, kısayol yok.** İlk denemede 4 görseli tek
+> kontak sayfasında yan yana koyup ölçtüm; panel başına 420px düştüğü için
+> okuma 0.06'ya varan hata verdi ve silüetler kapının yanına düştü. Küçük
+> önizlemeden oran okuma — her görseli ayrı ayrı, büyük bas.
+
+| Seviye | kapiSol | kapiUst | kapiGen |
+|---|---|---|---|
+| 1 | 0.3167 | 0.0898 | 0.1114 |
+| 2 | 0.3381 | 0.1193 | 0.1246 |
+| 3 | 0.3600 | 0.1360 | 0.1120 |
+| 4, 5 | 0.3350 | 0.1517 | 0.1160 |
+
+Dördü de emülatörde tek tek açılıp doğrulandı.
 
 > ⚠️ Sabit piksel YOK — sahne metriği felsefesiyle aynı: her şey arka planın
 > ekrandaki kutusuna oranla veriliyor, çözünürlük/en-boy değişse de kaymıyor.
