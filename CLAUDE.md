@@ -129,6 +129,106 @@ Toplu iş + kontak sayfası için: `tools/toplu_isle.ps1`
 
 ---
 
+## 🛠️ OYNANIŞ DÜZELTMELERİ VE EKLERİ (v105)
+
+### 🐛 Pazarlıkta "teklif ver çalışmıyor" hataları
+İki ayrı hata vardı, ikisi de `_PazarlikDialogState`'te:
+
+1. **Buton basılınca hiçbir şey olmuyordu** — `_teklifGonder` geçersiz girdide
+   (boş kutu, 0, harf) sessizce `return` ediyordu. Kullanıcıya hiçbir geri
+   bildirim yok.
+2. **Popup kapanmıyor, sadece arkadaki balon değişiyordu** — `teklifVer()` bir
+   hata atarsa `Navigator.pop()` satırına hiç ulaşılmıyordu. Model güncellendiği
+   için balon değişiyor ama dialog ekranda kalıyordu.
+
+```dart
+try {
+  widget.state.teklifVer(teklif!);
+} finally {
+  if (mounted) Navigator.of(context).pop();   // kapanma HER KOŞULDA garanti
+}
+```
+Ayrıca `_bitti` bayrağı çift dokunuşu engelliyor.
+
+### Teklif geçerlilik kuralı
+Müşteri bir fiyatı reddettikten sonra ters yöne gitmek anlamsız:
+
+| Oyuncu | Geçerli yeni teklif | Pasif ok |
+|---|---|---|
+| ALIYOR (müşteri satıyor) | öncekinden **büyük** | ▼ |
+| SATIYOR (müşteri alıyor) | öncekinden **küçük** | ▲ |
+
+- `_teklifGecerliMi()` / `_okAktif()` — **ilk turda (`turSayisi == 0`) kısıt yok**,
+  oyuncu istediği yerden başlasın.
+- Geçersizken "Teklif Ver" butonu `onPressed: null` + soluk renk.
+- `TextField`'a `onChanged: (_) => setState(...)` — yoksa buton her tuşta
+  güncellenmiyordu.
+
+### 👮 Polis alkol testi
+`OzelMusteri.olustur(polis)` **%50 ihtimalle** ceza yerine matematik sorar:
+*"Alkol var mı? Anlamak için sana soru soracağım. 8 x 4 kaç eder?"*
+
+- `sikSol` / `sikSag` / `dogruCevap` alanları (null ise klasik cezalı polis)
+- İşlem her seferinde üretilir: çarpma / toplama / çıkarma (sonuç hep pozitif)
+- Yanlış şık doğruya yakın (±1..9), doğruyla aynı veya negatif olamaz
+- Doğru şıkkın yeri **rastgele** — hep solda olsa ezberlenirdi
+- Alt barda EVET/HAYIR yerine iki sayı butonu çıkar (`_alkolTestiCevapla`)
+- Doğru → *"Tamam, iyisin. Ceza kesmekten vazgeçtim!"*, yanlış → 40-250 lira ceza
+
+### 🍽️ "Yemeği Ye"
+Kuryeden yemek alınınca `yemekVar = true` → alt barın **en altında** turuncu
+buton belirir, diğer butonlar yukarı kayar. Basılınca `GameState.yemegiYe()`:
+envanterdeki **tüm** çürük ürünler `curuk = false` olur, kondisyon 4-5'e çekilir,
+`etkinFiyat` otomatik olarak tam piyasa fiyatına döner. Buton kaybolur.
+`yemekVar` kayıtta saklanıyor.
+
+### 🔨 Müşteriler artık hasarlı ürün de satıyor
+Satıcı müşterinin malı **1/3 ihtimalle** hasarlı gelir (kolonya hariç).
+
+> ⚠️ Toptancı hurdası ile müşteri malı **aynı çarpanı kullanmaz**.
+> `GameItem.curukOran` (ürün başına, 0..1) eklendi:
+> `etkinFiyat => curuk ? basePrice * (curukOran ?? curukCarpani) : basePrice`
+> - toptancı / kapalı kutu / fare olayı → `curukCarpani` = **%35**
+> - müşterinin getirdiği hasarlı mal → **%50-75** (rastgele)
+>
+> Böylece müşteri malı hurdadan değerli. `curukOran` `toJson`/`fromJson`'da var.
+
+Envanterdeki çürük ürün satılırken piyasa fiyatı zaten `etkinFiyat` üzerinden
+düşük görünüyor — ek koda gerek yok.
+
+### 🚚 Toptancı Rıza
+- **Browser menüsünden KALDIRILDI.** Alışveriş yalnız Rıza kapıya geldiğinde.
+  Menüden istediği an açılabilmesi ziyaretini anlamsızlaştırıyordu.
+- **Kolonya ikram edilirse GİTMEZ.** Diğer özel müşteriler ikramdan sonra
+  gider; Rıza gitseydi tepsi hiç açılmadan kaybolurdu.
+- Popup'ta **Kapat butonu scroll alanının dışında**, hep görünür. Eskiden
+  listenin sonundaydı, stok uzun olunca aşağı kaydırmak gerekiyordu.
+
+### 🚪 "Müşteri Çağır" kilidi
+```dart
+final musteriCagirAktif = !musteriKabulBekliyor && aktifPazarlik == null &&
+    aktifMusteri == null && aktifOzelMusteri == null && !gunBitmeli;
+```
+Eskiden sadece `musteriKabulBekliyor`'a bakılıyordu. Toptancı tepsiyi kapatıp
+çıkış animasyonu oynarken buton aktif kalıyor, basılınca **Rıza yeniden
+geliyordu**. Aynı hata normal müşteri çıkarken de mümkündü.
+
+### 🏆 Ana menüde rekor kazanç
+`en_yuksek_para` SharedPreferences anahtarı — `KayitServisi.kaydet` her yazışta
+günceller, yani oyun silinse de rekor kalır.
+
+> Geriye dönük: anahtar yoksa `enYuksekParaYukle()` mevcut oyun kaydındaki
+> `enYuksekPara` alanına düşer. Yoksa eski oyuncular rekorlarını ilk kayda
+> kadar göremezdi.
+
+### Test — `test/oynanis_test.dart`
+9 test: alkol testi şıkları geçerli mi, doğru şık iki tarafa da düşüyor mu,
+klasik polis hâlâ üretiliyor mu, `curukOran` fiyat etkisi, müşteri malı
+hurdadan pahalı mı, `curukOran` kayıt turu, `yemegiYe` tüm çürükleri onarıyor
+mu, hasarlı yokken çökmüyor mu, `yemekVar` kayıtta duruyor mu.
+
+---
+
 ## 🔮 FALCI FALOYA (v104)
 
 Yeni özel müşteri. Gelince *"Ben falcıyım, X liraya falına bakayım mı?"* der
@@ -724,7 +824,8 @@ DÃ¶rt yeni sistem eklendi. **Hepsi mevcut mekanikleri KÄ°LÄ°TLEMEZ, sadece
 ### EriÅŸim noktasÄ±
 Hepsi **browser popup'Ä±** (`_browserPopup`, ğŸ–¥ï¸ butonu, `gun >= 2`) Ã¼zerinden. Alt bara hiÃ§ dokunulmadÄ± â†’ layout riski sÄ±fÄ±r.
 ```
-ğŸ–¥ï¸ Browser â†’ ğŸ  KiralÄ±k DÃ¼kkanlar / ğŸ¦ Banka / ğŸšš ToptancÄ± RÄ±za / ğŸ† Hedefler / ğŸ›’ Market / âš™ï¸ Ayarlar
+🖥️ Browser → 🏠 Kiralık Dükkanlar / 🏦 Banka / 🏆 Hedefler / 🛒 Market / ⚙️ Ayarlar
+(Toptancı Rıza v105'te menüden ÇIKARILDI — sadece kapıya geldiğinde alışveriş)
 ```
 
 ### 1. Ã‡Ã¼rÃ¼k Ã¼rÃ¼n (`GameItem.curuk`)
@@ -1302,6 +1403,7 @@ Base ratio hÃ¢lÃ¢ `_clamp(0.18 - progress * 0.15, 0.02, 0.18)`.
 ## Versiyon GeÃ§miÅŸi (son)
 | Commit | AÃ§Ä±klama |
 |--------|----------|
+| v105 | **Pazarlık hataları düzeltildi**: geçersiz girdide sessiz `return` (buton artık pasif+soluk), `teklifVer` hata atınca popup kapanmıyordu (`pop` artık `finally` içinde). **Teklif yön kuralı**: müşteri reddettikten sonra oyuncu alıyorsa ▼, satıyorsa ▲ pasif; ilk turda serbest. **Polis alkol testi** (%50): rastgele işlem + 2 şık, doğruysa ceza yok, yanlışsa 40-250 ceza. **"Yemeği Ye"** butonu (kuryeden yemek alınca alt barın en altında): envanterdeki tüm hasarlı ürünleri onarır. **Müşteriler 1/3 ihtimalle hasarlı ürün satıyor** — `GameItem.curukOran` ile müşteri malı %50-75 (toptancı hurdası %35). **Toptancı**: browser menüsünden kaldırıldı, kolonya ikramında gitmiyor, Kapat butonu sabit. **Müşteri Çağır** ekranda biri varken kilitli (Rıza'nın tekrar gelme bug'ı). Ana menüde **en yüksek kazanç** rekoru. `test/oynanis_test.dart` (9 test) |
 | v104 | **Falcı Faloya** özel müşterisi: 40-140 liraya fal bakar, 50 fal metni, 14 etki türü (para kazanç/kayıp, bedava dükkan büyütme, "benden sonra vergici gelecek" kehanetleri, kolonya/tamir seti/kutu hediyesi, ürün çürütme, cömert müşteri şansı); parası yetmezse ücret alınmaz. **Dükkana göre arka plan**: 3 yeni görsel (JPEG, +1.1MB APK), seviye 2/3/4-5'e atandı, AnimatedSwitcher ile çapraz solma. **Kapı silüeti yeniden yazıldı**: `biri.png` tam ekran cover yerine `kapidaki.png` sprite'ı, arka planın cover kutusuna göre dükkan başına konumlanıyor (seviye 1 birebir aynı kaldı). `test/fal_test.dart` (11 test) |
 | v103 | **Yaş/cinsiyet duyarlı replik sistemi**: `enum YasGrubu` (cocuk/genc/yetiskin/yasli) + `Replik{metin,yas,cinsiyet}` kaydı + `replikSec` filtresi (uyan→nötr→tüm havuz güvenlik zinciri); 28 karakterin hepsine yaş etiketi; TÜM replik havuzları `List<String>`→`List<Replik>`; selamlama 20→39, karşı teklif 25→48/46, kabul 26→42, gitme 18/18/12→27/26/19; `test/yas_replik_test.dart` regresyon testi (6 test). Ayrıca: 17 yeni karakter görseli kullanıcının kendi kesimiyle değiştirildi (işlenmeden kopyalandı), kaynakta md5 tekrarı ve bir eksik karakter yüzünden roster 29→28, `musteri_29.png` silindi |
 | v97 | **BÃ¼yÃ¼k oynanÄ±ÅŸ gÃ¼ncellemesi**: ToptancÄ± RÄ±za (gÃ¼nlÃ¼k stok, ucuz Ã¼rÃ¼n), Ã§Ã¼rÃ¼k Ã¼rÃ¼n + CD tamir seti ekonomisi, kapalÄ± kutu (lootbox), 8 rozetli Hedefler ekranÄ±, 10 rastgele gÃ¼n olayÄ±. TÃ¼mÃ¼ browser menÃ¼sÃ¼nden eriÅŸilir â€” alt bar/sahne layout'una dokunulmadÄ± |
