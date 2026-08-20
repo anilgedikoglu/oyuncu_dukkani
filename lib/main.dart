@@ -2940,11 +2940,11 @@ class GameState extends ChangeNotifier {
           : _baslangicUrunler.toList();
       // Ardışık aynı ürün engeli: bir önceki ürün havuzdan çıkar (birden fazla varsa)
       final satisHavuzu = tumHavuz.length > 1 ? tumHavuz.where((u) => u.id != _sonUrunId).toList() : tumHavuz;
-      // Oynanabilir ürünler (Kırgeç) NADİR: normal havuzla aynı olasılıkta
-      // gelseler sıradanlaşırdı. %5 ihtimalle nadir havuzdan seçilir.
+      // Oynanabilir ürünler NADİR: normal havuzla aynı olasılıkta gelseler
+      // sıradanlaşırdı. %10 ihtimalle nadir havuzdan seçilir.
       final normaller = satisHavuzu.where((u) => !u.oynanabilir).toList();
       final nadirler  = satisHavuzu.where((u) => u.oynanabilir).toList();
-      secilenUrun = (nadirler.isNotEmpty && normaller.isNotEmpty && rng.nextInt(100) < 5)
+      secilenUrun = (nadirler.isNotEmpty && normaller.isNotEmpty && rng.nextInt(100) < 10)
           ? nadirler[rng.nextInt(nadirler.length)]
           : (normaller.isNotEmpty ? normaller[rng.nextInt(normaller.length)] : satisHavuzu[rng.nextInt(satisHavuzu.length)]);
       // Getirdiği mal 1/3 ihtimalle hasarlı olur. Toptancı hurdasından (%35)
@@ -5848,6 +5848,17 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                   child: Container(width: 40, height: 4, decoration: BoxDecoration(color: const Color(0xFFFFD700).withValues(alpha: 0.5), borderRadius: BorderRadius.circular(2))),
                 ),
                 const Text('📦 ENVANTER', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFFFFD700), letterSpacing: 1.5)),
+                // Oynanabilir ürünler için küçük ipucu — yıldızın ne demek
+                // olduğu başka hiçbir yerde yazmıyor. Başlığın hemen altında
+                // duruyor ki liste uzun olsa da gözden kaçmasın.
+                const Padding(
+                  padding: EdgeInsets.only(top: 4),
+                  child: Text(
+                    '⭐ Yıldızlı oyunlar tıklanıp oynanabilir',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 10, color: Color(0xFF7fdfff), fontWeight: FontWeight.w600),
+                  ),
+                ),
                 const SizedBox(height: 10),
                 Expanded(
                   child: GridView.builder(
@@ -5862,17 +5873,6 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                     itemCount: 25 + ekKartlar.length,
                     itemBuilder: (context, i) =>
                         i >= 25 ? ekKartlar[i - 25] : _buildSlotKart(i),
-                  ),
-                ),
-                // Oynanabilir ürünler için küçük ipucu — yıldızın ne demek
-                // olduğu başka hiçbir yerde yazmıyor.
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-                  child: const Text(
-                    '⭐ Yıldızlı oyunlar tıklanıp oynanabilir',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 10, color: Color(0xFF7fdfff), fontWeight: FontWeight.w600),
                   ),
                 ),
               ]),

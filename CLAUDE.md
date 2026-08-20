@@ -151,7 +151,7 @@ Toplanan **puan birebir paraya çevrilip** ana oyundaki bakiyeye eklenir.
   > Hak, oyuna **girer girmez** yanar — yoksa oyuncu kötü skoru görüp geri
   > çıkar, tekrar girerdi.
 - **Para tavanı** `GameState.oyunPuanTavani` = 1000 (oyun başına).
-- **NADİR gelir**: satıcı müşteride %5 ihtimalle oynanabilir havuzdan seçilir
+- **NADİR gelir**: satıcı müşteride %10 ihtimalle oynanabilir havuzdan seçilir
   (`yeniMusteriGonder`). Toptancıdan ve kapalı kutudan **hiç çıkmaz**.
 - **Fiyat**: oynanabilir oyunlar normal CD ortalamasının (~134) **2 katı** = 270.
 - Çürük CD oynanmaz — önce tamir edilmeli.
