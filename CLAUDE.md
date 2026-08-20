@@ -41,7 +41,8 @@ assets/                â€” gÃ¶rseller ve sesler
   musteri_1..28.png    — müşteri karakterleri (28 adet, yaş/cinsiyet musteriHavuzu içinde)
   hirsiz/polis/vergici/kurye/toptanci/falci.png — özel müşteri karakterleri
   CD_1..30.png         — 30 CD ürünü (CD_15/16/17 = KIRGEÇ, İTELE, TISSS: oynanabilir)
-  konsol_1..7.png      â€” konsol Ã¼rÃ¼nleri (PlayStatyon, Ninetendo, Ateri, El Konsolu x3, son sistem)
+  konsol_1..10.png     — 10 konsol ürünü (PlayStatyon, Ninetendo, Ateri, El Konsolu x6, son sistem)
+  vrgozluk / kulaklik_1-2 / kumanda_2 / direksiyon_2 / oyuncumausu — v109 aksesuarları
   durum.png            â€” kurye'nin getirdiÄŸi yemek gÃ¶rseli
   kolonya.png          â€” kolonya gÃ¶rseli (envanter + buton ikonu)
   oyuncu_dukkani_icon.png  â€” uygulama ikonu kaynaÄŸÄ±
@@ -1382,7 +1383,7 @@ for (int j = 0; j < acikSlotSayisi; j++) slotlar[j] = j < dolu.length ? dolu[j] 
 | konsol | konsol3 | Ateri | konsol_3.png | 500 |
 | konsol | konsol4/5/6 | El Konsolu (3 versiyon) | konsol_4/5/6.png | 380-560 |
 | konsol | konsol7 | son sistem oyun konsolu | konsol_7.png | 3200 |
-| aksesuar | aksesuar1..N | Direksiyon, Joypad, vs. | ... | ... |
+| aksesuar | aksesuar1..8 | Oyuncu Direksiyonu, Joypad + v109: 3D Gözlük, Oyuncu Kulaklığı, Kulaklık ve Stant, Kablosuz Joypad, Direksiyon Seti, Oyuncu Mausu | 260-850 |
 | aksesuar | kolonya | Kolonya (slot dÄ±ÅŸÄ±, +1 ilave) | kolonya.png | 120 |
 
 ---
@@ -1465,6 +1466,7 @@ Base ratio hÃ¢lÃ¢ `_clamp(0.18 - progress * 0.15, 0.02, 0.18)`.
 ## Versiyon GeÃ§miÅŸi (son)
 | Commit | AÃ§Ä±klama |
 |--------|----------|
+| v109 | **9 yeni ekipman**: 3 el konsolu (`konsol_8/9/10.png`) + 6 aksesuar (3D Gözlük, Oyuncu Kulaklığı, Kulaklık ve Stant, Kablosuz Joypad, Direksiyon Seti, Oyuncu Mausu). Görseller mevcut ekipman formatına çevrildi (500×500, doluluk 0.90, en-boy korunur). Sahnede fazla büyük durmasınlar diye `kucukGorseller` kümesine eklendiler (%85) — o liste artık `Set` sabiti, uzun `||` zinciri değil. Fiyatlar 260-850, mevcut aralıkla uyumlu. Toplam ürün 49. APK 47.6 → 49.9MB |
 | v108 | **13 yeni CD** (normal, oynanamaz): ŞEHRİŞER, UÇURBENİ, CIPCIP, TANTUNİ, VURKAÇ, BİLEZ, TAHTAKALE, SÜMSÜK, BİLEKZORU, MAHŞER, DİKİZ, TAMTAM, KOKARCA → `CD_18..30.png`, toplam CD 17'den 30'a çıktı. Görseller kullanıcının removebg kesimiyle geldi, mevcut CD formatına çevrildi (392×512, doluluk 0.83, içerik ~300×425). **Fiyatlar ortalamayı koruyacak şekilde dağıtıldı** (90-190, ortalama ~136) — yoksa "oynanabilir = normalin 2 katı" dengesi ve onu koruyan test bozulurdu. APK 43.3 → 47.6MB |
 | v107 | **TISSS** (yılan) üçüncü oynanabilir oyun olarak eklendi — `lib/tisss_oyunu.dart`, `cd17`. 15×21 ızgara, yem başına 5 puan, her yemde hafif hızlanma, duvara/kendine çarpınca biter. **Kontrol farkı**: Kırgeç/İtele basılı tutmayla sürekli kayarken TISSS'te her dokunuş 90° göreceli dönüş (sağ yarı sağa, sol yarı sola); dönüşler kuyruğa alınıp adım başına biri uygulanıyor ki aynı adımda iki dokunuş yılanı kendi üstüne katlamasın. Aynı gün-sınırı, para tavanı ve nadirlik kuralları geçerli |
 | v106 | **Oynanabilir ürünler**: bazı CD'ler gerçekten oynanıyor. `KIRGEÇ` (breakout, `lib/kirgec_oyunu.dart`) ve `İTELE` (tek kişilik pong, `lib/itele_oyunu.dart`). Envanterde köşede ⭐, tıkla → "oynamak ister misin?" → tam ekran oyun; toplanan puan birebir paraya çevrilip bakiyeye eklenir. **Günde 1 kez** (`bugunOynananOyunlar`, `gunuBitir`'de temizlenir, oyuna girer girmez hak yanar), para tavanı 1000, %5 nadirlik, toptancı/kutudan çıkmaz, fiyat normal CD ortalamasının 2 katı (270). Kontrol iki oyunda da aynı: ekranın sağ/sol yarısına basılı tut. `test/kirgec_test.dart` (10 test) |

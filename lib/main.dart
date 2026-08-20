@@ -2334,6 +2334,16 @@ class GameState extends ChangeNotifier {
     GameItem(id: 'aksesuar1',name: 'Oyuncu Direksiyonu',   gorsel: 'assets/oyuncudireksiyonu.png', category: ItemCategory.aksesuar,basePrice: 600,  kondisyon: 3),
     GameItem(id: 'aksesuar2',name: 'Joypad',               gorsel: 'assets/joypad.png',            category: ItemCategory.aksesuar,basePrice: 280,  kondisyon: 3),
     GameItem(id: 'kolonya',  name: 'Kolonya',              gorsel: 'assets/kolonya.png',           category: ItemCategory.aksesuar,basePrice: 120,  kondisyon: 5),
+    // ── v109: 9 yeni ekipman (3 el konsolu + 6 aksesuar) ──
+    GameItem(id: 'konsol8',  name: 'El Konsolu',           gorsel: 'assets/konsol_8.png',          category: ItemCategory.konsol,  basePrice: 450,  kondisyon: 4),
+    GameItem(id: 'konsol9',  name: 'El Konsolu',           gorsel: 'assets/konsol_9.png',          category: ItemCategory.konsol,  basePrice: 620,  kondisyon: 5),
+    GameItem(id: 'konsol10', name: 'El Konsolu',           gorsel: 'assets/konsol_10.png',         category: ItemCategory.konsol,  basePrice: 520,  kondisyon: 4),
+    GameItem(id: 'aksesuar3',name: '3D Gözlük',            gorsel: 'assets/vrgozluk.png',          category: ItemCategory.aksesuar,basePrice: 850,  kondisyon: 5),
+    GameItem(id: 'aksesuar4',name: 'Oyuncu Kulaklığı',     gorsel: 'assets/kulaklik_1.png',        category: ItemCategory.aksesuar,basePrice: 340,  kondisyon: 4),
+    GameItem(id: 'aksesuar5',name: 'Kulaklık ve Stant',    gorsel: 'assets/kulaklik_2.png',        category: ItemCategory.aksesuar,basePrice: 390,  kondisyon: 5),
+    GameItem(id: 'aksesuar6',name: 'Kablosuz Joypad',      gorsel: 'assets/kumanda_2.png',         category: ItemCategory.aksesuar,basePrice: 300,  kondisyon: 4),
+    GameItem(id: 'aksesuar7',name: 'Direksiyon Seti',      gorsel: 'assets/direksiyon_2.png',      category: ItemCategory.aksesuar,basePrice: 750,  kondisyon: 5),
+    GameItem(id: 'aksesuar8',name: 'Oyuncu Mausu',         gorsel: 'assets/oyuncumausu.png',       category: ItemCategory.aksesuar,basePrice: 260,  kondisyon: 4),
   ];
 
   // 25 slot: index 0-24. Slot bazlı envanter.
@@ -5422,9 +5432,16 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
               final gorsel = _state.aktifOzelMusteri?.tip == OzelMusteriTip.kurye
                   ? 'assets/durum.png'
                   : _state.aktifMusteri!.item.gorsel;
-              final kucukUrun = gorsel == 'assets/konsol_3.png' || gorsel == 'assets/oyuncudireksiyonu.png'
-                  || gorsel == 'assets/konsol_4.png' || gorsel == 'assets/konsol_5.png' || gorsel == 'assets/konsol_6.png'
-                  || gorsel == 'assets/joypad.png';
+              // Geniş/dolu görseller sahnede fazla büyük duruyor → %15 küçültülür.
+              // v109 ekipmanları da 0.90 doluluk ile üretildiği için bu gruba girer.
+              const kucukGorseller = {
+                'assets/konsol_3.png', 'assets/konsol_4.png', 'assets/konsol_5.png',
+                'assets/konsol_6.png', 'assets/oyuncudireksiyonu.png', 'assets/joypad.png',
+                'assets/konsol_8.png', 'assets/konsol_9.png', 'assets/konsol_10.png',
+                'assets/vrgozluk.png', 'assets/kulaklik_1.png', 'assets/kulaklik_2.png',
+                'assets/kumanda_2.png', 'assets/direksiyon_2.png', 'assets/oyuncumausu.png',
+              };
+              final kucukUrun = kucukGorseller.contains(gorsel);
               // Ürüne özel küçültmeler (oranlar korunur)
               final urunOran = gorsel == 'assets/durum.png' ? 0.80 : (kucukUrun ? 0.85 : 1.0);
               final productSize = m.u(kUrunBoyu) * urunOran;
