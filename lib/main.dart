@@ -2308,6 +2308,22 @@ class GameState extends ChangeNotifier {
     GameItem(id: 'cd15',     name: 'KIRGEÇ',             gorsel: 'assets/CD_15.png',               category: ItemCategory.cd,      basePrice: 270,  kondisyon: 5, oynanabilir: true),
     GameItem(id: 'cd16',     name: 'İTELE',              gorsel: 'assets/CD_16.png',               category: ItemCategory.cd,      basePrice: 270,  kondisyon: 5, oynanabilir: true),
     GameItem(id: 'cd17',     name: 'TISSS',              gorsel: 'assets/CD_17.png',               category: ItemCategory.cd,      basePrice: 270,  kondisyon: 5, oynanabilir: true),
+    // ── v108: 13 yeni CD (normal, oynanamaz) ──
+    // Fiyatlar mevcut CD ortalamasını (~136) koruyacak şekilde dağıtıldı;
+    // yoksa "oynanabilir = 2 katı" dengesi kayardı.
+    GameItem(id: 'cd18',     name: 'ŞEHRİŞER',           gorsel: 'assets/CD_18.png',               category: ItemCategory.cd,      basePrice: 165,  kondisyon: 5),
+    GameItem(id: 'cd19',     name: 'UÇURBENİ',           gorsel: 'assets/CD_19.png',               category: ItemCategory.cd,      basePrice: 130,  kondisyon: 4),
+    GameItem(id: 'cd20',     name: 'CIPCIP',             gorsel: 'assets/CD_20.png',               category: ItemCategory.cd,      basePrice: 95,   kondisyon: 3),
+    GameItem(id: 'cd21',     name: 'TANTUNİ',            gorsel: 'assets/CD_21.png',               category: ItemCategory.cd,      basePrice: 145,  kondisyon: 5),
+    GameItem(id: 'cd22',     name: 'VURKAÇ',             gorsel: 'assets/CD_22.png',               category: ItemCategory.cd,      basePrice: 155,  kondisyon: 4),
+    GameItem(id: 'cd23',     name: 'BİLEZ',              gorsel: 'assets/CD_23.png',               category: ItemCategory.cd,      basePrice: 90,   kondisyon: 4),
+    GameItem(id: 'cd24',     name: 'TAHTAKALE',          gorsel: 'assets/CD_24.png',               category: ItemCategory.cd,      basePrice: 180,  kondisyon: 5),
+    GameItem(id: 'cd25',     name: 'SÜMSÜK',             gorsel: 'assets/CD_25.png',               category: ItemCategory.cd,      basePrice: 125,  kondisyon: 4),
+    GameItem(id: 'cd26',     name: 'BİLEKZORU',          gorsel: 'assets/CD_26.png',               category: ItemCategory.cd,      basePrice: 100,  kondisyon: 3),
+    GameItem(id: 'cd27',     name: 'MAHŞER',             gorsel: 'assets/CD_27.png',               category: ItemCategory.cd,      basePrice: 190,  kondisyon: 5),
+    GameItem(id: 'cd28',     name: 'DİKİZ',              gorsel: 'assets/CD_28.png',               category: ItemCategory.cd,      basePrice: 115,  kondisyon: 4),
+    GameItem(id: 'cd29',     name: 'TAMTAM',             gorsel: 'assets/CD_29.png',               category: ItemCategory.cd,      basePrice: 135,  kondisyon: 4),
+    GameItem(id: 'cd30',     name: 'KOKARCA',            gorsel: 'assets/CD_30.png',               category: ItemCategory.cd,      basePrice: 140,  kondisyon: 5),
     GameItem(id: 'konsol1',  name: 'PlayStatyon',          gorsel: 'assets/konsol_1.png',          category: ItemCategory.konsol,  basePrice: 900,  kondisyon: 4),
     GameItem(id: 'konsol2',  name: 'Ninetendo',            gorsel: 'assets/konsol_2.png',          category: ItemCategory.konsol,  basePrice: 750,  kondisyon: 3),
     GameItem(id: 'konsol3',  name: 'Ateri',                gorsel: 'assets/konsol_3.png',          category: ItemCategory.konsol,  basePrice: 500,  kondisyon: 2),

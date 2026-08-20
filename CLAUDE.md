@@ -40,7 +40,7 @@ assets/                â€” gÃ¶rseller ve sesler
   kapidaki.png         — kapıda bekleyen silüet (müşteri yokken; dükkana göre konumlanır)
   musteri_1..28.png    — müşteri karakterleri (28 adet, yaş/cinsiyet musteriHavuzu içinde)
   hirsiz/polis/vergici/kurye/toptanci/falci.png — özel müşteri karakterleri
-  CD_1..17.png         — 17 CD ürünü (CD_15/16/17 = KIRGEÇ, İTELE, TISSS: oynanabilir)
+  CD_1..30.png         — 30 CD ürünü (CD_15/16/17 = KIRGEÇ, İTELE, TISSS: oynanabilir)
   konsol_1..7.png      â€” konsol Ã¼rÃ¼nleri (PlayStatyon, Ninetendo, Ateri, El Konsolu x3, son sistem)
   durum.png            â€” kurye'nin getirdiÄŸi yemek gÃ¶rseli
   kolonya.png          â€” kolonya gÃ¶rseli (envanter + buton ikonu)
@@ -682,7 +682,7 @@ gunuBitir(): gunlukOlayId = yarinkiOlayId   (dÃ¼n belirlenen olay bugÃ¼n uyg
 - Aktif olay Hedefler ekranÄ±ndaki "bugÃ¼n paneli"nde gÃ¶rÃ¼nÃ¼r
 
 ### ğŸ“š Koleksiyon
-- Hedefler ekranÄ±nÄ±n altÄ±nda 23 Ã¼rÃ¼nlÃ¼k Ä±zgara (kolonya hariÃ§)
+- Hedefler ekranının altında tüm ürünlerin ızgarası (kolonya hariç; v108'den beri 29 CD + konsol/aksesuar)
 - SatÄ±lan Ã¼rÃ¼n aÃ§Ä±lÄ±r (gerÃ§ek gÃ¶rsel), satÄ±lmayan "?" gÃ¶rÃ¼nÃ¼r
 - YÃ¼zde gÃ¶stergesi; `satilanUrunIdleri` zaten takip ediliyordu, ek maliyet yok
 
@@ -1376,7 +1376,7 @@ for (int j = 0; j < acikSlotSayisi; j++) slotlar[j] = j < dolu.length ? dolu[j] 
 
 | Kategori | ID | Ad | GÃ¶rsel | basePrice |
 |----------|----|----|--------|-----------|
-| cd | cd1..14 | KARMAGEDDON, CÄ°MRÄ°CÄ°TY, ..., TENÄ°S OYUNU, DALAKKÃœREK, ÅAHMAT, TOTORACER, GAMLIBAYKUÅ, KISPET, UÃ‡ARSOKAR, DÃœTTÃœRÃœ | CD_1..14.png | 80-175 |
+| cd | cd1..30 | KARMAGEDDON, CİMRİCİTY, ..., KISPET, UÇARSOKAR, DÜTTÜRÜ + v106'da KIRGEÇ/İTELE/TISSS (oynanabilir) + v108'de ŞEHRİŞER, UÇURBENİ, CIPCIP, TANTUNİ, VURKAÇ, BİLEZ, TAHTAKALE, SÜMSÜK, BİLEKZORU, MAHŞER, DİKİZ, TAMTAM, KOKARCA | CD_1..30.png | 80-270 |
 | konsol | konsol1 | PlayStatyon | konsol_1.png | 900 |
 | konsol | konsol2 | Ninetendo | konsol_2.png | 750 |
 | konsol | konsol3 | Ateri | konsol_3.png | 500 |
@@ -1465,6 +1465,7 @@ Base ratio hÃ¢lÃ¢ `_clamp(0.18 - progress * 0.15, 0.02, 0.18)`.
 ## Versiyon GeÃ§miÅŸi (son)
 | Commit | AÃ§Ä±klama |
 |--------|----------|
+| v108 | **13 yeni CD** (normal, oynanamaz): ŞEHRİŞER, UÇURBENİ, CIPCIP, TANTUNİ, VURKAÇ, BİLEZ, TAHTAKALE, SÜMSÜK, BİLEKZORU, MAHŞER, DİKİZ, TAMTAM, KOKARCA → `CD_18..30.png`, toplam CD 17'den 30'a çıktı. Görseller kullanıcının removebg kesimiyle geldi, mevcut CD formatına çevrildi (392×512, doluluk 0.83, içerik ~300×425). **Fiyatlar ortalamayı koruyacak şekilde dağıtıldı** (90-190, ortalama ~136) — yoksa "oynanabilir = normalin 2 katı" dengesi ve onu koruyan test bozulurdu. APK 43.3 → 47.6MB |
 | v107 | **TISSS** (yılan) üçüncü oynanabilir oyun olarak eklendi — `lib/tisss_oyunu.dart`, `cd17`. 15×21 ızgara, yem başına 5 puan, her yemde hafif hızlanma, duvara/kendine çarpınca biter. **Kontrol farkı**: Kırgeç/İtele basılı tutmayla sürekli kayarken TISSS'te her dokunuş 90° göreceli dönüş (sağ yarı sağa, sol yarı sola); dönüşler kuyruğa alınıp adım başına biri uygulanıyor ki aynı adımda iki dokunuş yılanı kendi üstüne katlamasın. Aynı gün-sınırı, para tavanı ve nadirlik kuralları geçerli |
 | v106 | **Oynanabilir ürünler**: bazı CD'ler gerçekten oynanıyor. `KIRGEÇ` (breakout, `lib/kirgec_oyunu.dart`) ve `İTELE` (tek kişilik pong, `lib/itele_oyunu.dart`). Envanterde köşede ⭐, tıkla → "oynamak ister misin?" → tam ekran oyun; toplanan puan birebir paraya çevrilip bakiyeye eklenir. **Günde 1 kez** (`bugunOynananOyunlar`, `gunuBitir`'de temizlenir, oyuna girer girmez hak yanar), para tavanı 1000, %5 nadirlik, toptancı/kutudan çıkmaz, fiyat normal CD ortalamasının 2 katı (270). Kontrol iki oyunda da aynı: ekranın sağ/sol yarısına basılı tut. `test/kirgec_test.dart` (10 test) |
 | v105 | **Pazarlık hataları düzeltildi**: geçersiz girdide sessiz `return` (buton artık pasif+soluk), `teklifVer` hata atınca popup kapanmıyordu (`pop` artık `finally` içinde). **Teklif yön kuralı**: müşteri reddettikten sonra oyuncu alıyorsa ▼, satıyorsa ▲ pasif; ilk turda serbest. **Polis alkol testi** (%50): rastgele işlem + 2 şık, doğruysa ceza yok, yanlışsa 40-250 ceza. **"Yemeği Ye"** butonu (kuryeden yemek alınca alt barın en altında): envanterdeki tüm hasarlı ürünleri onarır. **Müşteriler 1/3 ihtimalle hasarlı ürün satıyor** — `GameItem.curukOran` ile müşteri malı %50-75 (toptancı hurdası %35). **Toptancı**: browser menüsünden kaldırıldı, kolonya ikramında gitmiyor, Kapat butonu sabit. **Müşteri Çağır** ekranda biri varken kilitli (Rıza'nın tekrar gelme bug'ı). Ana menüde **en yüksek kazanç** rekoru. `test/oynanis_test.dart` (9 test) |
