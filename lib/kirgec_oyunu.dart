@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart' show Ticker;
+import 'konsol_cerceve.dart';
 
 /// ─── KIRGEÇ ─────────────────────────────────────────────────────────────────
 ///
@@ -223,10 +224,11 @@ class _KirgecOyunuState extends State<KirgecOyunu> with SingleTickerProviderStat
       canPop: false,
       onPopInvokedWithResult: (didPop, _) { if (!didPop) _cik(); },
       child: Scaffold(
-        backgroundColor: const Color(0xFF06040e),
-        body: SafeArea(
-          child: Column(
-            children: [
+        backgroundColor: Colors.black,
+        // SafeArea YOK: kasa tum ekrani kaplasin, ust/altta bant kalmasin
+        body: KonsolCercevesi(
+            cocuk: Column(
+              children: [
               _buildUstBar(),
               Expanded(
                 child: LayoutBuilder(builder: (context, kutu) {
@@ -265,10 +267,10 @@ class _KirgecOyunuState extends State<KirgecOyunu> with SingleTickerProviderStat
                 }),
               ),
             ],
+            ),
           ),
         ),
-      ),
-    );
+      );
   }
 
   Widget _buildUstBar() {
@@ -291,16 +293,23 @@ class _KirgecOyunuState extends State<KirgecOyunu> with SingleTickerProviderStat
   }
 
   Widget _buildBaslaYazisi() {
-    return const Center(
+    // ⚠️ Konsol kasası oyun alanını daralttı; sabit fontla metin taşıp iki
+    // satıra bölünüyor ve tuğlaların üstüne biniyordu. FittedBox ile sığdırılır,
+    // alt yarıya hizalanır ki tuğlaları kapatmasın.
+    return const Align(
+      alignment: Alignment(0, 0.45),
       child: Padding(
-        padding: EdgeInsets.only(bottom: 60),
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Text('BAŞLAMAK İÇİN DOKUN',
-            style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w900, letterSpacing: 1.5)),
-          SizedBox(height: 8),
-          Text('Sağ yarı → sağa   ·   Sol yarı → sola',
-            style: TextStyle(color: Colors.white54, fontSize: 12)),
-        ]),
+        padding: EdgeInsets.symmetric(horizontal: 12),
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Text('BAŞLAMAK İÇİN DOKUN',
+              style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w900, letterSpacing: 1.5)),
+            SizedBox(height: 8),
+            Text('Sağ yarı → sağa   ·   Sol yarı → sola',
+              style: TextStyle(color: Colors.white54, fontSize: 12)),
+          ]),
+        ),
       ),
     );
   }

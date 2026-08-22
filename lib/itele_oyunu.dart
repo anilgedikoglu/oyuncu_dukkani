@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart' show Ticker;
+import 'konsol_cerceve.dart';
 
 /// ─── İTELE ──────────────────────────────────────────────────────────────────
 ///
@@ -208,10 +209,11 @@ class _IteleOyunuState extends State<IteleOyunu> with SingleTickerProviderStateM
       canPop: false,
       onPopInvokedWithResult: (didPop, _) { if (!didPop) _cik(); },
       child: Scaffold(
-        backgroundColor: const Color(0xFF04060e),
-        body: SafeArea(
-          child: Column(
-            children: [
+        backgroundColor: Colors.black,
+        // SafeArea YOK: kasa tum ekrani kaplasin, ust/altta bant kalmasin
+        body: KonsolCercevesi(
+            cocuk: Column(
+              children: [
               _buildUstBar(),
               Expanded(
                 child: LayoutBuilder(builder: (context, kutu) {
@@ -249,10 +251,10 @@ class _IteleOyunuState extends State<IteleOyunu> with SingleTickerProviderStateM
                 }),
               ),
             ],
+            ),
           ),
         ),
-      ),
-    );
+      );
   }
 
   Widget _buildUstBar() {
@@ -278,17 +280,24 @@ class _IteleOyunuState extends State<IteleOyunu> with SingleTickerProviderStateM
   }
 
   Widget _buildBaslaYazisi() {
+    // Konsol kasası oyun alanını daralttı → FittedBox ile sığdır (bkz. Kırgeç)
     return const Center(
-      child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Text('BAŞLAMAK İÇİN DOKUN',
-          style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w900, letterSpacing: 1.5)),
-        SizedBox(height: 8),
-        Text('Sağ yarı → sağa   ·   Sol yarı → sola',
-          style: TextStyle(color: Colors.white54, fontSize: 12)),
-        SizedBox(height: 4),
-        Text('Önce 10 sayıya ulaşan kazanır',
-          style: TextStyle(color: Colors.white38, fontSize: 11)),
-      ]),
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: 12),
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Text('BAŞLAMAK İÇİN DOKUN',
+              style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w900, letterSpacing: 1.5)),
+            SizedBox(height: 8),
+            Text('Sağ yarı → sağa   ·   Sol yarı → sola',
+              style: TextStyle(color: Colors.white54, fontSize: 12)),
+            SizedBox(height: 4),
+            Text('Önce 10 sayıya ulaşan kazanır',
+              style: TextStyle(color: Colors.white38, fontSize: 11)),
+          ]),
+        ),
+      ),
     );
   }
 

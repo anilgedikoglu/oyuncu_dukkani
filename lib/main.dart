@@ -2677,6 +2677,9 @@ class GameState extends ChangeNotifier {
     _ozelMusteriSayaciniAyarla();
     _rizaGunuAyarla();
     gunlukHedef = GunlukHedef.uret(1);
+    slotlar[0] = _baslangicUrunler.firstWhere((u) => u.id == "cd15").kopya(); // GECICI
+    slotlar[1] = _baslangicUrunler.firstWhere((u) => u.id == "cd16").kopya(); // GECICI
+    slotlar[2] = _baslangicUrunler.firstWhere((u) => u.id == "cd17").kopya(); // GECICI
   }
 
   GameState.fromJson(Map<String, dynamic> j) {

@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart' show Ticker;
+import 'konsol_cerceve.dart';
 
 /// ─── TISSS ──────────────────────────────────────────────────────────────────
 ///
@@ -146,10 +147,11 @@ class _TisssOyunuState extends State<TisssOyunu> with SingleTickerProviderStateM
       canPop: false,
       onPopInvokedWithResult: (didPop, _) { if (!didPop) _cik(); },
       child: Scaffold(
-        backgroundColor: const Color(0xFF050b06),
-        body: SafeArea(
-          child: Column(
-            children: [
+        backgroundColor: Colors.black,
+        // SafeArea YOK: kasa tum ekrani kaplasin, ust/altta bant kalmasin
+        body: KonsolCercevesi(
+            cocuk: Column(
+              children: [
               _buildUstBar(),
               Expanded(
                 child: LayoutBuilder(builder: (context, kutu) {
@@ -179,10 +181,10 @@ class _TisssOyunuState extends State<TisssOyunu> with SingleTickerProviderStateM
                 }),
               ),
             ],
+            ),
           ),
         ),
-      ),
-    );
+      );
   }
 
   Widget _buildUstBar() {
@@ -202,20 +204,27 @@ class _TisssOyunuState extends State<TisssOyunu> with SingleTickerProviderStateM
   }
 
   Widget _buildBaslaYazisi() {
+    // Konsol kasası oyun alanını daralttı → FittedBox ile sığdır (bkz. Kırgeç)
     return Center(
-      child: Container(
-        color: Colors.black54,
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-        child: const Column(mainAxisSize: MainAxisSize.min, children: [
-          Text('BAŞLAMAK İÇİN DOKUN',
-            style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w900, letterSpacing: 1.5)),
-          SizedBox(height: 8),
-          Text('Sağ yarı → 90° sağa   ·   Sol yarı → 90° sola',
-            style: TextStyle(color: Colors.white54, fontSize: 12)),
-          SizedBox(height: 4),
-          Text('Yem başına 5 puan · duvara ve kendine çarpma',
-            style: TextStyle(color: Colors.white38, fontSize: 11)),
-        ]),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Container(
+            color: Colors.black54,
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+            child: const Column(mainAxisSize: MainAxisSize.min, children: [
+              Text('BAŞLAMAK İÇİN DOKUN',
+                style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w900, letterSpacing: 1.5)),
+              SizedBox(height: 8),
+              Text('Sağ yarı → 90° sağa   ·   Sol yarı → 90° sola',
+                style: TextStyle(color: Colors.white54, fontSize: 12)),
+              SizedBox(height: 4),
+              Text('Yem başına 5 puan · duvara ve kendine çarpma',
+                style: TextStyle(color: Colors.white38, fontSize: 11)),
+            ]),
+          ),
+        ),
       ),
     );
   }
