@@ -399,6 +399,43 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
     }
   }
 
+  /// Ana menünün tepesindeki rekor kartı: en yüksek gün + en yüksek kazanç.
+  Widget _rekorKutusu() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [const Color(0xFF241a10).withValues(alpha: 0.94), const Color(0xFF120c06).withValues(alpha: 0.94)],
+          begin: Alignment.topCenter, end: Alignment.bottomCenter,
+        ),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFFFD700).withValues(alpha: 0.85), width: 2),
+        boxShadow: [BoxShadow(color: const Color(0xFFFFD700).withValues(alpha: 0.22), blurRadius: 12)],
+      ),
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        const Text('🏆  REKORLAR',
+          style: TextStyle(color: Color(0xFFFFD700), fontSize: 12, fontWeight: FontWeight.w900, letterSpacing: 2)),
+        const SizedBox(height: 8),
+        Row(mainAxisSize: MainAxisSize.min, children: [
+          if (_enYuksekGun != null) _rekorHucre('EN UZUN', '$_enYuksekGun. gün', const Color(0xFFFFD700)),
+          if (_enYuksekGun != null && _enYuksekPara != null)
+            Container(width: 1, height: 30, margin: const EdgeInsets.symmetric(horizontal: 14),
+              color: const Color(0xFFFFD700).withValues(alpha: 0.30)),
+          if (_enYuksekPara != null) _rekorHucre('EN ÇOK KAZANÇ', '$_enYuksekPara lira', const Color(0xFF00FF88)),
+        ]),
+      ]),
+    );
+  }
+
+  Widget _rekorHucre(String baslik, String deger, Color renk) {
+    return Column(mainAxisSize: MainAxisSize.min, children: [
+      Text(baslik, style: TextStyle(color: Colors.white.withValues(alpha: 0.55), fontSize: 9, fontWeight: FontWeight.bold, letterSpacing: 1)),
+      const SizedBox(height: 2),
+      Text(deger, style: TextStyle(color: renk, fontSize: 16, fontWeight: FontWeight.w900,
+        shadows: const [Shadow(color: Colors.black, blurRadius: 4)])),
+    ]);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -409,27 +446,19 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
+                // Rekor kutusu EN ÜSTTE — eskiden butonların altında düz yazıydı,
+                // gözden kaçıyordu.
+                if (_enYuksekGun != null || _enYuksekPara != null) ...[
+                  const SizedBox(height: 10),
+                  Center(child: _rekorKutusu()),
+                ],
                 const Spacer(flex: 3),
                 Center(child: _menuButon('Yeni Oyun', _yeniOyun)),
                 const SizedBox(height: 12),
                 Center(child: _menuButon('Devam Et', (_kayitVar && !_yukleniyor) ? () => _devamEt() : null)),
                 const SizedBox(height: 12),
                 Center(child: _menuButon('Ayarlar', () => setState(() => _ayarlarAcik = true))),
-                if (_enYuksekGun != null) ...[
-                  const SizedBox(height: 18),
-                  Text(
-                    'En yüksek: $_enYuksekGun. gün',
-                    style: const TextStyle(color: Color(0xFFFFD700), fontSize: 14, fontWeight: FontWeight.bold, shadows: [Shadow(color: Colors.black, blurRadius: 4)]),
-                  ),
-                ],
-                if (_enYuksekPara != null) ...[
-                  SizedBox(height: _enYuksekGun != null ? 4 : 18),
-                  Text(
-                    'En yüksek kazanç: $_enYuksekPara lira',
-                    style: const TextStyle(color: Color(0xFF00FF88), fontSize: 14, fontWeight: FontWeight.bold, shadows: [Shadow(color: Colors.black, blurRadius: 4)]),
-                  ),
-                ],
-                const Spacer(flex: 1),
+                const Spacer(flex: 2),
               ],
             ),
           ),
@@ -919,6 +948,22 @@ class PazarlikSeans {
   final List<int> _musteriGecmisi = [];
   bool sonTeklifMi = false;        // son tura girildi mi (UI vurgulayabilir)
   bool _sikistirmaKullanildi = false; // "az daha gayret" hamlesi bir kez kullanılır
+  bool _ortadaBulusmaKullanildi = false; // "ortada buluşalım mı?" bir kez
+  bool _kolonyaIkramEdildi = false;      // kolonya ikramı ortada buluşma şansını artırır
+
+  /// "Ortada buluşalım mı?" replikleri — X yerine orta fiyat gelir.
+  static const List<Replik> _ortadaBulusma = [
+    Replik('Bak ne diyeceğim, ortada buluşalım mı? X.'),
+    Replik('Uzatmayalım, ikimizin ortası: X. Anlaştık mı?'),
+    Replik('Sen bir adım, ben bir adım... Tam ortası X olsun.'),
+    Replik('Ne senin dediğin ne benim: X. Ortada buluşalım.'),
+    Replik('Kes şunu, ortadan bölelim: X. Ne dersin?'),
+    Replik('Adil olalım, tam ortası X. Elini ver.'),
+    Replik('Ortada buluşalım mı? X diyorum, bitsin bu iş.'),
+    Replik('İkimiz de biraz feda edelim: X.'),
+    Replik('Ortası X ediyor. Bence ikimiz için de iyi.', yas: kYasBuyuk),
+    Replik('Yarı yarıya bölüşelim: X. Olur mu?', yas: kYasGenc),
+  ];
 
   PazarlikSeans({
     required this.musteriSatiyor,
@@ -1185,6 +1230,26 @@ class PazarlikSeans {
     walkChance = _clamp(walkChance, 0, 0.40);
     if (turSayisi > 1 && rng.nextDouble() < walkChance) return _git();
 
+    // ── 8b. "Ortada buluşalım mı?" ──
+    // 3. turdan sonra %25 (kolonya ikram edildiyse %50) ihtimalle müşteri iki
+    // fiyatın tam ortasını teklif eder. Pazarlığı hızlı ve tatmin edici
+    // bitiren bir jest; bir kez kullanılır.
+    if (!_ortadaBulusmaKullanildi && turSayisi >= 3) {
+      final sans = _kolonyaIkramEdildi ? 0.50 : 0.25;
+      if (rng.nextDouble() < sans) {
+        _ortadaBulusmaKullanildi = true;
+        final orta = ((musteriTeklif + oyuncuTeklif) / 2).round();
+        // Ortayı kendi aleyhine kırpma: satıcı rezervin altına inmez,
+        // alıcı rezervin üstüne çıkmaz.
+        musteriTeklif = musteriSatiyor
+            ? max(orta, _reservationPrice.round())
+            : min(orta, _reservationPrice.round());
+        mesaj = _sec(_ortadaBulusma).replaceAll('X', '$musteriTeklif');
+        durum = PazarlikDurum.devamEdiyor;
+        return durum;
+      }
+    }
+
     // ── 9. Karşı teklifi uygula ──
     musteriTeklif = yeniMusteriTeklif;
 
@@ -1225,6 +1290,7 @@ class PazarlikSeans {
   }
 
   void kolonyaUygula(double bonus) {
+    _kolonyaIkramEdildi = true; // "ortada buluşalım" şansını %25'ten %50'ye çıkarır
     if (musteriSatiyor) {
       // Satıcı: minimum kabul fiyatı düşer → daha düşük teklifleri kabul eder
       _reservationPrice = (_reservationPrice * (1 - bonus)).clamp(
@@ -2201,6 +2267,11 @@ class GameState extends ChangeNotifier {
     return sayi;
   }
   String? _sonUrunId;               // ardışık aynı ürün engeli
+  /// Oynanabilir ürün günde bir kez gelir; bugün geldi mi?
+  bool _bugunOynanabilirGeldi = false;
+  /// Bugün ve dün gelen oynanabilir ürün — iki gün üst üste aynısı gelmesin.
+  String? _bugunGelenOynanabilirId;
+  String? _dunGelenOynanabilirId;
 
   // ── Tamir seti (kolonya gibi: slot yemez, sayaç olarak tutulur) ──
   int tamirSetiAdet = 0;
@@ -2275,7 +2346,19 @@ class GameState extends ChangeNotifier {
       }
     }
   }
-  String mesaj = 'Dükkan açıldı! İlk müşteri bekleniyor...';
+  // ⚠️ `mesaj` doğrudan alan DEĞİL, setter'lı.
+  // TypewriterText yalnızca metin DEĞİŞİRSE animasyonu baştan oynatıyor.
+  // Replik havuzundan aynı satır iki kez seçilince (ya da fiyat aynı kalınca)
+  // ekranda hiçbir şey olmuyor, oyuncu "teklifim tepkisiz kaldı" sanıyordu.
+  // `mesajSayaci` her atamada artar ve balona key olarak verilir → aynı metin
+  // bile olsa yazım animasyonu yeniden oynar.
+  String _mesaj = 'Dükkan açıldı! İlk müşteri bekleniyor...';
+  int mesajSayaci = 0;
+  String get mesaj => _mesaj;
+  set mesaj(String v) {
+    _mesaj = v;
+    mesajSayaci++;
+  }
   Customer? aktifMusteri;
   PazarlikSeans? aktifPazarlik;
   bool musteriGorunuyor = false;
@@ -2969,13 +3052,20 @@ class GameState extends ChangeNotifier {
           : _baslangicUrunler.toList();
       // Ardışık aynı ürün engeli: bir önceki ürün havuzdan çıkar (birden fazla varsa)
       final satisHavuzu = tumHavuz.length > 1 ? tumHavuz.where((u) => u.id != _sonUrunId).toList() : tumHavuz;
-      // Oynanabilir ürünler NADİR: normal havuzla aynı olasılıkta gelseler
-      // sıradanlaşırdı. %10 ihtimalle nadir havuzdan seçilir.
       final normaller = satisHavuzu.where((u) => !u.oynanabilir).toList();
-      final nadirler  = satisHavuzu.where((u) => u.oynanabilir).toList();
-      secilenUrun = (nadirler.isNotEmpty && normaller.isNotEmpty && rng.nextInt(100) < 10)
+      // Oynanabilir ürünler GÜNDE EN FAZLA BİR KEZ gelir; ayrıca dün gelen
+      // oyun bugün gelmez. Sadece nadirlik yüzdesine bırakılsaydı bazı günler
+      // üst üste, bazı günler hiç gelmiyordu.
+      final nadirler = satisHavuzu.where((u) =>
+          u.oynanabilir && !_bugunOynanabilirGeldi && u.id != _dunGelenOynanabilirId).toList();
+      final nadirSecildi = nadirler.isNotEmpty && normaller.isNotEmpty && rng.nextInt(100) < 10;
+      secilenUrun = nadirSecildi
           ? nadirler[rng.nextInt(nadirler.length)]
           : (normaller.isNotEmpty ? normaller[rng.nextInt(normaller.length)] : satisHavuzu[rng.nextInt(satisHavuzu.length)]);
+      if (nadirSecildi) {
+        _bugunOynanabilirGeldi = true;
+        _bugunGelenOynanabilirId = secilenUrun.id;
+      }
       // Getirdiği mal 1/3 ihtimalle hasarlı olur. Toptancı hurdasından (%35)
       // daha değerli: piyasanın %50-75'i. Kolonya hasarlı gelmez.
       if (secilenUrun.id != 'kolonya' && rng.nextInt(3) == 0) {
@@ -3169,6 +3259,11 @@ class GameState extends ChangeNotifier {
     gunlukMusteriSayisi = 0;
     gunlukMusteriLimiti = aktifDukkan.gunlukMusteriSayisiUret();
     bugunOynananOyunlar.clear(); // yeni gün → mini oyunlar tekrar oynanabilir
+    // Oynanabilir ürün hakkı yenilenir; bugünkü "dün"e devredilir ki
+    // iki gün üst üste aynı oyun gelmesin.
+    _dunGelenOynanabilirId = _bugunGelenOynanabilirId;
+    _bugunGelenOynanabilirId = null;
+    _bugunOynanabilirGeldi = false;
     para -= kira;
     SesServisi.paraGirdi();
     int krediKesinti = 0;
@@ -5445,8 +5540,15 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                 'assets/kumanda_2.png', 'assets/direksiyon_2.png', 'assets/oyuncumausu.png',
               };
               final kucukUrun = kucukGorseller.contains(gorsel);
+              // Tek tek ince ayar gereken ürünler: gruptaki %85 onlara oturmuyor.
+              // Değerler grup oranıyla çarpılmış hâlleri (0.85 × istenen).
+              const urunOzelOran = {
+                'assets/oyuncumausu.png':   0.425,  // %50 küçült
+                'assets/direksiyon_2.png':  1.105,  // %30 büyüt
+              };
               // Ürüne özel küçültmeler (oranlar korunur)
-              final urunOran = gorsel == 'assets/durum.png' ? 0.80 : (kucukUrun ? 0.85 : 1.0);
+              final urunOran = urunOzelOran[gorsel]
+                  ?? (gorsel == 'assets/durum.png' ? 0.80 : (kucukUrun ? 0.85 : 1.0));
               final productSize = m.u(kUrunBoyu) * urunOran;
               // Yatay ince ayarlar da oransal (sabit px değil)
               final ekKaydir = (gorsel == 'assets/oyuncudireksiyonu.png' ? 0.0081 : 0.0)
@@ -5506,6 +5608,8 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                         offset: const Offset(-15, 0),
                         child: Center(
                           child: TypewriterText(
+                            // key: ayni metin tekrar gelse de animasyon bastan oynasin
+                            key: ValueKey(_state.mesajSayaci),
                             text: _kolonyaGeciciMesaj ?? _state.mesaj,
                             style: TextStyle(fontSize: 14, color: const Color(0xFFFFD700)),
                             textAlign: TextAlign.center,
@@ -5516,6 +5620,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                   ],
                 )
               : TypewriterText(
+                  key: ValueKey(_state.mesajSayaci),
                   text: _kolonyaGeciciMesaj ?? _state.mesaj,
                   style: TextStyle(fontSize: 14,
                     color: _state.aktifOzelMusteri != null
@@ -5847,7 +5952,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
         content: Text(
           onarilan > 0
               ? 'Yiyince keyfin yerine geldi ve tüm hasarlı ekipmanı kendin tamir ettin!\n\n🔧 $onarilan ürün onarıldı.'
-              : 'Yiyince keyfin yerine geldi! Tamir edilecek hasarlı ekipmanın yoktu.',
+              : 'Yiyince keyfin yerine geldi. Tamir edilecek hasarlı ekipmanın yoktu, olsaydı bu moralle hepsini tamir etmiş sayılacaktın.',
           textAlign: TextAlign.center,
           style: const TextStyle(color: Colors.white70, fontSize: 15, height: 1.4),
         ),
@@ -6189,17 +6294,23 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
           textAlign: TextAlign.center,
           style: TextStyle(color: Colors.white70, fontSize: 13, height: 1.4),
         ),
+        // Evet SOLDA — asıl eylem önce gelsin. Hayır da dolu bir buton;
+        // düz metin olduğunda boşta duruyordu.
         actions: [Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Hayır', style: TextStyle(color: Colors.white38)),
-          ),
-          const SizedBox(width: 8),
           ElevatedButton(
             onPressed: () { Navigator.pop(ctx); _oyunuBaslat(slotIndex); },
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF00e5ff), foregroundColor: Colors.black),
+              backgroundColor: const Color(0xFF00e5ff), foregroundColor: Colors.black,
+              minimumSize: const Size(104, 42)),
             child: const Text('Evet', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+          const SizedBox(width: 10),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF3a3f4b), foregroundColor: Colors.white70,
+              minimumSize: const Size(104, 42)),
+            child: const Text('Hayır', style: TextStyle(fontWeight: FontWeight.bold)),
           ),
         ])],
       ),
