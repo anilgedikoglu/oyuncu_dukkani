@@ -3349,6 +3349,9 @@ class GameScreen extends StatefulWidget {
   State<GameScreen> createState() => _GameScreenState();
 }
 
+/// Browser penceresinde acilabilen sayfalar.
+enum _BrowserSayfa { menu, dukkanlar, hedefler, market, banka }
+
 class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   late GameState _state;
   late AnimationController _slideController;
@@ -3356,6 +3359,10 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   bool _envanterAcik = false;
   /// Toptanci ekraninda envanter sekmesi acik mi (tek yonlu gecis)
   bool _toptanciEnvanterSekmesi = false;
+  /// Masadaki ürüne dokununca açılan büyük önizleme (null = kapalı)
+  String? _buyukUrunGorseli;
+  /// Anlaşma sonrası ürün masadan aşağı kayıyor mu
+  bool _urunAsagiKayiyor = false;
   bool _gunBitiPopupGosterildi = false;
   bool _pazarlikBekleniyor = false;
   bool _bilgisayarGeldiGosterildi = false;
@@ -4706,124 +4713,192 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     );
   }
 
+  /// Browser'da açık olan sayfa. Menü dışındaki sayfalar aynı pencerede
+  /// açılır; geri oku menüye döndürür.
+  _BrowserSayfa _browserSayfa = _BrowserSayfa.menu;
+
+  /// Adres çubuğunda görünecek metin (browser.png'deki yazının üstüne biner).
+  String _browserAdres(_BrowserSayfa s) {
+    switch (s) {
+      case _BrowserSayfa.menu:      return 'oyuncu_dukkani';
+      case _BrowserSayfa.dukkanlar: return 'kiralik_dukkanlar';
+      case _BrowserSayfa.hedefler:  return 'hedefler';
+      case _BrowserSayfa.market:    return 'market';
+      case _BrowserSayfa.banka:     return 'banka_kredisi';
+    }
+  }
+
   void _browserPopup() {
+    _browserSayfa = _BrowserSayfa.menu; // her açılışta ana sayfa
     showDialog(
       context: context,
-      builder: (ctx) => Dialog(
-        backgroundColor: Colors.transparent,
-        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
-        child: ConstrainedBox(
-          constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.75),
-          child: Container(
-            decoration: BoxDecoration(
-              color: const Color(0xFF0d1117),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFF30363d), width: 1.5),
-              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.6), blurRadius: 20, offset: const Offset(0, 8))],
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Browser.png — sabit yükseklikli başlık
-                ClipRRect(
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(10)),
-                  child: SizedBox(
-                    height: 110,
-                    width: double.infinity,
-                    child: Image.asset('assets/browser.png', fit: BoxFit.cover, alignment: Alignment.topCenter),
-                  ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDlg) {
+          final menude = _browserSayfa == _BrowserSayfa.menu;
+          void git(_BrowserSayfa s) => setDlg(() => _browserSayfa = s);
+          return Dialog(
+            backgroundColor: Colors.transparent,
+            insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.75),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0d1117),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFF30363d), width: 1.5),
+                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.6), blurRadius: 20, offset: const Offset(0, 8))],
                 ),
-                // İçerik — kaydırılabilir
-                Flexible(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        // ── Kiralık Dükkanlar ──
-                        _browserMenuItem(
-                          ikon: '🏠',
-                          baslik: 'Kiralık Dükkanlar',
-                          altyazi: 'DükkanKirala.com — ${_state.aktifDukkan.isim}',
-                          renk: const Color(0xFF58a6ff),
-                          onTap: () { Navigator.pop(ctx); _dukkanKiralaPopup(); },
-                        ),
-                        const SizedBox(height: 10),
-                        // ── Banka Kredisi ──
-                        _browserMenuItem(
-                          ikon: '🏦',
-                          baslik: 'Banka Kredisi',
-                          altyazi: _state.aktifKrediVar
-                              ? 'Aktif kredi: ${_state.krediTaksitMiktar} × ${_state.krediKalanTaksit} taksit kaldı'
-                              : 'İhtiyaç kredisi başvurusu yap',
-                          renk: const Color(0xFF3fb950),
-                          onTap: () { Navigator.pop(ctx); _bankaKrediPopup(); },
-                        ),
-                        // ⚠️ Toptancı Rıza BİLEREK burada yok. Alışveriş sadece
-                        // Rıza kapıya geldiğinde yapılabilir; menüden istediği
-                        // an açmak ziyaretini anlamsızlaştırıyordu.
-                        const SizedBox(height: 10),
-                        // ── Hedefler ──
-                        _browserMenuItem(
-                          ikon: '🏆',
-                          baslik: 'Hedefler',
-                          altyazi: '${_state.kazanilanRozetler.length}/${Rozet.tumu.length} rozet kazanıldı',
-                          renk: const Color(0xFFa371f7),
-                          onTap: () { Navigator.pop(ctx); _hedeflerPopup(); },
-                        ),
-                        const SizedBox(height: 10),
-                        // ── Market ──
-                        _browserMenuItem(
-                          ikon: '🛒',
-                          baslik: 'Market',
-                          altyazi: 'Dükkanını geliştir',
-                          renk: const Color(0xFFf78166),
-                          onTap: () { Navigator.pop(ctx); _marketPopup(); },
-                        ),
-                        const SizedBox(height: 10),
-                        // ── Ayarlar ──
-                        _browserMenuItem(
-                          ikon: '⚙️',
-                          baslik: 'Ayarlar',
-                          altyazi: SesServisi.sesAcik ? 'Ses: Açık' : 'Ses: Kapalı',
-                          renk: const Color(0xFFd2a679),
-                          onTap: () => _ayarlarPopup(),
-                        ),
-                        const SizedBox(height: 10),
-                        // ── Yeniden Başlat ──
-                        _browserMenuItem(
-                          ikon: '🔄',
-                          baslik: 'Yeniden Başlat',
-                          altyazi: 'Oyunu sıfırla ve başa dön',
-                          renk: const Color(0xFFE07B00),
-                          onTap: () {
-                            Navigator.pop(ctx);
-                            _yenidenBaslatOnay();
-                          },
-                        ),
-                        const SizedBox(height: 14),
-                        // Kapat
-                        ElevatedButton(
-                          onPressed: () => Navigator.pop(ctx),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF21262d),
-                            foregroundColor: Colors.white70,
-                            minimumSize: const Size(double.infinity, 42),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                            side: const BorderSide(color: Color(0xFF30363d)),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // ── Browser başlığı: görsel + adres yazısı + geri oku ──
+                    // browser.png'de adres ("oyuncu_dukkani") ve oklar ÇİZİLİ.
+                    // Sayfaya göre değişebilmesi için üstüne bindiriliyor.
+                    ClipRRect(
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(10)),
+                      child: SizedBox(
+                        height: 110,
+                        width: double.infinity,
+                        child: Stack(children: [
+                          Positioned.fill(
+                            child: Image.asset('assets/browser.png', fit: BoxFit.cover, alignment: Alignment.topCenter),
                           ),
-                          child: const Text('Kapat', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-                        ),
-                      ],
+                          // Adres metni — görseldeki yazıyı beyazla örtüp yenisini yazar
+                          Positioned(
+                            left: 0, right: 0, top: 52, height: 26,
+                            child: Padding(
+                              padding: const EdgeInsets.only(left: 96, right: 22),
+                              child: Container(
+                                color: Colors.white,
+                                alignment: Alignment.centerLeft,
+                                child: Text(
+                                  _browserAdres(_browserSayfa),
+                                  maxLines: 1, overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    color: Color(0xFF202124), fontSize: 14,
+                                    fontWeight: FontWeight.w500, letterSpacing: 0.1),
+                                ),
+                              ),
+                            ),
+                          ),
+                          // Geri oku — menüde değilken sarı ve tıklanabilir
+                          Positioned(
+                            left: 4, top: 46, width: 40, height: 38,
+                            child: GestureDetector(
+                              onTap: menude ? null : () => git(_BrowserSayfa.menu),
+                              child: Container(
+                                color: Colors.white,
+                                child: Center(
+                                  child: Icon(Icons.arrow_back,
+                                    size: 20,
+                                    color: menude ? const Color(0xFFBDC1C6) : const Color(0xFFE6A800)),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ]),
+                      ),
                     ),
-                  ),
+                    // ── İçerik ──
+                    Flexible(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+                        child: menude
+                            ? _browserMenuGovdesi(ctx, git)
+                            : _browserSayfaGovdesi(ctx),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
-          ),
-        ),
+          );
+        },
       ),
     );
+  }
+
+  /// Browser ana sayfası — bölüm listesi.
+  Widget _browserMenuGovdesi(BuildContext ctx, void Function(_BrowserSayfa) git) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _browserMenuItem(
+          ikon: '🏠',
+          baslik: 'Kiralık Dükkanlar',
+          altyazi: 'DükkanKirala.com — ${_state.aktifDukkan.isim}',
+          renk: const Color(0xFF58a6ff),
+          onTap: () => git(_BrowserSayfa.dukkanlar),
+        ),
+        const SizedBox(height: 10),
+        _browserMenuItem(
+          ikon: '🏦',
+          baslik: 'Banka Kredisi',
+          altyazi: _state.aktifKrediVar
+              ? 'Aktif kredi: ${_state.krediTaksitMiktar} × ${_state.krediKalanTaksit} taksit kaldı'
+              : 'İhtiyaç kredisi başvurusu yap',
+          renk: const Color(0xFF3fb950),
+          onTap: () { Navigator.pop(ctx); _bankaKrediPopup(); },
+        ),
+        // ⚠️ Toptancı Rıza BİLEREK burada yok. Alışveriş sadece Rıza kapıya
+        // geldiğinde yapılabilir; menüden istediği an açmak ziyaretini
+        // anlamsızlaştırıyordu.
+        const SizedBox(height: 10),
+        _browserMenuItem(
+          ikon: '🏆',
+          baslik: 'Hedefler',
+          altyazi: '${_state.kazanilanRozetler.length}/${Rozet.tumu.length} rozet kazanıldı',
+          renk: const Color(0xFFa371f7),
+          onTap: () { Navigator.pop(ctx); _hedeflerPopup(); },
+        ),
+        const SizedBox(height: 10),
+        _browserMenuItem(
+          ikon: '🛒',
+          baslik: 'Market',
+          altyazi: 'Dükkanını geliştir',
+          renk: const Color(0xFFf78166),
+          onTap: () { Navigator.pop(ctx); _marketPopup(); },
+        ),
+        const SizedBox(height: 10),
+        _browserMenuItem(
+          ikon: '⚙️',
+          baslik: 'Ayarlar',
+          altyazi: SesServisi.sesAcik ? 'Ses: Açık' : 'Ses: Kapalı',
+          renk: const Color(0xFFd2a679),
+          onTap: () => _ayarlarPopup(),
+        ),
+        const SizedBox(height: 10),
+        _browserMenuItem(
+          ikon: '🔄',
+          baslik: 'Yeniden Başlat',
+          altyazi: 'Oyunu sıfırla ve başa dön',
+          renk: const Color(0xFFE07B00),
+          onTap: () { Navigator.pop(ctx); _yenidenBaslatOnay(); },
+        ),
+        const SizedBox(height: 14),
+        ElevatedButton(
+          onPressed: () => Navigator.pop(ctx),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF21262d),
+            foregroundColor: Colors.white70,
+            minimumSize: const Size(double.infinity, 42),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            side: const BorderSide(color: Color(0xFF30363d)),
+          ),
+          child: const Text('Kapat', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+        ),
+      ],
+    );
+  }
+
+  /// Browser'da açılan alt sayfanın gövdesi.
+  Widget _browserSayfaGovdesi(BuildContext ctx) {
+    switch (_browserSayfa) {
+      case _BrowserSayfa.dukkanlar:
+        return _dukkanlarGovdesi(() => Navigator.pop(ctx));
+      default:
+        return const SizedBox.shrink();
+    }
   }
 
   void _yenidenBaslatOnay() {
@@ -5177,27 +5252,23 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     );
   }
 
-  void _dukkanKiralaPopup() {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1a1008),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: const BorderSide(color: Color(0xFFFFD700), width: 1.5)),
-        title: Column(children: [
-          const Text('🏠 DükkanKirala.com', textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFFFFD700), letterSpacing: 1)),
-          const SizedBox(height: 4),
-          Text('Güncel dükkanın: ${_state.aktifDukkan.isim}',
-            textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 11, color: Colors.white38)),
-        ]),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: ListView.separated(
-            shrinkWrap: true,
-            itemCount: tumDukkanlar.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 8),
-            itemBuilder: (ctx2, i) {
+  /// Kiralık dükkanlar — browser sayfası gövdesi.
+  /// `onKirala`: dükkan seçilince çağrılır (browser'ı kapatmak için).
+  Widget _dukkanlarGovdesi(VoidCallback onKirala) {
+    return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      const Text('🏠 DükkanKirala.com', textAlign: TextAlign.center,
+        style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Color(0xFFFFD700), letterSpacing: 1)),
+      const SizedBox(height: 3),
+      Text('Güncel dükkanın: ${_state.aktifDukkan.isim}',
+        textAlign: TextAlign.center,
+        style: const TextStyle(fontSize: 11, color: Colors.white38)),
+      const SizedBox(height: 12),
+      ListView.separated(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: tumDukkanlar.length,
+        separatorBuilder: (_, __) => const SizedBox(height: 8),
+        itemBuilder: (ctx2, i) {
               final d = tumDukkanlar[i];
               final aktif = d.seviye == _state.aktifDukkan.seviye;
               final kilitli = _state.gun < d.minGun; // gün gereksinimi karşılanmadı
@@ -5207,7 +5278,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                   onTap: kilitli ? null : () {
                     if (aktif) return; // zaten bu dükkanda
                     _state.dukkanDegistir(d);
-                    Navigator.pop(ctx);
+                    onKirala();
                     _yeniDukkanPopup(d.isim);
                   },
                   child: Container(
@@ -5266,16 +5337,9 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                   ),
                 ),
               );
-            },
-          ),
-        ),
-        actions: [Center(child: ElevatedButton(
-          onPressed: () => Navigator.pop(ctx),
-          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF3a2000), foregroundColor: Colors.white),
-          child: const Text('Kapat', style: TextStyle(fontWeight: FontWeight.bold)),
-        ))],
+        },
       ),
-    );
+    ]);
   }
 
   /// Kapıda bekleyen silüet.
@@ -5433,6 +5497,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                 ),
               ),
               if (_envanterAcik) _buildEnvanterOverlay(),
+              if (_buyukUrunGorseli != null) _buildBuyukUrunOverlay(),
               if (_toastMetin != null) _buildToast(),
             ],
           ),
@@ -5613,12 +5678,25 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                              + (gorsel == 'assets/konsol_3.png'          ? 0.0058 : 0.0);
               final productLeft = dx + m.u(kUrunSagKaydir + ekKaydir);
               // Alt kenarı masa çizgisine kilitli → üst kenar = taban - boy
-              final productTop = m.y(kUrunTabani) - productSize - ofs;
-              return Positioned(
+              final normalTop = m.y(kUrunTabani) - productSize - ofs;
+              // Anlaşma olunca ürün masadan aşağı kayıp ekrandan çıkar —
+              // "mal oyuncuya geçti" hissi. Kaydırma AnimatedPositioned ile.
+              final productTop = _urunAsagiKayiyor ? mq.size.height : normalTop;
+              return AnimatedPositioned(
+                duration: const Duration(milliseconds: 650),
+                curve: _urunAsagiKayiyor ? Curves.easeInBack : Curves.easeOut,
                 left: productLeft, top: productTop,
-                child: Image.asset(
-                  gorsel,
-                  width: productSize, height: productSize, fit: BoxFit.contain,
+                child: AnimatedOpacity(
+                  duration: const Duration(milliseconds: 650),
+                  opacity: _urunAsagiKayiyor ? 0.0 : 1.0,
+                  child: GestureDetector(
+                    // Masadaki ürüne dokununca büyük önizleme açılır
+                    onTap: _urunAsagiKayiyor ? null : () => setState(() => _buyukUrunGorseli = gorsel),
+                    child: Image.asset(
+                      gorsel,
+                      width: productSize, height: productSize, fit: BoxFit.contain,
+                    ),
+                  ),
                 ),
               );
             },
@@ -6018,6 +6096,38 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
           style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF7043), foregroundColor: Colors.black),
           child: const Text('Harika!', style: TextStyle(fontWeight: FontWeight.bold)),
         ))],
+      ),
+    );
+  }
+
+  /// Masadaki ürüne dokununca açılan büyük önizleme.
+  /// Görsel ekranın büyük kısmını kaplar; tekrar dokununca kapanır.
+  /// `TweenAnimationBuilder` ile büyüyerek gelir — anlık açılıp kapanmasın.
+  Widget _buildBuyukUrunOverlay() {
+    final gorsel = _buyukUrunGorseli!;
+    return GestureDetector(
+      onTap: () => setState(() => _buyukUrunGorseli = null),
+      child: Container(
+        color: Colors.black.withValues(alpha: 0.82),
+        child: Center(
+          child: TweenAnimationBuilder<double>(
+            tween: Tween(begin: 0.35, end: 1.0),
+            duration: const Duration(milliseconds: 260),
+            curve: Curves.easeOutBack,
+            builder: (context, t, child) => Transform.scale(scale: t, child: child),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 18),
+                child: Image.asset(gorsel,
+                  width: MediaQuery.of(context).size.width * 0.86,
+                  fit: BoxFit.contain),
+              ),
+              const SizedBox(height: 14),
+              const Text('Kapatmak için dokun',
+                style: TextStyle(color: Colors.white54, fontSize: 12, fontWeight: FontWeight.w600)),
+            ]),
+          ),
+        ),
       ),
     );
   }
@@ -6917,10 +7027,19 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       if (p != null && p.durum == PazarlikDurum.devamEdiyor) {
         setState(() => _pazarlikBekleniyor = true);
       } else if (p != null && p.durum == PazarlikDurum.anlasildi) {
+        // Oyuncu SATIN ALDIYSA ürün masadan aşağı kayıp kaybolur — malın el
+        // değiştirdiği görünsün. Oyuncu satıyorsa zaten masada ürün yok.
+        if (_state.aktifMusteri?.musteriSatiyor == true) {
+          setState(() => _urunAsagiKayiyor = true);
+        }
         // Kabul mesajı balonda görünsün, 1.5 sn sonra müşteri gitsin
         Future.delayed(const Duration(milliseconds: 1500), () {
           if (!mounted) return;
-          _slideController.reverse().then((_) { if (mounted) _state.musteriAnimasyonBitti(); });
+          _slideController.reverse().then((_) {
+            if (!mounted) return;
+            _state.musteriAnimasyonBitti();
+            setState(() => _urunAsagiKayiyor = false); // sonraki müşteri için sıfırla
+          });
         });
       } else {
         setState(() => _pazarlikBekleniyor = false);
