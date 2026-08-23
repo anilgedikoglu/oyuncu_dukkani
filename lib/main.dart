@@ -2266,7 +2266,16 @@ class GameState extends ChangeNotifier {
     notifyListeners();
     return sayi;
   }
-  String? _sonUrunId;               // ardışık aynı ürün engeli
+  /// Son gelen ürünler (en yenisi başta). Aynı ürünün üst üste çıkmasını
+  /// engeller — tek id tutmak yetmiyordu, alıcı/satıcı sırayla gelince aynı
+  /// mal iki tur arayla tekrar düşebiliyordu.
+  final List<String> _sonUrunIdleri = [];
+  static const int _sonUrunHafizasi = 2;
+  String? get _sonUrunId => _sonUrunIdleri.isEmpty ? null : _sonUrunIdleri.first;
+  void _sonUrunKaydet(String id) {
+    _sonUrunIdleri.insert(0, id);
+    if (_sonUrunIdleri.length > _sonUrunHafizasi) _sonUrunIdleri.removeLast();
+  }
   /// Oynanabilir ürün günde bir kez gelir; bugün geldi mi?
   bool _bugunOynanabilirGeldi = false;
   /// Bugün ve dün gelen oynanabilir ürün — iki gün üst üste aynısı gelmesin.
@@ -3043,7 +3052,9 @@ class GameState extends ChangeNotifier {
         return;
       }
       // Ardışık aynı ürün engeli: bir önceki ürün havuzdan çıkar (birden fazla varsa)
-      final adaylar = mevcut.length > 1 ? mevcut.where((u) => u.id != _sonUrunId).toList() : mevcut;
+      final adaylar0 = mevcut.where((u) => !_sonUrunIdleri.contains(u.id)).toList();
+      final adaylar = adaylar0.isNotEmpty ? adaylar0
+          : (mevcut.length > 1 ? mevcut.where((u) => u.id != _sonUrunId).toList() : mevcut);
       secilenUrun = adaylar[rng.nextInt(adaylar.length)];
     } else {
       // Kolonya zaten varsa tekrar kolonya satan müşteri gelmesin
@@ -3051,7 +3062,9 @@ class GameState extends ChangeNotifier {
           ? _baslangicUrunler.where((u) => u.id != 'kolonya').toList()
           : _baslangicUrunler.toList();
       // Ardışık aynı ürün engeli: bir önceki ürün havuzdan çıkar (birden fazla varsa)
-      final satisHavuzu = tumHavuz.length > 1 ? tumHavuz.where((u) => u.id != _sonUrunId).toList() : tumHavuz;
+      final havuz0 = tumHavuz.where((u) => !_sonUrunIdleri.contains(u.id)).toList();
+      final satisHavuzu = havuz0.isNotEmpty ? havuz0
+          : (tumHavuz.length > 1 ? tumHavuz.where((u) => u.id != _sonUrunId).toList() : tumHavuz);
       final normaller = satisHavuzu.where((u) => !u.oynanabilir).toList();
       // Oynanabilir ürünler GÜNDE EN FAZLA BİR KEZ gelir; ayrıca dün gelen
       // oyun bugün gelmez. Sadece nadirlik yüzdesine bırakılsaydı bazı günler
@@ -3076,7 +3089,7 @@ class GameState extends ChangeNotifier {
         );
       }
     }
-    _sonUrunId = secilenUrun.id; // bir sonraki seçimde bu ürün hariç tutulur
+    _sonUrunKaydet(secilenUrun.id); // sonraki turlarda bu ürün hariç tutulur
 
     // Yeni model: perceivedValue → reservationPrice → openingOffer
     // etkinFiyat: çürük üründe piyasa değeri %35'e düşer
@@ -3341,6 +3354,8 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   late AnimationController _slideController;
   late Animation<double> _slideAnim;
   bool _envanterAcik = false;
+  /// Toptanci ekraninda envanter sekmesi acik mi (tek yonlu gecis)
+  bool _toptanciEnvanterSekmesi = false;
   bool _gunBitiPopupGosterildi = false;
   bool _pazarlikBekleniyor = false;
   bool _bilgisayarGeldiGosterildi = false;
@@ -4071,7 +4086,34 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   // ═══════════════════════════════════════════════════════════════════════════
   //  TOPTANCI — günlük stok, ucuz ürün / çürük ürün / tamir seti / kapalı kutu
   // ═══════════════════════════════════════════════════════════════════════════
+  /// Toptancı ekranındaki sekme düğmesi (Tezgâh / Envanter).
+  Widget _toptanciSekme(String etiket, bool secili, VoidCallback onTap) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 9),
+          decoration: BoxDecoration(
+            color: secili ? const Color(0xFFd29922).withValues(alpha: 0.16) : Colors.transparent,
+            border: Border(
+              bottom: BorderSide(
+                color: secili ? const Color(0xFFd29922) : const Color(0xFFd29922).withValues(alpha: 0.20),
+                width: secili ? 2.5 : 1,
+              ),
+            ),
+          ),
+          child: Text(etiket,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 0.6,
+              color: secili ? const Color(0xFFd29922) : Colors.white38)),
+        ),
+      ),
+    );
+  }
+
   Future<void> _toptanciPopup({bool ziyaret = false}) async {
+    _toptanciEnvanterSekmesi = false; // her açılışta tezgâhla başla
     if (ziyaret) {
       _state.toptanciZiyaretiTazele(); // kapıya geldiyse taze stok
     } else {
@@ -4139,6 +4181,21 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                         ),
                       ]),
                     ),
+                    // ── Sekmeler: Tezgâh / Envanter ──
+                    // Rıza kapıdayken oyuncunun envanteri de görebilmesi lazım;
+                    // yer açmak için bir şey satmak/tamir etmek gerekebiliyor.
+                    // ⚠️ Geçiş TEK YÖNLÜ tasarlandı: envanterin kendi
+                    // popup'ından toptancıya geçiş YOK — alışveriş yalnızca
+                    // Rıza kapıya geldiğinde açılmalı.
+                    Row(children: [
+                      _toptanciSekme('🛒 Tezgâh', !_toptanciEnvanterSekmesi,
+                          () => setDlg(() => _toptanciEnvanterSekmesi = false)),
+                      _toptanciSekme('📦 Envanter', _toptanciEnvanterSekmesi,
+                          () => setDlg(() => _toptanciEnvanterSekmesi = true)),
+                    ]),
+                    if (_toptanciEnvanterSekmesi)
+                      Flexible(child: _envanterGovdesi(baslikGoster: false))
+                    else
                     // ── Stok ──
                     Flexible(
                       child: SingleChildScrollView(
@@ -5965,58 +6022,92 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildEnvanterOverlay() {
+  /// Envanterin İÇERİĞİ — başlık + ipucu + ürün ızgarası.
+  ///
+  /// Ayrı çıkarıldı çünkü iki yerde kullanılıyor: kendi popup'ında ve
+  /// Toptancı Rıza ekranındaki "Envanter" sekmesinde.
+  Widget _envanterGovdesi({bool baslikGoster = true}) {
     // Bir kez hesapla — itemBuilder her kartta yeniden üretmesin
     final ekKartlar = _ekEnvanterKartlari;
+    return Column(mainAxisSize: MainAxisSize.min, children: [
+      if (baslikGoster) ...[
+        const SizedBox(height: 12),
+        const Text('📦 ENVANTER', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFFFFD700), letterSpacing: 1.5)),
+      ],
+      // Oynanabilir ürünler için küçük ipucu — yıldızın ne demek olduğu başka
+      // hiçbir yerde yazmıyor. Başlığın hemen altında ki gözden kaçmasın.
+      const Padding(
+        padding: EdgeInsets.only(top: 4),
+        child: Text(
+          '⭐ Yıldızlı oyunlar tıklanıp oynanabilir',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 10, color: Color(0xFF7fdfff), fontWeight: FontWeight.w600),
+        ),
+      ),
+      const SizedBox(height: 10),
+      Flexible(
+        child: GridView.builder(
+          shrinkWrap: true,
+          padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 3,
+            mainAxisSpacing: 10,
+            crossAxisSpacing: 10,
+            childAspectRatio: 0.80,
+          ),
+          // İlave kartlar: kolonya ve tamir seti slot işgal etmez
+          itemCount: 25 + ekKartlar.length,
+          itemBuilder: (context, i) =>
+              i >= 25 ? ekKartlar[i - 25] : _buildSlotKart(i),
+        ),
+      ),
+    ]);
+  }
+
+  /// Envanter popup'ı — Toptancı Rıza ekranıyla aynı dilde: ekranın
+  /// ORTASINDA, çerçeveli bir kart. Eskiden alttan çekmece gibi açılıyordu.
+  Widget _buildEnvanterOverlay() {
     return GestureDetector(
       onTap: () => setState(() => _envanterAcik = false),
       child: Container(
         color: Colors.black.withValues(alpha: 0.65),
-        child: Align(
-          alignment: Alignment.bottomCenter,
+        child: Center(
           child: GestureDetector(
             onTap: () {},
-            child: Container(
-              height: MediaQuery.of(context).size.height * 0.65,
-              decoration: BoxDecoration(
-                color: const Color(0xFF1a1008).withValues(alpha: 0.97),
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-                border: const Border(top: BorderSide(color: Color(0xFFFFD700), width: 1.5), left: BorderSide(color: Color(0xFFFFD700), width: 1.5), right: BorderSide(color: Color(0xFFFFD700), width: 1.5)),
-              ),
-              child: Column(children: [
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                  child: Container(width: 40, height: 4, decoration: BoxDecoration(color: const Color(0xFFFFD700).withValues(alpha: 0.5), borderRadius: BorderRadius.circular(2))),
-                ),
-                const Text('📦 ENVANTER', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFFFFD700), letterSpacing: 1.5)),
-                // Oynanabilir ürünler için küçük ipucu — yıldızın ne demek
-                // olduğu başka hiçbir yerde yazmıyor. Başlığın hemen altında
-                // duruyor ki liste uzun olsa da gözden kaçmasın.
-                const Padding(
-                  padding: EdgeInsets.only(top: 4),
-                  child: Text(
-                    '⭐ Yıldızlı oyunlar tıklanıp oynanabilir',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 10, color: Color(0xFF7fdfff), fontWeight: FontWeight.w600),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 32),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.82),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF14100a),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: const Color(0xFFFFD700).withValues(alpha: 0.6), width: 1.5),
+                    boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.6), blurRadius: 20, offset: const Offset(0, 8))],
                   ),
-                ),
-                const SizedBox(height: 10),
-                Expanded(
-                  child: GridView.builder(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 3,
-                      mainAxisSpacing: 10,
-                      crossAxisSpacing: 10,
-                      childAspectRatio: 0.80,
+                  child: Column(mainAxisSize: MainAxisSize.min, children: [
+                    Flexible(child: _envanterGovdesi()),
+                    // Kapat scroll alanının DIŞINDA, hep görünür
+                    Container(
+                      padding: const EdgeInsets.fromLTRB(14, 8, 14, 12),
+                      decoration: BoxDecoration(
+                        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(12)),
+                        border: Border(top: BorderSide(color: const Color(0xFFFFD700).withValues(alpha: 0.25))),
+                      ),
+                      child: ElevatedButton(
+                        onPressed: () => setState(() => _envanterAcik = false),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF21262d), foregroundColor: Colors.white70,
+                          minimumSize: const Size(double.infinity, 42),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          side: const BorderSide(color: Color(0xFF30363d)),
+                        ),
+                        child: const Text('Kapat', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                      ),
                     ),
-                    // İlave kartlar: kolonya ve tamir seti slot işgal etmez
-                    itemCount: 25 + ekKartlar.length,
-                    itemBuilder: (context, i) =>
-                        i >= 25 ? ekKartlar[i - 25] : _buildSlotKart(i),
-                  ),
+                  ]),
                 ),
-              ]),
+              ),
             ),
           ),
         ),
@@ -6344,6 +6435,15 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     }
     _state.notifyListeners();
 
+    // "Dükkana dön" ile mini oyundan çıkarken geçiş reklamı; kapanınca oyun
+    // özeti gösterilir. Emülatörde/reklam yoksa doğrudan özete geçer.
+    ReklamServisi.goster(onClosed: () {
+      if (mounted) _oyunOzetiGoster(urunId, kazanilan);
+    });
+  }
+
+  /// Mini oyun bitiş özeti (geçiş reklamından sonra gösterilir).
+  void _oyunOzetiGoster(String urunAdi, int kazanilan) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -6360,7 +6460,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
         ]),
         content: Text(
           kazanilan > 0
-              ? '$urunId oyunundan $kazanilan puan topladın!\n\n💰 Kasana $kazanilan lira eklendi.'
+              ? '$urunAdi oyunundan $kazanilan puan topladın!\n\n💰 Kasana $kazanilan lira eklendi.'
               : 'Hiç puan toplayamadın. Yarın tekrar dene!',
           textAlign: TextAlign.center,
           style: const TextStyle(color: Colors.white70, fontSize: 14, height: 1.4),
