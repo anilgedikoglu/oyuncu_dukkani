@@ -2436,6 +2436,20 @@ class GameState extends ChangeNotifier {
     GameItem(id: 'aksesuar6',name: 'Kablosuz Joypad',      gorsel: 'assets/kumanda_2.png',         category: ItemCategory.aksesuar,basePrice: 300,  kondisyon: 4),
     GameItem(id: 'aksesuar7',name: 'Direksiyon Seti',      gorsel: 'assets/direksiyon_2.png',      category: ItemCategory.aksesuar,basePrice: 750,  kondisyon: 5),
     GameItem(id: 'aksesuar8',name: 'Oyuncu Mausu',         gorsel: 'assets/oyuncumausu.png',       category: ItemCategory.aksesuar,basePrice: 260,  kondisyon: 4),
+    // ── v110: kaynak klasörde kalan 10 ekipman (9 konsol + 1 arcade joystick) ──
+    // Fiyatlar mevcut konsol aralığına (380-620) oturtuldu; retro LCD'ler ucuz,
+    // renkli/neon olanlar pahalı. CD ortalamasına dokunulmadı → oynanabilir
+    // ürünlerin "2 kat" dengesi ve onu koruyan test bozulmuyor.
+    GameItem(id: 'konsol11', name: 'El Konsolu',           gorsel: 'assets/konsol_11.png',         category: ItemCategory.konsol,  basePrice: 480,  kondisyon: 4),
+    GameItem(id: 'konsol12', name: 'El Konsolu',           gorsel: 'assets/konsol_12.png',         category: ItemCategory.konsol,  basePrice: 330,  kondisyon: 2),
+    GameItem(id: 'konsol13', name: 'El Konsolu',           gorsel: 'assets/konsol_13.png',         category: ItemCategory.konsol,  basePrice: 290,  kondisyon: 2),
+    GameItem(id: 'konsol14', name: 'El Konsolu',           gorsel: 'assets/konsol_14.png',         category: ItemCategory.konsol,  basePrice: 540,  kondisyon: 4),
+    GameItem(id: 'konsol15', name: 'Masaüstü Konsol',      gorsel: 'assets/konsol_15.png',         category: ItemCategory.konsol,  basePrice: 360,  kondisyon: 3),
+    GameItem(id: 'konsol16', name: 'Masaüstü Konsol',      gorsel: 'assets/konsol_16.png',         category: ItemCategory.konsol,  basePrice: 640,  kondisyon: 5),
+    GameItem(id: 'konsol17', name: 'Masaüstü Konsol',      gorsel: 'assets/konsol_17.png',         category: ItemCategory.konsol,  basePrice: 400,  kondisyon: 3),
+    GameItem(id: 'konsol18', name: 'El Konsolu',           gorsel: 'assets/konsol_18.png',         category: ItemCategory.konsol,  basePrice: 580,  kondisyon: 4),
+    GameItem(id: 'konsol19', name: 'El Konsolu',           gorsel: 'assets/konsol_19.png',         category: ItemCategory.konsol,  basePrice: 700,  kondisyon: 5),
+    GameItem(id: 'aksesuar9',name: 'Arcade Joystick',      gorsel: 'assets/joystick.png',          category: ItemCategory.aksesuar,basePrice: 470,  kondisyon: 4),
   ];
 
   // 25 slot: index 0-24. Slot bazlı envanter.
@@ -2760,6 +2774,15 @@ class GameState extends ChangeNotifier {
     {'gorsel': 'assets/musteri_26.png', 'cinsiyet': 'E', 'yas': 'cocuk'},    // erkek çocuk, mavi kazak
     {'gorsel': 'assets/musteri_27.png', 'cinsiyet': 'K', 'yas': 'cocuk'},    // kız çocuk, okul üniforması
     {'gorsel': 'assets/musteri_28.png', 'cinsiyet': 'E', 'yas': 'yetiskin'}, // atletik, kolsuz tişört
+    // v110 — kaynak klasörde işlenmemiş kalan 6 kesim. Ölçüldü: hepsi 500×500,
+    // doluluk 0.95-0.966, alt boşluk 10-15px → mevcut kadroyla birebir uyumlu,
+    // yeniden ölçekleme YAPILMADI.
+    {'gorsel': 'assets/musteri_29.png', 'cinsiyet': 'E', 'yas': 'genc'},     // genç adam, haki gömlek + kargo pantolon
+    {'gorsel': 'assets/musteri_30.png', 'cinsiyet': 'K', 'yas': 'genc'},     // kızıl saçlı, kot ceket
+    {'gorsel': 'assets/musteri_31.png', 'cinsiyet': 'K', 'yas': 'yetiskin'}, // topuzlu, krem askılı ve şort
+    {'gorsel': 'assets/musteri_32.png', 'cinsiyet': 'K', 'yas': 'genc'},     // "GRRR!" tişört, mor kargo
+    {'gorsel': 'assets/musteri_33.png', 'cinsiyet': 'K', 'yas': 'genc'},     // sarışın, pembe şort ve çiçekli çanta
+    {'gorsel': 'assets/musteri_34.png', 'cinsiyet': 'K', 'yas': 'yetiskin'}, // sarı bandana, çiçekli gömlek
   ];
   List<int> _musteriSira = [];
 
@@ -3976,80 +3999,35 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     );
   }
 
-  void _marketPopup() {
-    showDialog(
-      context: context,
-      builder: (ctx) => Dialog(
-        backgroundColor: Colors.transparent,
-        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
-        child: Container(
-          decoration: BoxDecoration(
-            color: const Color(0xFF0d1117),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFFf78166).withValues(alpha: 0.5), width: 1.5),
-            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.6), blurRadius: 20, offset: const Offset(0, 8))],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Başlık
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFf78166).withValues(alpha: 0.12),
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(10)),
-                  border: Border(bottom: BorderSide(color: const Color(0xFFf78166).withValues(alpha: 0.3))),
-                ),
-                child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                  Text('🛒 ', style: TextStyle(fontSize: 20)),
-                  Text('MARKET', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Color(0xFFf78166), letterSpacing: 2)),
-                ]),
-              ),
-              // Ürün grid
-              Flexible(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      GridView.count(
-                        crossAxisCount: 3,
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        mainAxisSpacing: 10,
-                        crossAxisSpacing: 10,
-                        childAspectRatio: 0.78,
-                        children: [
-                          _marketUrunKart(
-                            ikon: '🖥️',
-                            isim: 'iMac',
-                            fiyat: 2000,
-                            satinAlindi: _state.imacSatinAlindi,
-                            onTap: () { Navigator.pop(ctx); _imacDetayPopup(); },
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 14),
-                      ElevatedButton(
-                        onPressed: () => Navigator.pop(ctx),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF21262d),
-                          foregroundColor: Colors.white70,
-                          minimumSize: const Size(double.infinity, 42),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                          side: const BorderSide(color: Color(0xFF30363d)),
-                        ),
-                        child: const Text('Kapat', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
+  /// Market — browser sayfası gövdesi.
+  Widget _marketGovdesi(BuildContext ctx) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+          Text('🛒 ', style: TextStyle(fontSize: 20)),
+          Text('MARKET', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Color(0xFFf78166), letterSpacing: 2)),
+        ]),
+        const SizedBox(height: 14),
+        GridView.count(
+          crossAxisCount: 3,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          mainAxisSpacing: 10,
+          crossAxisSpacing: 10,
+          childAspectRatio: 0.78,
+          children: [
+            _marketUrunKart(
+              ikon: '🖥️',
+              isim: 'iMac',
+              fiyat: 2000,
+              satinAlindi: _state.imacSatinAlindi,
+              onTap: () { Navigator.pop(ctx); _imacDetayPopup(); },
+            ),
+          ],
         ),
-      ),
+      ],
     );
   }
 
@@ -4443,119 +4421,84 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   // ═══════════════════════════════════════════════════════════════════════════
   //  HEDEFLER — bugünün hedefi, rozetler, koleksiyon
   // ═══════════════════════════════════════════════════════════════════════════
-  void _hedeflerPopup() {
-    showDialog(
-      context: context,
-      builder: (ctx) => Dialog(
-        backgroundColor: Colors.transparent,
-        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 32),
-        child: ConstrainedBox(
-          constraints: BoxConstraints(maxHeight: MediaQuery.of(ctx).size.height * 0.82),
-          child: Container(
-            decoration: BoxDecoration(
-              color: const Color(0xFF120e18),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: const Color(0xFFa371f7).withValues(alpha: 0.6), width: 1.5),
-              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.6), blurRadius: 20, offset: const Offset(0, 8))],
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 13),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFa371f7).withValues(alpha: 0.12),
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-                    border: Border(bottom: BorderSide(color: const Color(0xFFa371f7).withValues(alpha: 0.3))),
-                  ),
-                  child: Column(children: [
-                    const Text('🏆 HEDEFLER',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFFa371f7), letterSpacing: 2)),
-                    const SizedBox(height: 2),
-                    Text('${_state.kazanilanRozetler.length} / ${Rozet.tumu.length} rozet',
-                      style: const TextStyle(fontSize: 11, color: Colors.white38)),
-                  ]),
-                ),
-                Flexible(
-                  child: ListView.separated(
-                    shrinkWrap: true,
-                    padding: const EdgeInsets.fromLTRB(14, 12, 14, 4),
-                    itemCount: Rozet.tumu.length + 2, // +bugün paneli +koleksiyon
-                    separatorBuilder: (_, __) => const SizedBox(height: 8),
-                    itemBuilder: (c, i) {
-                      if (i == 0) return _bugunPaneli();
-                      if (i == Rozet.tumu.length + 1) return _koleksiyonPaneli();
-                      final r = Rozet.tumu[i - 1];
-                      final kazanildi = _state.rozetVar(r.id);
-                      final ilerleme = _state.rozetIlerleme(r.id).clamp(0, r.hedefDeger);
-                      final oran = r.hedefDeger == 0 ? 1.0 : ilerleme / r.hedefDeger;
-                      return Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: kazanildi ? const Color(0xFF1d1630) : const Color(0xFF16131c),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
-                            color: kazanildi ? const Color(0xFFa371f7).withValues(alpha: 0.7) : Colors.white12,
-                            width: kazanildi ? 1.4 : 1),
-                        ),
-                        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          Opacity(opacity: kazanildi ? 1.0 : 0.30,
-                            child: Text(r.emoji, style: const TextStyle(fontSize: 28))),
-                          const SizedBox(width: 10),
-                          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                            Row(children: [
-                              Expanded(child: Text(r.baslik,
-                                style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold,
-                                  color: kazanildi ? const Color(0xFFa371f7) : Colors.white54))),
-                              if (kazanildi) const Text('✓', style: TextStyle(fontSize: 14, color: Color(0xFF3fb950), fontWeight: FontWeight.bold)),
-                            ]),
-                            const SizedBox(height: 2),
-                            Text(r.hedefAciklama, style: const TextStyle(fontSize: 10, color: Colors.white38)),
-                            const SizedBox(height: 5),
-                            // İlerleme çubuğu
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(3),
-                              child: LinearProgressIndicator(
-                                value: oran.toDouble().clamp(0.0, 1.0),
-                                minHeight: 5,
-                                backgroundColor: Colors.white10,
-                                valueColor: AlwaysStoppedAnimation(
-                                  kazanildi ? const Color(0xFF3fb950) : const Color(0xFFa371f7)),
-                              ),
-                            ),
-                            const SizedBox(height: 3),
-                            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                              Text('$ilerleme / ${r.hedefDeger}',
-                                style: const TextStyle(fontSize: 9, color: Colors.white30)),
-                              Flexible(child: Text('🎁 ${r.odul}', textAlign: TextAlign.right, maxLines: 2,
-                                style: TextStyle(fontSize: 9,
-                                  color: kazanildi ? const Color(0xFF3fb950) : Colors.white38))),
-                            ]),
-                          ])),
-                        ]),
-                      );
-                    },
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(14, 10, 14, 14),
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.pop(ctx),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF21262d), foregroundColor: Colors.white70,
-                      minimumSize: const Size(double.infinity, 42),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                      side: const BorderSide(color: Color(0xFF30363d)),
-                    ),
-                    child: const Text('Kapat', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-                  ),
-                ),
-              ],
+  /// Hedefler — browser sayfası gövdesi.
+  Widget _hedeflerGovdesi() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Column(children: [
+          const Text('🏆 HEDEFLER',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFFa371f7), letterSpacing: 2)),
+          const SizedBox(height: 2),
+          Text('${_state.kazanilanRozetler.length} / ${Rozet.tumu.length} rozet',
+            style: const TextStyle(fontSize: 11, color: Colors.white38)),
+        ]),
+        const SizedBox(height: 12),
+        // +1 bugün paneli (başta), +1 koleksiyon paneli (sonda)
+        // ⚠️ ListView değil: browser içeriği zaten kaydırılabilir bir
+        // SingleChildScrollView; iç içe iki kaydırma alanı istemiyoruz.
+        ...List.generate(Rozet.tumu.length + 2, (i) => Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: _hedefSatiri(i),
+        )),
+      ],
+    );
+  }
+
+  /// Hedefler listesinin tek satırı: 0 → bugün paneli, son → koleksiyon,
+  /// aradakiler rozet kartı.
+  Widget _hedefSatiri(int i) {
+    if (i == 0) return _bugunPaneli();
+    if (i == Rozet.tumu.length + 1) return _koleksiyonPaneli();
+    final r = Rozet.tumu[i - 1];
+    final kazanildi = _state.rozetVar(r.id);
+    final ilerleme = _state.rozetIlerleme(r.id).clamp(0, r.hedefDeger);
+    final oran = r.hedefDeger == 0 ? 1.0 : ilerleme / r.hedefDeger;
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: kazanildi ? const Color(0xFF1d1630) : const Color(0xFF16131c),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: kazanildi ? const Color(0xFFa371f7).withValues(alpha: 0.7) : Colors.white12,
+          width: kazanildi ? 1.4 : 1),
+      ),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Opacity(opacity: kazanildi ? 1.0 : 0.30,
+          child: Text(r.emoji, style: const TextStyle(fontSize: 28))),
+        const SizedBox(width: 10),
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Expanded(child: Text(r.baslik,
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold,
+                color: kazanildi ? const Color(0xFFa371f7) : Colors.white54))),
+            if (kazanildi) const Text('✓', style: TextStyle(fontSize: 14, color: Color(0xFF3fb950), fontWeight: FontWeight.bold)),
+          ]),
+          const SizedBox(height: 2),
+          Text(r.hedefAciklama, style: const TextStyle(fontSize: 10, color: Colors.white38)),
+          const SizedBox(height: 5),
+          // İlerleme çubuğu
+          ClipRRect(
+            borderRadius: BorderRadius.circular(3),
+            child: LinearProgressIndicator(
+              value: oran.toDouble().clamp(0.0, 1.0),
+              minHeight: 5,
+              backgroundColor: Colors.white10,
+              valueColor: AlwaysStoppedAnimation(
+                kazanildi ? const Color(0xFF3fb950) : const Color(0xFFa371f7)),
             ),
           ),
-        ),
-      ),
+          const SizedBox(height: 3),
+          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+            Text('$ilerleme / ${r.hedefDeger}',
+              style: const TextStyle(fontSize: 9, color: Colors.white30)),
+            Flexible(child: Text('🎁 ${r.odul}', textAlign: TextAlign.right, maxLines: 2,
+              style: TextStyle(fontSize: 9,
+                color: kazanildi ? const Color(0xFF3fb950) : Colors.white38))),
+          ]),
+        ])),
+      ]),
     );
   }
 
@@ -4805,7 +4748,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                         padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
                         child: menude
                             ? _browserMenuGovdesi(ctx, git)
-                            : _browserSayfaGovdesi(ctx),
+                            : _browserSayfaGovdesi(ctx, setDlg),
                       ),
                     ),
                   ],
@@ -4838,7 +4781,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
               ? 'Aktif kredi: ${_state.krediTaksitMiktar} × ${_state.krediKalanTaksit} taksit kaldı'
               : 'İhtiyaç kredisi başvurusu yap',
           renk: const Color(0xFF3fb950),
-          onTap: () { Navigator.pop(ctx); _bankaKrediPopup(); },
+          onTap: () { _bankaSayfasiHazirla(); git(_BrowserSayfa.banka); },
         ),
         // ⚠️ Toptancı Rıza BİLEREK burada yok. Alışveriş sadece Rıza kapıya
         // geldiğinde yapılabilir; menüden istediği an açmak ziyaretini
@@ -4849,7 +4792,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
           baslik: 'Hedefler',
           altyazi: '${_state.kazanilanRozetler.length}/${Rozet.tumu.length} rozet kazanıldı',
           renk: const Color(0xFFa371f7),
-          onTap: () { Navigator.pop(ctx); _hedeflerPopup(); },
+          onTap: () => git(_BrowserSayfa.hedefler),
         ),
         const SizedBox(height: 10),
         _browserMenuItem(
@@ -4857,7 +4800,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
           baslik: 'Market',
           altyazi: 'Dükkanını geliştir',
           renk: const Color(0xFFf78166),
-          onTap: () { Navigator.pop(ctx); _marketPopup(); },
+          onTap: () => git(_BrowserSayfa.market),
         ),
         const SizedBox(height: 10),
         _browserMenuItem(
@@ -4892,11 +4835,17 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   }
 
   /// Browser'da açılan alt sayfanın gövdesi.
-  Widget _browserSayfaGovdesi(BuildContext ctx) {
+  Widget _browserSayfaGovdesi(BuildContext ctx, void Function(VoidCallback) setDlg) {
     switch (_browserSayfa) {
       case _BrowserSayfa.dukkanlar:
         return _dukkanlarGovdesi(() => Navigator.pop(ctx));
-      default:
+      case _BrowserSayfa.hedefler:
+        return _hedeflerGovdesi();
+      case _BrowserSayfa.market:
+        return _marketGovdesi(ctx);
+      case _BrowserSayfa.banka:
+        return _bankaGovdesi(ctx, setDlg);
+      case _BrowserSayfa.menu:
         return const SizedBox.shrink();
     }
   }
@@ -4986,236 +4935,231 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     );
   }
 
-  void _bankaKrediPopup() {
-    if (_state.aktifKrediVar) {
-      showDialog(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          backgroundColor: const Color(0xFF1a1008),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: const BorderSide(color: Colors.orangeAccent, width: 1.5)),
-          title: const Text('🏦 Aktif Kredi Var', textAlign: TextAlign.center, style: TextStyle(color: Colors.orangeAccent, fontSize: 18)),
-          content: Text(
-            'Hâlâ aktif bir krediniz var.\n\n${_state.krediTaksitMiktar} × ${_state.krediKalanTaksit} taksit kaldı.\n\nKrediniz bitince yeni başvuru yapabilirsiniz.',
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: Colors.white70, fontSize: 14),
-          ),
-          actions: [Center(child: ElevatedButton(
-            onPressed: () => Navigator.pop(ctx),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.orangeAccent, foregroundColor: Colors.black),
-            child: const Text('Tamam', style: TextStyle(fontWeight: FontWeight.bold)),
-          ))],
-        ),
-      );
-      return;
-    }
+  // ── BANKA KREDİSİ — browser sayfası ─────────────────────────────────────
+  // Sayfa her karede yeniden çizildiği için tutar/taksit seçimi widget'ın
+  // içinde tutulamaz; _GameScreenState alanlarında duruyor ve sayfaya
+  // girilirken _bankaSayfasiHazirla() ile bir kez kuruluyor.
+  int _krediTutar = 500;
+  int _krediTaksit = 2;
 
-    // Gün çarpanı: kaç. gün olduğuna göre banka daha fazla kredi verir
-    final gun = _state.gun;
-    final multiplier = gun <= 5 ? 1 : gun <= 10 ? 2 : gun <= 20 ? 3 : 4;
+  static const int _krediMinTutar = 500;
+  static const int _krediMinTaksit = 2;
 
-    // Taksit limitleri: önceki kredi geçmişine göre
-    final tamamlanan = _state.tamamlananKrediSayisi;
-    const minTaksit = 2;
-    final maxTaksit = tamamlanan == 0 ? 3 : tamamlanan == 1 ? 6 : 9;
+  /// Gün çarpanı: oyun ilerledikçe banka daha yüksek limit veriyor.
+  int get _krediCarpan {
+    final g = _state.gun;
+    return g <= 5 ? 1 : g <= 10 ? 2 : g <= 20 ? 3 : 4;
+  }
 
-    // Başlangıç kredi tutarı: 1000–3000 × çarpan, 100'e yuvarlanmış
+  int get _krediMaxTutar => 3000 * _krediCarpan;
+
+  /// Taksit limiti önceki kredi geçmişine göre açılır.
+  int get _krediMaxTaksit {
+    final t = _state.tamamlananKrediSayisi;
+    return t == 0 ? 3 : t == 1 ? 6 : 9;
+  }
+
+  /// Faiz: her ek taksit %5 (2 taksit = %5 … 9 taksit = %40)
+  int _krediGeriOdeme(int tutar, int taksit) =>
+      (tutar * (1.0 + 0.05 * (taksit - 1))).round();
+
+  void _bankaSayfasiHazirla() {
     final rng = Random();
     final baseSteps = 10 + rng.nextInt(21); // 10..30 → 1000..3000
-    final baseAmount = (baseSteps * 100 * multiplier).clamp(500, 3000 * multiplier);
-    final minAmount = 500;
-    final maxAmount = 3000 * multiplier;
+    _krediTutar = (baseSteps * 100 * _krediCarpan).clamp(_krediMinTutar, _krediMaxTutar);
+    _krediTaksit = _krediMinTaksit;
+  }
 
-    // Faiz formülü: her taksit %5 ek (2 taksit=%5, 3=%10, ..., 9=%40)
-    int hesaplaGeriOdeme(int tutar, int taksit) =>
-        (tutar * (1.0 + 0.05 * (taksit - 1))).round();
+  /// Banka — browser sayfası gövdesi.
+  Widget _bankaGovdesi(BuildContext ctx, void Function(VoidCallback) setD) {
+    // Aktif kredi varken yeni başvuru alınmaz
+    if (_state.aktifKrediVar) {
+      return Column(mainAxisSize: MainAxisSize.min, children: [
+        const Text('🏦 AKTİF KREDİ VAR',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.orangeAccent, fontSize: 16,
+                fontWeight: FontWeight.bold, letterSpacing: 1.5)),
+        const SizedBox(height: 14),
+        Text(
+          'Hâlâ aktif bir krediniz var.\n\n'
+          '${_state.krediTaksitMiktar} × ${_state.krediKalanTaksit} taksit kaldı.\n\n'
+          'Krediniz bitince yeni başvuru yapabilirsiniz.',
+          textAlign: TextAlign.center,
+          style: const TextStyle(color: Colors.white70, fontSize: 14),
+        ),
+      ]);
+    }
 
-    int alinanTutar = baseAmount;
-    int taksitSayisi = minTaksit;
+    final gun = _state.gun;
+    final carpan = _krediCarpan;
+    final maxTutar = _krediMaxTutar;
+    final maxTaksit = _krediMaxTaksit;
+    final geriOdeme = _krediGeriOdeme(_krediTutar, _krediTaksit);
+    final gunlukKesinti = (geriOdeme / _krediTaksit).ceil();
+    final faizPct = 5 * (_krediTaksit - 1);
 
+    Widget okBtn(IconData icon, Color color, VoidCallback? onTap) {
+      return GestureDetector(
+        onTap: onTap,
+        child: Container(
+          width: 30, height: 30,
+          decoration: BoxDecoration(
+            color: onTap != null ? color.withValues(alpha: 0.15) : Colors.transparent,
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: onTap != null ? color.withValues(alpha: 0.5) : Colors.white12),
+          ),
+          child: Icon(icon, color: onTap != null ? color : Colors.white24, size: 22),
+        ),
+      );
+    }
+
+    // Etiket + ▼ değer ▲ satırı
+    Widget ayarSatiri({
+      required String label,
+      required String value,
+      required Color color,
+      required VoidCallback? onDown,
+      required VoidCallback? onUp,
+    }) {
+      return Row(children: [
+        Expanded(child: Text(label, style: const TextStyle(color: Colors.white54, fontSize: 12))),
+        okBtn(Icons.arrow_drop_down, color, onDown),
+        const SizedBox(width: 4),
+        SizedBox(
+          width: 80,
+          child: Text(value, textAlign: TextAlign.center,
+              style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 13)),
+        ),
+        const SizedBox(width: 4),
+        okBtn(Icons.arrow_drop_up, color, onUp),
+      ]);
+    }
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+          Text('🏦 ', style: TextStyle(fontSize: 22)),
+          Text('Banka Kredisi',
+              style: TextStyle(color: Color(0xFF3fb950), fontSize: 19, fontWeight: FontWeight.bold)),
+        ]),
+        const SizedBox(height: 14),
+        // Çarpan rozeti
+        if (carpan > 1)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.amber.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.amber.withValues(alpha: 0.4)),
+              ),
+              child: Text(
+                '${carpan}x kredi limiti aktif · $gun. gün',
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.amber, fontSize: 12, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ),
+        ayarSatiri(
+          label: 'Kredi tutarı:',
+          value: '$_krediTutar ₺',
+          color: const Color(0xFF3fb950),
+          onDown: _krediTutar > _krediMinTutar ? () => setD(() => _krediTutar -= 100) : null,
+          onUp: _krediTutar < maxTutar ? () => setD(() => _krediTutar += 100) : null,
+        ),
+        const SizedBox(height: 8),
+        ayarSatiri(
+          label: 'Taksit:',
+          value: '$_krediTaksit gün',
+          color: Colors.orangeAccent,
+          onDown: _krediTaksit > _krediMinTaksit ? () => setD(() => _krediTaksit--) : null,
+          onUp: _krediTaksit < maxTaksit ? () => setD(() => _krediTaksit++) : null,
+        ),
+        const SizedBox(height: 14),
+        // Özet kutusu
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: const Color(0xFF161b22),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: const Color(0xFF3fb950).withValues(alpha: 0.3)),
+          ),
+          child: Column(children: [
+            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+              const Text('Alacaksınız:', style: TextStyle(color: Colors.white54, fontSize: 12)),
+              Text('+$_krediTutar ₺',
+                  style: const TextStyle(color: Color(0xFF3fb950), fontWeight: FontWeight.bold, fontSize: 14)),
+            ]),
+            const SizedBox(height: 4),
+            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+              Text('Toplam ödeme (%$faizPct faiz):',
+                  style: const TextStyle(color: Colors.white38, fontSize: 11)),
+              Text('$geriOdeme ₺', style: const TextStyle(color: Colors.white60, fontSize: 12)),
+            ]),
+            const Divider(color: Colors.white12, height: 14),
+            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+              const Text('Günlük kesinti:', style: TextStyle(color: Colors.white54, fontSize: 12)),
+              Text('-$gunlukKesinti ₺/gün',
+                  style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 14)),
+            ]),
+          ]),
+        ),
+        const SizedBox(height: 14),
+        ElevatedButton(
+          onPressed: () {
+            final tutar = _krediTutar;
+            Navigator.pop(ctx); // browser'ı kapat
+            _state.krediAl(tutar, geriOdeme, _krediTaksit);
+            _krediAlindiPopup(tutar);
+          },
+          style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF3fb950), foregroundColor: Colors.black,
+              minimumSize: const Size(double.infinity, 44),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+          child: const Text('Krediyi Al', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+        ),
+      ],
+    );
+  }
+
+  /// Tebrik popup'ı — 3 saniye sonra kendi kendine kapanır.
+  void _krediAlindiPopup(int tutar) {
     showDialog(
       context: context,
-      barrierDismissible: false,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx2, setD) {
-          final geriOdeme = hesaplaGeriOdeme(alinanTutar, taksitSayisi);
-          final gunlukKesinti = (geriOdeme / taksitSayisi).ceil();
-          final faizPct = 5 * (taksitSayisi - 1);
-
-          // Ok butonu yardımcısı
-          Widget okBtn(IconData icon, Color color, VoidCallback? onTap) {
-            return GestureDetector(
-              onTap: onTap,
-              child: Container(
-                width: 30, height: 30,
-                decoration: BoxDecoration(
-                  color: onTap != null ? color.withValues(alpha: 0.15) : Colors.transparent,
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: onTap != null ? color.withValues(alpha: 0.5) : Colors.white12),
+      barrierDismissible: true,
+      builder: (ctx3) {
+        Future.delayed(const Duration(seconds: 3), () {
+          if (ctx3.mounted) Navigator.of(ctx3).pop();
+        });
+        return AlertDialog(
+          backgroundColor: const Color(0xFF1a1008),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: const BorderSide(color: Color(0xFF3fb950), width: 1.5),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('🎉', style: TextStyle(fontSize: 44)),
+              const SizedBox(height: 10),
+              Text(
+                'Tebrikler, $tutar ₺ kredi alındı!',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Color(0xFF3fb950),
+                  fontSize: 17,
+                  fontWeight: FontWeight.bold,
                 ),
-                child: Icon(icon, color: onTap != null ? color : Colors.white24, size: 22),
               ),
-            );
-          }
-
-          // Etiket + ▼ değer ▲ satırı
-          Widget ayarSatiri({
-            required String label,
-            required String value,
-            required Color color,
-            required VoidCallback? onDown,
-            required VoidCallback? onUp,
-          }) {
-            return Row(children: [
-              Expanded(child: Text(label, style: const TextStyle(color: Colors.white54, fontSize: 12))),
-              okBtn(Icons.arrow_drop_down, color, onDown),
-              const SizedBox(width: 4),
-              SizedBox(
-                width: 80,
-                child: Text(value, textAlign: TextAlign.center,
-                    style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 13)),
-              ),
-              const SizedBox(width: 4),
-              okBtn(Icons.arrow_drop_up, color, onUp),
-            ]);
-          }
-
-          return AlertDialog(
-            backgroundColor: const Color(0xFF1a1008),
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-                side: const BorderSide(color: Color(0xFF3fb950), width: 1.5)),
-            title: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-              Text('🏦 ', style: TextStyle(fontSize: 22)),
-              Text('Banka Kredisi',
-                  style: TextStyle(color: Color(0xFF3fb950), fontSize: 19, fontWeight: FontWeight.bold)),
-            ]),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Çarpan rozeti
-                if (multiplier > 1)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: Colors.amber.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.amber.withValues(alpha: 0.4)),
-                      ),
-                      child: Text(
-                        '${multiplier}x kredi limiti aktif · $gun. gün',
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(color: Colors.amber, fontSize: 12, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ),
-                // Kredi tutarı satırı
-                ayarSatiri(
-                  label: 'Kredi tutarı:',
-                  value: '$alinanTutar ₺',
-                  color: const Color(0xFF3fb950),
-                  onDown: alinanTutar > minAmount ? () => setD(() => alinanTutar -= 100) : null,
-                  onUp: alinanTutar < maxAmount ? () => setD(() => alinanTutar += 100) : null,
-                ),
-                const SizedBox(height: 8),
-                // Taksit sayısı satırı
-                ayarSatiri(
-                  label: 'Taksit:',
-                  value: '$taksitSayisi gün',
-                  color: Colors.orangeAccent,
-                  onDown: taksitSayisi > minTaksit ? () => setD(() => taksitSayisi--) : null,
-                  onUp: taksitSayisi < maxTaksit ? () => setD(() => taksitSayisi++) : null,
-                ),
-                const SizedBox(height: 14),
-                // Özet kutusu
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF161b22),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: const Color(0xFF3fb950).withValues(alpha: 0.3)),
-                  ),
-                  child: Column(children: [
-                    Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                      const Text('Alacaksınız:', style: TextStyle(color: Colors.white54, fontSize: 12)),
-                      Text('+$alinanTutar ₺',
-                          style: const TextStyle(color: Color(0xFF3fb950), fontWeight: FontWeight.bold, fontSize: 14)),
-                    ]),
-                    const SizedBox(height: 4),
-                    Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                      Text('Toplam ödeme (%$faizPct faiz):',
-                          style: const TextStyle(color: Colors.white38, fontSize: 11)),
-                      Text('$geriOdeme ₺', style: const TextStyle(color: Colors.white60, fontSize: 12)),
-                    ]),
-                    const Divider(color: Colors.white12, height: 14),
-                    Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                      const Text('Günlük kesinti:', style: TextStyle(color: Colors.white54, fontSize: 12)),
-                      Text('-$gunlukKesinti ₺/gün',
-                          style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 14)),
-                    ]),
-                  ]),
-                ),
-              ],
-            ),
-            actions: [
-              Row(children: [
-                Expanded(child: ElevatedButton(
-                  onPressed: () => Navigator.pop(ctx),
-                  style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF3a2000), foregroundColor: Colors.white),
-                  child: const Text('Hayır', style: TextStyle(fontWeight: FontWeight.bold)),
-                )),
-                const SizedBox(width: 10),
-                Expanded(child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.pop(ctx);
-                    _state.krediAl(alinanTutar, geriOdeme, taksitSayisi);
-                    // Tebrik popup — 3 saniye sonra otomatik kapanır
-                    showDialog(
-                      context: context,
-                      barrierDismissible: true,
-                      builder: (ctx3) {
-                        Future.delayed(const Duration(seconds: 3), () {
-                          if (ctx3.mounted) Navigator.of(ctx3).pop();
-                        });
-                        return AlertDialog(
-                          backgroundColor: const Color(0xFF1a1008),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                            side: const BorderSide(color: Color(0xFF3fb950), width: 1.5),
-                          ),
-                          content: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Text('🎉', style: TextStyle(fontSize: 44)),
-                              const SizedBox(height: 10),
-                              Text(
-                                'Tebrikler, $alinanTutar ₺ kredi alındı!',
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(
-                                  color: Color(0xFF3fb950),
-                                  fontSize: 17,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF3fb950), foregroundColor: Colors.black),
-                  child: const Text('Krediyi Al', style: TextStyle(fontWeight: FontWeight.bold)),
-                )),
-              ]),
             ],
-          );
-        },
-      ),
+          ),
+        );
+      },
     );
   }
 
@@ -5660,6 +5604,11 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                 'assets/konsol_8.png', 'assets/konsol_9.png', 'assets/konsol_10.png',
                 'assets/vrgozluk.png', 'assets/kulaklik_1.png', 'assets/kulaklik_2.png',
                 'assets/kumanda_2.png', 'assets/direksiyon_2.png', 'assets/oyuncumausu.png',
+                // v110 — aynı 0.90 doluluk ile üretildiler, aynı gruba girerler
+                'assets/konsol_11.png', 'assets/konsol_12.png', 'assets/konsol_13.png',
+                'assets/konsol_14.png', 'assets/konsol_15.png', 'assets/konsol_16.png',
+                'assets/konsol_17.png', 'assets/konsol_18.png', 'assets/konsol_19.png',
+                'assets/joystick.png',
               };
               final kucukUrun = kucukGorseller.contains(gorsel);
               // Tek tek ince ayar gereken ürünler: gruptaki %85 onlara oturmuyor.

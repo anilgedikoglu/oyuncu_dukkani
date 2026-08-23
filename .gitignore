@@ -47,3 +47,6 @@ android/key.properties
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Claude Code oturum dosyalari (worktree, ayarlar) — repoya girmez
+.claude/

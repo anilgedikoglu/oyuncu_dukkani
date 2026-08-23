@@ -38,10 +38,12 @@ assets/                â€” gÃ¶rseller ve sesler
   bgbos_2/3/4.jpg      — seviye 2/3/4-5 arka planları (JPEG: opak, PNG'de 6.5MB olurdu)
   bgbosmasa.png        — masa (3. günden önce)
   kapidaki.png         — kapıda bekleyen silüet (müşteri yokken; dükkana göre konumlanır)
-  musteri_1..28.png    — müşteri karakterleri (28 adet, yaş/cinsiyet musteriHavuzu içinde)
+  musteri_1..34.png    — müşteri karakterleri (34 adet, yaş/cinsiyet musteriHavuzu içinde)
   hirsiz/polis/vergici/kurye/toptanci/falci.png — özel müşteri karakterleri
   CD_1..30.png         — 30 CD ürünü (CD_15/16/17 = KIRGEÇ, İTELE, TISSS: oynanabilir)
-  konsol_1..10.png     — 10 konsol ürünü (PlayStatyon, Ninetendo, Ateri, El Konsolu x6, son sistem)
+  konsol_1..19.png     — 19 konsol ürünü (PlayStatyon, Ninetendo, Ateri, El Konsolu ×12,
+                         Masaüstü Konsol ×3, son sistem)
+  joystick.png         — arcade joystick (v110 aksesuarı)
   vrgozluk / kulaklik_1-2 / kumanda_2 / direksiyon_2 / oyuncumausu — v109 aksesuarları
   durum.png            â€” kurye'nin getirdiÄŸi yemek gÃ¶rseli
   kolonya.png          â€” kolonya gÃ¶rseli (envanter + buton ikonu)
@@ -70,7 +72,7 @@ SplashScreen (6 sn yasal metin)
 
 ## 👥 KARAKTER HAVUZU (v103)
 
-**28 müşteri görseli** (11 eski + 17 yeni). Dağılım: **14 erkek, 14 kadın**.
+**34 müşteri görseli** (11 eski + 17 v103 + 6 v110). Dağılım: **15 erkek, 19 kadın**.
 İsim havuzu: **150 erkek + 150 kadın**, hepsi benzersiz (tekrar kontrolü yapıldı).
 
 Her karakterin `musteriHavuzu` satırında **`cinsiyet` + `yas`** alanı ve yanında
@@ -130,6 +132,82 @@ Toplu iş + kontak sayfası için: `tools/toplu_isle.ps1`
 
 > ℹ️ Ayak altındaki küçük gölge izleri **önemsiz** — müşteri masanın arkasında
 > göğsünden kesiliyor (`kMusteriUstu` 0.2183 → masa 0.4833), ayaklar hiç görünmüyor.
+
+---
+
+## 🌐 BROWSER TEK PENCERE NAVİGASYONU (v110)
+
+Eskiden browser menüsündeki her satır **kendi popup'ını** açıyordu: browser
+kapanıyor, üstüne ayrı bir dialog geliyordu. Artık dört bölüm de **aynı
+pencerenin içinde** açılıyor; adres çubuğu değişiyor, sarı geri oku menüye
+döndürüyor.
+
+```dart
+enum _BrowserSayfa { menu, dukkanlar, hedefler, market, banka }
+```
+
+| Sayfa | Adres çubuğu | Gövde |
+|---|---|---|
+| `menu` | `oyuncu_dukkani` | `_browserMenuGovdesi(ctx, git)` |
+| `dukkanlar` | `kiralik_dukkanlar` | `_dukkanlarGovdesi(onKirala)` |
+| `hedefler` | `hedefler` | `_hedeflerGovdesi()` |
+| `market` | `market` | `_marketGovdesi(ctx)` |
+| `banka` | `banka_kredisi` | `_bankaGovdesi(ctx, setDlg)` |
+
+- `_browserPopup()` bir `StatefulBuilder`; `git(sayfa)` yalnızca dialogu
+  yeniden çizer, `Navigator` yığınına dokunmaz.
+- `browser.png`'de adres yazısı ve oklar **çizili**. Sayfaya göre
+  değişebilmesi için beyaz bir kutuyla örtülüp üstüne yenisi yazılıyor.
+  Geri oku menüde gri, alt sayfada sarı (`0xFFE6A800`).
+- İçerik tek bir `SingleChildScrollView` içinde. **Sayfa gövdeleri kendi
+  `ListView`'ünü kullanmaz** — iç içe iki kaydırma alanı istemiyoruz.
+  `_hedeflerPopup`'ın `ListView.separated`'ı bu yüzden
+  `...List.generate(...)` + `Padding` hâline çevrildi.
+
+### ⚠️ Banka sayfasının state'i widget'ta duramaz
+`_bankaGovdesi` her karede baştan çalıştığı için tutar/taksit seçimi
+`_GameScreenState` alanlarında tutuluyor:
+
+```dart
+int _krediTutar, _krediTaksit;              // seçim
+int get _krediCarpan / _krediMaxTutar / _krediMaxTaksit;   // türetilmiş
+void _bankaSayfasiHazirla();                // sayfaya girerken bir kez
+```
+
+Rastgele başlangıç tutarı yalnız `_bankaSayfasiHazirla()` içinde üretilir —
+`build` içinde üretilseydi her ok basışında tutar zıplardı. Menüdeki satırın
+`onTap`'i bu yüzden `{ _bankaSayfasiHazirla(); git(banka); }`.
+
+> Ayarlar ve Yeniden Başlat **bilerek** ayrı popup olarak kaldı: ikisi de
+> browser'ı kapatması gereken işler (Yeniden Başlat oyunu sıfırlıyor).
+
+---
+
+## 🆕 v110 EK İÇERİK — 6 KARAKTER + 10 EKİPMAN
+
+Kaynak klasörlerde (`YeniChars`, `YeniEkipman`) işlenmemiş kalan dosyalar
+md5 karşılaştırmasıyla bulundu ve eklendi.
+
+### 6 yeni karakter → `musteri_29..34`
+Ölçüldü: hepsi **500×500**, doluluk 0.95-0.966, alt boşluk 10-15px → mevcut
+kadroyla birebir uyumlu. **Yeniden ölçekleme YAPILMADI**, olduğu gibi
+kopyalandı (v103'teki kural). `md5sum | uniq -d` ile tekrar kontrolü yapıldı,
+tekrar yok. Roster 28 → **34** (15 E / 19 K).
+
+### 10 yeni ekipman → `konsol_11..19` + `joystick`
+9 retro el/masaüstü konsolu + 1 arcade joystick. `tools/`teki 0.90 doluluk
+boru hattından geçirildi (500×500 şeffaf tuval, alfa sınır kutusu, en-boy
+korunur) — v109'un birebir aynısı, dolayısıyla `kucukGorseller` kümesine
+(%85) eklendiler. Emülatörde doğrulandı: Masaüstü Konsol masaya oturuyor,
+boyut mevcut konsollarla uyumlu.
+
+Fiyatlar **290-700**, mevcut konsol aralığının (380-620) içinde/yakınında.
+
+> ⚠️ CD fiyat ortalamasına dokunulmadı. "Oynanabilir = normal CD
+> ortalamasının 2 katı" dengesi ve onu koruyan `kirgec_test.dart` testi
+> yalnız CD'lere bakıyor; konsol/aksesuar eklemek onu etkilemiyor.
+
+Toplam ürün **49 → 59** (kolonya hariç koleksiyonda 58 hücre).
 
 ---
 
@@ -1383,7 +1461,10 @@ for (int j = 0; j < acikSlotSayisi; j++) slotlar[j] = j < dolu.length ? dolu[j] 
 | konsol | konsol3 | Ateri | konsol_3.png | 500 |
 | konsol | konsol4/5/6 | El Konsolu (3 versiyon) | konsol_4/5/6.png | 380-560 |
 | konsol | konsol7 | son sistem oyun konsolu | konsol_7.png | 3200 |
+| konsol | konsol11..14, konsol18/19 | El Konsolu (v110 retro kesim) | konsol_11..14/18/19.png | 290-700 |
+| konsol | konsol15..17 | Masaüstü Konsol (v110 tabletop LCD) | konsol_15..17.png | 360-640 |
 | aksesuar | aksesuar1..8 | Oyuncu Direksiyonu, Joypad + v109: 3D Gözlük, Oyuncu Kulaklığı, Kulaklık ve Stant, Kablosuz Joypad, Direksiyon Seti, Oyuncu Mausu | 260-850 |
+| aksesuar | aksesuar9 | Arcade Joystick (v110) | joystick.png | 470 |
 | aksesuar | kolonya | Kolonya (slot dÄ±ÅŸÄ±, +1 ilave) | kolonya.png | 120 |
 
 ---
@@ -1466,6 +1547,7 @@ Base ratio hÃ¢lÃ¢ `_clamp(0.18 - progress * 0.15, 0.02, 0.18)`.
 ## Versiyon GeÃ§miÅŸi (son)
 | Commit | AÃ§Ä±klama |
 |--------|----------|
+| v110 | **Browser tek pencere navigasyonu**: Kiralık Dükkanlar / Hedefler / Market / Banka artık ayrı popup değil, browser'ın içinde sayfa (`_BrowserSayfa` enum'u, adres çubuğu değişiyor, sarı geri oku menüye dönüyor). Banka'nın tutar/taksit seçimi `_GameScreenState` alanlarına taşındı — gövde her karede baştan çalıştığı için widget içinde tutulamıyordu; rastgele başlangıç tutarı yalnız sayfaya girerken üretiliyor. Hedefler'in `ListView`'ü `List.generate` oldu (iç içe kaydırma yok). **6 yeni karakter** (`musteri_29..34`, kaynak klasörde işlenmemiş kalanlar; 500×500 ve doluluk 0.95 geldiği için olduğu gibi kopyalandı) → roster 34. **10 yeni ekipman** (`konsol_11..19` + `joystick.png`; 9 retro el/masaüstü konsolu + arcade joystick, v109'un 0.90 doluluk hattından) → toplam ürün 59. APK 49.9 → 54.0MB |
 | v109 | **9 yeni ekipman**: 3 el konsolu (`konsol_8/9/10.png`) + 6 aksesuar (3D Gözlük, Oyuncu Kulaklığı, Kulaklık ve Stant, Kablosuz Joypad, Direksiyon Seti, Oyuncu Mausu). Görseller mevcut ekipman formatına çevrildi (500×500, doluluk 0.90, en-boy korunur). Sahnede fazla büyük durmasınlar diye `kucukGorseller` kümesine eklendiler (%85) — o liste artık `Set` sabiti, uzun `||` zinciri değil. Fiyatlar 260-850, mevcut aralıkla uyumlu. Toplam ürün 49. APK 47.6 → 49.9MB |
 | v108 | **13 yeni CD** (normal, oynanamaz): ŞEHRİŞER, UÇURBENİ, CIPCIP, TANTUNİ, VURKAÇ, BİLEZ, TAHTAKALE, SÜMSÜK, BİLEKZORU, MAHŞER, DİKİZ, TAMTAM, KOKARCA → `CD_18..30.png`, toplam CD 17'den 30'a çıktı. Görseller kullanıcının removebg kesimiyle geldi, mevcut CD formatına çevrildi (392×512, doluluk 0.83, içerik ~300×425). **Fiyatlar ortalamayı koruyacak şekilde dağıtıldı** (90-190, ortalama ~136) — yoksa "oynanabilir = normalin 2 katı" dengesi ve onu koruyan test bozulurdu. APK 43.3 → 47.6MB |
 | v107 | **TISSS** (yılan) üçüncü oynanabilir oyun olarak eklendi — `lib/tisss_oyunu.dart`, `cd17`. 15×21 ızgara, yem başına 5 puan, her yemde hafif hızlanma, duvara/kendine çarpınca biter. **Kontrol farkı**: Kırgeç/İtele basılı tutmayla sürekli kayarken TISSS'te her dokunuş 90° göreceli dönüş (sağ yarı sağa, sol yarı sola); dönüşler kuyruğa alınıp adım başına biri uygulanıyor ki aynı adımda iki dokunuş yılanı kendi üstüne katlamasın. Aynı gün-sınırı, para tavanı ve nadirlik kuralları geçerli |

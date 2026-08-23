@@ -99,6 +99,12 @@ flutter:
     - assets/musteri_26.png
     - assets/musteri_27.png
     - assets/musteri_28.png
+    - assets/musteri_29.png
+    - assets/musteri_30.png
+    - assets/musteri_31.png
+    - assets/musteri_32.png
+    - assets/musteri_33.png
+    - assets/musteri_34.png
     - assets/CD_1.png
     - assets/CD_2.png
     - assets/CD_3.png
@@ -138,3 +144,13 @@ flutter:
     - assets/kumanda_2.png
     - assets/direksiyon_2.png
     - assets/oyuncumausu.png
+    - assets/konsol_11.png
+    - assets/konsol_12.png
+    - assets/konsol_13.png
+    - assets/konsol_14.png
+    - assets/konsol_15.png
+    - assets/konsol_16.png
+    - assets/konsol_17.png
+    - assets/konsol_18.png
+    - assets/konsol_19.png
+    - assets/joystick.png
