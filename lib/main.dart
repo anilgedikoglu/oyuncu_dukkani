@@ -185,10 +185,12 @@ class DukkanSeviye {
 const List<DukkanSeviye> tumDukkanlar = [
   DukkanSeviye(seviye: 1, isim: 'Bodrum Kat Dükkan',    kira: 300,  minGun: 1,  arkaplan: 'assets/bgbos.png',   arkaplanOrani: 719 / 1080,
     kapiSol: 0.3157, kapiUst: 0.0880, kapiGen: 0.1330, kapiYuk: 0.1593),
+  // kapiGen: sağda boşluk kalıyordu — sol kenar ve dikey ölçüler SABİT,
+  // genişlik sadece sağa doğru %15 uzatıldı (0.1224*1.15, 0.1113*1.15).
   DukkanSeviye(seviye: 2, isim: 'Mahalle Köşe Dükkanı', kira: 600,  minGun: 3,  arkaplan: 'assets/bgbos_2.jpg', arkaplanOrani: 719 / 1278,
-    kapiSol: 0.3380, kapiUst: 0.1228, kapiGen: 0.1224, kapiYuk: 0.1667),
+    kapiSol: 0.3380, kapiUst: 0.1228, kapiGen: 0.1408, kapiYuk: 0.1667),
   DukkanSeviye(seviye: 3, isim: 'Cadde Dükkanı',        kira: 900,  minGun: 5,  arkaplan: 'assets/bgbos_3.jpg', arkaplanOrani: 719 / 1278,
-    kapiSol: 0.3588, kapiUst: 0.1385, kapiGen: 0.1113, kapiYuk: 0.1541),
+    kapiSol: 0.3588, kapiUst: 0.1385, kapiGen: 0.1280, kapiYuk: 0.1541),
   DukkanSeviye(seviye: 4, isim: 'Çarşı Dükkanı',        kira: 1200, minGun: 8,  arkaplan: 'assets/bgbos_4.jpg', arkaplanOrani: 719 / 1278,
     kapiSol: 0.3350, kapiUst: 0.1517, kapiGen: 0.1160, kapiYuk: 0.1582),
   DukkanSeviye(seviye: 5, isim: 'AVM Dükkanı',          kira: 1500, minGun: 10, arkaplan: 'assets/bgbos_4.jpg', arkaplanOrani: 719 / 1278,
@@ -762,7 +764,7 @@ class Fal {
   /// Fal metnini oyuncuya gösterilecek hâle getirir: `{X}` → gerçek tutar.
   String metniDoldur(int miktar) => metin.replaceAll('{X}', '$miktar');
 
-  /// 50 fal metni. Yarısı sadece hikâye, yarısı gerçekten bir şey yapıyor.
+  /// 75 fal metni. Yarısı sadece hikâye, yarısı gerçekten bir şey yapıyor.
   /// Etkili olanlar sürprizi bozmasın diye metinde açıkça "göreceksin" demez —
   /// falcı görür, oyuncu sonucu yaşar.
   static const List<Fal> havuz = [
@@ -848,7 +850,7 @@ class Fal {
     Fal('Yıldızlar hizalanmış, hem de tam senin tezgâhının üstünde. Bir sonraki alışverişin ömrünün en kârlısı olabilir.',
         etki: FalEtki.kuryeSansi),
 
-    // ── SADECE HİKÂYE (16) ──
+    // ── SADECE HİKÂYE (41) ──
     Fal('Uzun bir yolculuk görüyorum ama ayakla değil, akılla. Bu dükkân seni çok yere götürecek evladım. Sabret, acele etme.'),
     Fal('Kalbin temiz, o yüzden falın da temiz çıkıyor. Kötü bir şey göremiyorum. Bazen haber yokluğu en iyi haberdir.'),
     Fal('Bir kedi görüyorum, dükkânın önünde dolanıyor. Uğurdur o, kovma sakın. Beslersen bereketi artar derler.'),
@@ -865,6 +867,33 @@ class Fal {
     Fal('Neşeli bir gün görüyorum, sebebi de küçük bir şey olacak. Büyük mutlulukları bekleyeyim derken küçükleri kaçırma.'),
     Fal('Bir terazi beliriyor, iki kefe de denk. Hayatın dengede evladım. Bunu bozmaya çalışan olursa aldırma.'),
     Fal('Yorgunluk görüyorum omuzlarında ama sırtın dik. Ayakta kalmayı biliyorsun. Bugün de kalacaksın, yarın da.'),
+
+    // ── SADECE HİKÂYE — EK (25) ── klasik kahve falı üslubu, dükkanla ilgisi yok
+    Fal('Falımda bir kapı görüyorum, aralık duruyor. Ardından "M" harfli biri geçecek hayatına, ummadığın bir konuda yardımın dokunacak. Bu ay içinde bir haber bekle.'),
+    Fal('Avucunun çizgisinde bir kavşak var evladım. Sağ yola sapacaksın ve orada seni tanıyan biriyle karşılaşacaksın. Uzun süredir konuşmadığın biri olabilir bu.'),
+    Fal('Suda bir gemi görüyorum, yelkenleri açık. Yakın zamanda bir yolculuk kapına dayanacak, belki de sen çıkacaksın yola. Dönüşün hayırlı olsun şimdiden.'),
+    Fal('Fincanın ağzında bir yıldız var, parlak. "S" harfiyle başlayan bir isim aklına gelecek birkaç gün içinde. O kişiyle aranızdaki soğukluk erimeye başlayacak.'),
+    Fal('Kirli bir bulut görüyorum ama arkasında güneş var. Önce küçük bir tedirginlik yaşayacaksın, sonrasında rahatlayacaksın. Sabrın işine yarayacak bu sefer.'),
+    Fal('Elinde bir mektup tutuyorsun rüyanda, farkında mısın bilmiyorum. O mektup gerçek olacak yakında; içinde beklemediğin bir davet var. Reddetme, kabul et.'),
+    Fal('Telvenin dibinde iki figür beliriyor, yan yana duruyorlar. Aranızda küçük bir anlaşmazlık olan biriyle barışacaksın. İlk adımı sen atarsan daha çabuk olur.'),
+    Fal('Bir merdiven görüyorum, yukarı çıkıyor ama basamaklar dar. Zorlanacağın birkaç gün olacak ama sonunda ferahlayacaksın. Pes etme, tepe yakın.'),
+    Fal('Kahve fincanının kulpu tarafında bir kuş var. "D" harfli biri sana bir haber getirecek, iyi bir haber bu. Kapını çalanı hemen içeri al.'),
+    Fal('Gözlerimde uzak bir şehir beliriyor, sisli ama davetkâr. Belki sen gitmeyeceksin ama oradan biri sana ulaşacak. Bekle, sabırlı ol.'),
+    Fal('Falımda bir düğüm var, çözülmesi zor görünüyor ama çözülecek. Kafanı kurcalayan bir mesele bu hafta netleşecek. İçin rahat olsun.'),
+    Fal('Bir ayna görüyorum, çatlak ama kırılmamış. Geçmişte yaşadığın bir hayal kırıklığı seni hâlâ etkiliyor. Zamanı geldi, bırak artık gitsin.'),
+    Fal('Telvede bir el şekli var, açık duruyor. Yakında birine yardım edeceksin ve o kişi bunu asla unutmayacak. Küçük bir iyilik büyük bir dostluk doğuracak.'),
+    Fal('Uzaktan gelen bir ses duyuyorum falımda, tanıdık bir ses. "C" harfiyle başlayan biri seni arayacak yakın zamanda. Telefonun çalınca şaşırma.'),
+    Fal('Bir çift ayakkabı görüyorum yolun ortasında. Kısa bir seyahate çıkacaksın, planlanmamış ama keyifli olacak. Yanına sıcak bir şeyler almayı unutma.'),
+    Fal('Fincanın tam ortasında bir çember var, kapanmış. Bir dönem senin için resmen bitiyor evladım. Yenisi başlarken daha huzurlu olacaksın.'),
+    Fal('Karanlık bir oda görüyorum ama kapısı aralık, ışık sızıyor. İçinde bulunduğun sıkıntı sandığından kısa sürecek. Işığa doğru yürü, korkma.'),
+    Fal('Telvede bir terazi var ama bir kefesi hafif. Bir konuda haklı olduğunu ispatlaman gerekecek. Sakin kal, zaman seni haklı çıkaracak.'),
+    Fal('Bir bahçe görüyorum, çiçekler yeni açmış. Uzun süredir beklediğin bir şey nihayet gerçekleşmek üzere. Sabrının meyvesini vermek üzere evladım.'),
+    Fal('Fincanın kenarında bir at var, koşar vaziyette. Hayatında hızlı gelişen bir olay olacak, seni şaşırtacak kadar hızlı. Hazırlıklı ol.'),
+    Fal('Bulanık bir su görüyorum, dibi görünmüyor. Şu an net göremediğin bir konu var ama yakında berraklaşacak. Acele etme, cevap kendiliğinden gelecek.'),
+    Fal('Telvede bir kelebek şekli beliriyor, hafif ve özgür. Zihnini meşgul eden bir yük kalkacak üzerinden. Nefes alman kolaylaşacak bu hafta.'),
+    Fal('Uzak bir akraban rüyana girecek yakında, gerçek hayatta da haber verecek. "B" harfiyle başlayan bir yer adı duyacaksın. Kulak ver, önemli olabilir.'),
+    Fal('Fincanın dibinde bir anahtar görüyorum. Kilitli kalmış bir konu açılacak, uzun süredir çözemediğin bir şey. Anahtar sandığından yakınında evladım.'),
+    Fal('Bir yol ayrımı görüyorum, ikisi de karanlık ama biri kısa sürede aydınlanıyor. O yolu seç, tereddüt etme. İçindeki ses zaten hangisi olduğunu biliyor.'),
   ];
 }
 
@@ -2792,9 +2821,6 @@ class GameState extends ChangeNotifier {
     _ozelMusteriSayaciniAyarla();
     _rizaGunuAyarla();
     gunlukHedef = GunlukHedef.uret(1);
-    slotlar[0] = _baslangicUrunler.firstWhere((u) => u.id == "cd15").kopya(); // GECICI
-    slotlar[1] = _baslangicUrunler.firstWhere((u) => u.id == "cd16").kopya(); // GECICI
-    slotlar[2] = _baslangicUrunler.firstWhere((u) => u.id == "cd17").kopya(); // GECICI
   }
 
   GameState.fromJson(Map<String, dynamic> j) {
@@ -3379,11 +3405,24 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   late GameState _state;
   late AnimationController _slideController;
   late Animation<double> _slideAnim;
+  // Ürünün "anlaşma sonrası masadan aşağı kayıp gitmesi" efekti — AYRI
+  // controller. Önceden AnimatedPositioned kullanılıyordu ama onun left/top'u
+  // her karede _slideAnim'e göre değişiyordu; AnimatedPositioned her deger
+  // degisiminde yeni hedefe 650ms'de gitmeye calisiyor, yani hareketli bir
+  // hedefi kovalıyordu → ürün müşteriden yarım saniye geride kalarak giriyordu.
+  // Artık giriş konumu (left/top) DOĞRUDAN _slideAnim'den okunuyor (Positioned,
+  // animasyonsuz) — müşteriyle birebir aynı anda hareket ediyor. Aşağı kayıp
+  // gitme efekti bu ayrı controller ile, konumdan bağımsız olarak uygulanıyor.
+  late AnimationController _urunKayipController;
   bool _envanterAcik = false;
   /// Toptanci ekraninda envanter sekmesi acik mi (tek yonlu gecis)
   bool _toptanciEnvanterSekmesi = false;
   /// Masadaki ürüne dokununca açılan büyük önizleme (null = kapalı)
   String? _buyukUrunGorseli;
+  /// Envanterdeki sağlam bir ürüne dokununca açılan büyük önizleme —
+  /// aynı görsel dilde ama "Çöpe At" seçeneği var (masadaki ürün henüz
+  /// oyuncunun değil, o yüzden orada silme yok).
+  GameItem? _envanterBuyukUrun;
   /// Anlaşma sonrası ürün masadan aşağı kayıyor mu
   bool _urunAsagiKayiyor = false;
   bool _gunBitiPopupGosterildi = false;
@@ -3418,6 +3457,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     _state = widget.yuklenenState ?? GameState();
     _slideController = AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
     _slideAnim = Tween<double>(begin: 1.0, end: 0.0).animate(CurvedAnimation(parent: _slideController, curve: Curves.easeOutCubic));
+    _urunKayipController = AnimationController(vsync: this, duration: const Duration(milliseconds: 650));
     _state.addListener(_daireHedefGuncelle);
     _daireTicker = createTicker(_daireTick)..start();
   }
@@ -3463,6 +3503,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     _daireTicker.dispose();
     _state.removeListener(_daireHedefGuncelle);
     _slideController.dispose();
+    _urunKayipController.dispose();
     super.dispose();
   }
 
@@ -3722,11 +3763,12 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   /// Aşağıdan yukarı süzülerek gelir, hafif zıplar, sonra kaybolur.
   Widget _buildToast() {
     final renk = _toastRenk;
-    return Positioned(
-      left: 24, right: 24,
-      bottom: MediaQuery.of(context).size.height * 0.26,
+    // Rozet kazandın popup'ıyla aynı dilde — ekranın MERKEZİNDE, rahat
+    // gözükecek genişlikte. Eskiden alttan %26'da, dar bir kutuydu.
+    return Positioned.fill(
       child: IgnorePointer(
-        child: TweenAnimationBuilder<double>(
+        child: Center(
+          child: TweenAnimationBuilder<double>(
           key: ValueKey(_toastId),
           tween: Tween(begin: 0.0, end: 1.0),
           duration: const Duration(milliseconds: 420),
@@ -3741,9 +3783,10 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
               ),
             );
           },
-          child: Center(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 11),
+          child: Container(
+              constraints: const BoxConstraints(minWidth: 260),
+              margin: const EdgeInsets.symmetric(horizontal: 28),
+              padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 18),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topLeft, end: Alignment.bottomRight,
@@ -4622,35 +4665,73 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text('🔊 Ses:', style: TextStyle(fontSize: 16, color: Colors.white70, fontWeight: FontWeight.bold)),
-              GestureDetector(
-                onTap: () {
-                  setDialogState(() {
-                    SesServisi.sesAcik = !SesServisi.sesAcik;
-                  });
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+              // Gerçek switch görünümü — "AÇIK/KAPALI" tek kelimeyken hangi
+              // durumda olduğu ve dokununca ne olacağı belirsizdi. Artık iki
+              // segment yan yana; aktif olan renkli, diğeri soluk duruyor.
+              Builder(builder: (_) {
+                Widget segment(String etiket, bool bu, Color renk) {
+                  final secili = SesServisi.sesAcik == bu;
+                  return GestureDetector(
+                    onTap: () => setDialogState(() => SesServisi.sesAcik = bu),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 150),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: secili ? renk : Colors.transparent,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(etiket,
+                        style: TextStyle(
+                          color: secili ? Colors.white : Colors.white38,
+                          fontWeight: FontWeight.bold, fontSize: 13)),
+                    ),
+                  );
+                }
+                return Container(
+                  padding: const EdgeInsets.all(3),
                   decoration: BoxDecoration(
-                    color: SesServisi.sesAcik ? const Color(0xFF228B22) : const Color(0xFF8B0000),
-                    borderRadius: BorderRadius.circular(8),
+                    color: const Color(0xFF0d1117),
+                    borderRadius: BorderRadius.circular(9),
+                    border: Border.all(color: Colors.white12),
                   ),
-                  child: Text(
-                    SesServisi.sesAcik ? 'AÇIK' : 'KAPALI',
-                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
-                  ),
-                ),
-              ),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    segment('Açık', true, const Color(0xFF228B22)),
+                    segment('Kapalı', false, const Color(0xFF8B0000)),
+                  ]),
+                );
+              }),
             ],
           ),
-          actions: [Center(child: ElevatedButton(
-            onPressed: () => Navigator.pop(ctx),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFd2a679),
-              foregroundColor: Colors.black,
-              minimumSize: const Size(120, 40),
-            ),
-            child: const Text('Kapat', style: TextStyle(fontWeight: FontWeight.bold)),
-          ))],
+          actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          actions: [Row(children: [
+            // Geri: sadece Ayarlar'ı kapatır, browser menüsü altta açık kalır.
+            Expanded(child: ElevatedButton(
+              onPressed: () => Navigator.pop(ctx),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF21262d),
+                foregroundColor: const Color(0xFFE6A800),
+                minimumSize: const Size(0, 42),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                side: const BorderSide(color: Color(0xFFE6A800)),
+              ),
+              child: const Text('← Geri', style: TextStyle(fontWeight: FontWeight.bold)),
+            )),
+            const SizedBox(width: 10),
+            // Kapat: Ayarlar'ı VE altındaki browser'ı birlikte kapatır.
+            Expanded(child: ElevatedButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                Navigator.pop(context);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFd2a679),
+                foregroundColor: Colors.black,
+                minimumSize: const Size(0, 42),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              child: const Text('Kapat', style: TextStyle(fontWeight: FontWeight.bold)),
+            )),
+          ])],
         ),
       ),
     );
@@ -4682,9 +4763,16 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
           return Dialog(
             backgroundColor: Colors.transparent,
             insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
-            child: ConstrainedBox(
-              constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.75),
+            // ⚠️ SABİT yükseklik — eskiden ConstrainedBox(maxHeight:) kullanılıyordu,
+            // Column mainAxisSize.min ile içerik kısaysa (ör. Banka) pencere
+            // küçülüyordu. Artık SizedBox ile yükseklik SABİT, Column
+            // mainAxisSize.max ile o yüksekliği dolduruyor, ortadaki
+            // SingleChildScrollView Expanded ile kalan alanı her sayfada
+            // aynı şekilde kaplıyor.
+            child: SizedBox(
+              height: MediaQuery.of(context).size.height * 0.75,
               child: Container(
+                clipBehavior: Clip.antiAlias,
                 decoration: BoxDecoration(
                   color: const Color(0xFF0d1117),
                   borderRadius: BorderRadius.circular(12),
@@ -4692,7 +4780,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                   boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.6), blurRadius: 20, offset: const Offset(0, 8))],
                 ),
                 child: Column(
-                  mainAxisSize: MainAxisSize.min,
+                  mainAxisSize: MainAxisSize.max,
                   children: [
                     // ── Browser başlığı: görsel + adres yazısı + geri oku ──
                     // browser.png'de adres ("oyuncu_dukkani") ve oklar ÇİZİLİ.
@@ -4742,14 +4830,49 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                         ]),
                       ),
                     ),
-                    // ── İçerik ──
-                    Flexible(
+                    // ── İçerik — Expanded: her sayfada AYNI yüksekliği kaplar ──
+                    Expanded(
                       child: SingleChildScrollView(
                         padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
                         child: menude
                             ? _browserMenuGovdesi(ctx, git)
                             : _browserSayfaGovdesi(ctx, setDlg),
                       ),
+                    ),
+                    // ── Alt buton çubuğu — kaydırma alanının DIŞINDA, sabit ──
+                    // Menüde sadece Kapat; alt sayfalarda Geri + Kapat.
+                    Container(
+                      padding: const EdgeInsets.fromLTRB(14, 10, 14, 14),
+                      decoration: const BoxDecoration(
+                        border: Border(top: BorderSide(color: Color(0xFF30363d))),
+                      ),
+                      child: Row(children: [
+                        if (!menude) ...[
+                          Expanded(child: ElevatedButton(
+                            onPressed: () => git(_BrowserSayfa.menu),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF21262d),
+                              foregroundColor: const Color(0xFFE6A800),
+                              minimumSize: const Size(0, 42),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                              side: const BorderSide(color: Color(0xFFE6A800)),
+                            ),
+                            child: const Text('← Geri', style: TextStyle(fontWeight: FontWeight.bold)),
+                          )),
+                          const SizedBox(width: 10),
+                        ],
+                        Expanded(child: ElevatedButton(
+                          onPressed: () => Navigator.pop(ctx),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF21262d),
+                            foregroundColor: Colors.white70,
+                            minimumSize: const Size(0, 42),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            side: const BorderSide(color: Color(0xFF30363d)),
+                          ),
+                          child: const Text('Kapat', style: TextStyle(fontWeight: FontWeight.bold)),
+                        )),
+                      ]),
                     ),
                   ],
                 ),
@@ -4817,18 +4940,6 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
           altyazi: 'Oyunu sıfırla ve başa dön',
           renk: const Color(0xFFE07B00),
           onTap: () { Navigator.pop(ctx); _yenidenBaslatOnay(); },
-        ),
-        const SizedBox(height: 14),
-        ElevatedButton(
-          onPressed: () => Navigator.pop(ctx),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF21262d),
-            foregroundColor: Colors.white70,
-            minimumSize: const Size(double.infinity, 42),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            side: const BorderSide(color: Color(0xFF30363d)),
-          ),
-          child: const Text('Kapat', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
         ),
       ],
     );
@@ -5442,6 +5553,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
               ),
               if (_envanterAcik) _buildEnvanterOverlay(),
               if (_buyukUrunGorseli != null) _buildBuyukUrunOverlay(),
+              if (_envanterBuyukUrun != null) _buildEnvanterBuyukOverlay(),
               if (_toastMetin != null) _buildToast(),
             ],
           ),
@@ -5628,16 +5740,25 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
               final productLeft = dx + m.u(kUrunSagKaydir + ekKaydir);
               // Alt kenarı masa çizgisine kilitli → üst kenar = taban - boy
               final normalTop = m.y(kUrunTabani) - productSize - ofs;
-              // Anlaşma olunca ürün masadan aşağı kayıp ekrandan çıkar —
-              // "mal oyuncuya geçti" hissi. Kaydırma AnimatedPositioned ile.
-              final productTop = _urunAsagiKayiyor ? mq.size.height : normalTop;
-              return AnimatedPositioned(
-                duration: const Duration(milliseconds: 650),
-                curve: _urunAsagiKayiyor ? Curves.easeInBack : Curves.easeOut,
-                left: productLeft, top: productTop,
-                child: AnimatedOpacity(
-                  duration: const Duration(milliseconds: 650),
-                  opacity: _urunAsagiKayiyor ? 0.0 : 1.0,
+              // ⚠️ left/top burada DOĞRUDAN _slideAnim'den okunuyor (Positioned,
+              // animasyonsuz) — müşteriyle aynı karede, aynı anda hareket eder.
+              // Anlaşma sonrası "masadan aşağı kayıp gitme" efekti, konumdan
+              // bağımsız ayrı bir AnimationController (_urunKayipController)
+              // ile uygulanıyor; bkz. yukarıdaki alan yorumu.
+              return Positioned(
+                left: productLeft, top: normalTop,
+                child: AnimatedBuilder(
+                  animation: _urunKayipController,
+                  builder: (context, child) {
+                    final t = Curves.easeInBack.transform(_urunKayipController.value);
+                    return Opacity(
+                      opacity: 1 - _urunKayipController.value,
+                      child: Transform.translate(
+                        offset: Offset(0, t * (mq.size.height - normalTop)),
+                        child: child,
+                      ),
+                    );
+                  },
                   child: GestureDetector(
                     // Masadaki ürüne dokununca büyük önizleme açılır
                     onTap: _urunAsagiKayiyor ? null : () => setState(() => _buyukUrunGorseli = gorsel),
@@ -5682,10 +5803,13 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
               ? Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    Image.asset(
-                      _state.aktifMusteri!.item.gorsel,
-                      width: 100, height: 100, fit: BoxFit.contain,
-                    ),
+                    Builder(builder: (_) {
+                      final urunGorsel = _state.aktifMusteri!.item.gorsel;
+                      // Sarı mouse (oyuncumausu.png) balonda orantısız büyük
+                      // duruyordu — %30 küçültüldü. Diğer ürünler etkilenmez.
+                      final balonBoy = urunGorsel == 'assets/oyuncumausu.png' ? 70.0 : 100.0;
+                      return Image.asset(urunGorsel, width: balonBoy, height: balonBoy, fit: BoxFit.contain);
+                    }),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Transform.translate(
@@ -5933,7 +6057,17 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
             const SizedBox(height: 8),
             Builder(builder: (_) {
               final hasMusteri = _state.aktifMusteri != null || _state.aktifOzelMusteri != null;
-              final aktif = hasMusteri && !_state.kolonyaIkramEdildi;
+              // ⚠️ BUG FIX: normal müşteri HAYIR dedikten sonra ~600ms'lik
+              // çıkış animasyonu boyunca `aktifMusteri` hâlâ dolu kalıyor ama
+              // `musteriKabulBekliyor` zaten false oluyor. Bu dar pencerede
+              // kolonya verilirse `_kolonyaIkramEt` mesajı günceliyor (alıcı
+              // için "tekrar sorar" repliği) ama ne EVET/HAYIR ne de Teklif
+              // Ver/Reddet gösteriliyor — müşteri "zombi" kalıyordu. Normal
+              // müşteride kolonya artık sadece gerçekten etkileşimdeyken
+              // (karşılama ya da pazarlık sırasında) aktif.
+              final musteriEtkilesimde = _state.aktifOzelMusteri != null ||
+                  _state.musteriKabulBekliyor || _pazarlikBekleniyor;
+              final aktif = hasMusteri && !_state.kolonyaIkramEdildi && musteriEtkilesimde;
               return GestureDetector(
                 onTap: aktif ? _kolonyaIkramEt : null,
                 child: CustomPaint(
@@ -6077,6 +6211,112 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
             ]),
           ),
         ),
+      ),
+    );
+  }
+
+  /// Envanterdeki sağlam ürüne dokununca açılan büyük önizleme —
+  /// masadaki ürünle aynı görsel dil, ek olarak "Çöpe At" seçeneği var.
+  Widget _buildEnvanterBuyukOverlay() {
+    final item = _envanterBuyukUrun!;
+    return GestureDetector(
+      onTap: () => setState(() => _envanterBuyukUrun = null),
+      child: Container(
+        color: Colors.black.withValues(alpha: 0.82),
+        child: Center(
+          child: GestureDetector(
+            onTap: () {}, // içeriğe dokunma dışarı tıklama sayılmasın
+            child: TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0.35, end: 1.0),
+              duration: const Duration(milliseconds: 260),
+              curve: Curves.easeOutBack,
+              builder: (context, t, child) => Transform.scale(scale: t, child: child),
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 18),
+                  child: Image.asset(item.gorsel,
+                    width: MediaQuery.of(context).size.width * 0.86,
+                    fit: BoxFit.contain),
+                ),
+                const SizedBox(height: 18),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Row(children: [
+                    Expanded(child: ElevatedButton(
+                      onPressed: () => _envanterUrunCopeAtOnay(item),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF3a1010),
+                        foregroundColor: const Color(0xFFff7043),
+                        minimumSize: const Size(0, 44),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          side: const BorderSide(color: Color(0xFFcc3311)),
+                        ),
+                      ),
+                      child: const Text('🗑️ Çöpe At', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    )),
+                    const SizedBox(width: 10),
+                    Expanded(child: ElevatedButton(
+                      onPressed: () => setState(() => _envanterBuyukUrun = null),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF21262d),
+                        foregroundColor: Colors.white70,
+                        minimumSize: const Size(0, 44),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          side: const BorderSide(color: Color(0xFF30363d)),
+                        ),
+                      ),
+                      child: const Text('Kapat', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    )),
+                  ]),
+                ),
+              ]),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// "Çöpe At" onayı — yanlışlıkla bir CD'yi silmek geri alınamaz.
+  void _envanterUrunCopeAtOnay(GameItem item) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1a0f0a),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: Color(0xFFcc3311), width: 1.5),
+        ),
+        title: const Text('🗑️ Emin misin?', textAlign: TextAlign.center,
+          style: TextStyle(color: Color(0xFFff7043), fontSize: 18, fontWeight: FontWeight.bold)),
+        content: const Text(
+          'Bu oyunu envanterinden çıkarıp çöpe atmak istediğine emin misin?',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: Colors.white70, fontSize: 14),
+        ),
+        actionsAlignment: MainAxisAlignment.center,
+        actions: [
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF21262d), foregroundColor: Colors.white70,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              side: const BorderSide(color: Color(0xFF30363d)),
+            ),
+            child: const Text('Vazgeç', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              _state.urunCikarOrnek(item);
+              setState(() => _envanterBuyukUrun = null);
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFcc3311), foregroundColor: Colors.white),
+            child: const Text('Çöpe At', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
       ),
     );
   }
@@ -6333,7 +6573,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     return GestureDetector(
       onTap: curuk
           ? () => _tamirPopup(slotIndex)
-          : (oynanir ? () => _oyunuAcPopup(slotIndex) : null),
+          : (oynanir ? () => _oyunuAcPopup(slotIndex) : () => setState(() => _envanterBuyukUrun = item)),
       child: Container(
         padding: const EdgeInsets.all(4),
         decoration: BoxDecoration(
@@ -6641,13 +6881,10 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
             textAlign: TextAlign.center,
             style: TextStyle(color: setVar ? Colors.white60 : const Color(0xFFff7043), fontSize: 12)),
         ]),
-        actions: [Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Vazgeç', style: TextStyle(color: Colors.white38)),
-          ),
-          const SizedBox(width: 8),
-          ElevatedButton(
+        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        actions: [Row(children: [
+          // Tamir Et solda (asıl eylem), Vazgeç sağda — ikisi de dolu buton.
+          Expanded(child: ElevatedButton(
             onPressed: setVar ? () {
               Navigator.pop(ctx);
               if (_state.tamirEt(slotIndex)) {
@@ -6656,9 +6893,23 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
             } : null,
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF58a6ff), foregroundColor: Colors.black,
-              disabledBackgroundColor: const Color(0xFF2a2a2a), disabledForegroundColor: Colors.white24),
+              disabledBackgroundColor: const Color(0xFF2a2a2a), disabledForegroundColor: Colors.white24,
+              minimumSize: const Size(0, 44),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
             child: const Text('Tamir Et', style: TextStyle(fontWeight: FontWeight.bold)),
-          ),
+          )),
+          const SizedBox(width: 10),
+          Expanded(child: ElevatedButton(
+            onPressed: () => Navigator.pop(ctx),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF21262d), foregroundColor: Colors.white70,
+              minimumSize: const Size(0, 44),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              side: const BorderSide(color: Color(0xFF30363d)),
+            ),
+            child: const Text('Vazgeç', style: TextStyle(fontWeight: FontWeight.bold)),
+          )),
         ])],
       ),
     );
@@ -6980,6 +7231,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
         // değiştirdiği görünsün. Oyuncu satıyorsa zaten masada ürün yok.
         if (_state.aktifMusteri?.musteriSatiyor == true) {
           setState(() => _urunAsagiKayiyor = true);
+          _urunKayipController.forward(from: 0);
         }
         // Kabul mesajı balonda görünsün, 1.5 sn sonra müşteri gitsin
         Future.delayed(const Duration(milliseconds: 1500), () {
@@ -6988,6 +7240,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
             if (!mounted) return;
             _state.musteriAnimasyonBitti();
             setState(() => _urunAsagiKayiyor = false); // sonraki müşteri için sıfırla
+            _urunKayipController.reset();
           });
         });
       } else {

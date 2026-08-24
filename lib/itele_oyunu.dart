@@ -44,8 +44,9 @@ class _IteleOyunuState extends State<IteleOyunu> with SingleTickerProviderStateM
   static const double _topR = 1.7;
   double _topX = 50, _topY = 70;
   double _hizX = 0, _hizY = 0;
-  double _topHiz = 46;
-  static const double _topHizBaslangic = 46;
+  // %20 hızlandırıldı (46→55.2, artış 1.2→1.44, tavan 88→105.6)
+  double _topHiz = 55.2;
+  static const double _topHizBaslangic = 55.2;
 
   // ── Skor ──
   static const int _hedefSayi = 10;
@@ -184,7 +185,7 @@ class _IteleOyunuState extends State<IteleOyunu> with SingleTickerProviderStateM
   /// Çubuğun neresine çarptıysa o yöne saptır; her vuruşta hafif hızlan.
   void _sektir(double cubukMerkez, {required bool yukari}) {
     final fark = ((_topX - cubukMerkez) / (_cubukEn / 2)).clamp(-1.0, 1.0);
-    _topHiz = min(_topHiz + 1.2, 88);
+    _topHiz = min(_topHiz + 1.44, 105.6);
     final aci = fark * 55 * pi / 180; // dikeyden sapma
     _hizX = sin(aci) * _topHiz;
     _hizY = cos(aci) * _topHiz * (yukari ? -1 : 1);
@@ -242,7 +243,15 @@ class _IteleOyunuState extends State<IteleOyunu> with SingleTickerProviderStateM
                               ),
                             ),
                           ),
-                          if (!_basladi && !_bitti) _buildBaslaYazisi(),
+                          // "Başlamak için dokun" alt yarının (oyuncunun
+                          // kendi sahası) dikey ortasında çıkıyor — tam
+                          // ortada olsaydı çubukların/topun üstüne biniyordu.
+                          if (!_basladi && !_bitti)
+                            Positioned(
+                              left: 0, right: 0,
+                              top: boy / 2, height: boy / 2,
+                              child: Center(child: _buildBaslaYazisi()),
+                            ),
                           if (_bitti) _buildBitisPaneli(),
                         ]),
                       ),
@@ -261,6 +270,19 @@ class _IteleOyunuState extends State<IteleOyunu> with SingleTickerProviderStateM
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 8, 14, 8),
       child: Row(children: [
+        // Kırmızı X — oyunu direkt kapatıp dükkana döner (skor ne olursa olsun)
+        GestureDetector(
+          onTap: _cik,
+          child: Container(
+            width: 22, height: 22,
+            decoration: BoxDecoration(
+              color: const Color(0xFFcc3311).withValues(alpha: 0.85),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.close, size: 15, color: Colors.white),
+          ),
+        ),
+        const SizedBox(width: 10),
         const Text('İTELE',
           style: TextStyle(color: Color(0xFF29b6f6), fontSize: 18, fontWeight: FontWeight.w900, letterSpacing: 2)),
         const Spacer(),
@@ -281,31 +303,33 @@ class _IteleOyunuState extends State<IteleOyunu> with SingleTickerProviderStateM
 
   Widget _buildBaslaYazisi() {
     // Konsol kasası oyun alanını daralttı → FittedBox ile sığdır (bkz. Kırgeç)
-    return const Center(
-      child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 12),
-        child: FittedBox(
-          fit: BoxFit.scaleDown,
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Text('BAŞLAMAK İÇİN DOKUN',
-              style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w900, letterSpacing: 1.5)),
-            SizedBox(height: 8),
-            Text('Sağ yarı → sağa   ·   Sol yarı → sola',
-              style: TextStyle(color: Colors.white54, fontSize: 12)),
-            SizedBox(height: 4),
-            Text('Önce 10 sayıya ulaşan kazanır',
-              style: TextStyle(color: Colors.white38, fontSize: 11)),
-          ]),
-        ),
+    // Center burada YOK — dışarıdaki Positioned+Center zaten alt yarının
+    // ortasına konumluyor; ikinci bir Center gereksiz.
+    return const Padding(
+      padding: EdgeInsets.symmetric(horizontal: 12),
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Text('BAŞLAMAK İÇİN DOKUN',
+            style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w900, letterSpacing: 1.5)),
+          SizedBox(height: 8),
+          Text('Sağ yarı → sağa   ·   Sol yarı → sola',
+            style: TextStyle(color: Colors.white54, fontSize: 12)),
+          SizedBox(height: 4),
+          Text('Önce 10 sayıya ulaşan kazanır',
+            style: TextStyle(color: Colors.white38, fontSize: 11)),
+        ]),
       ),
     );
   }
 
   Widget _buildBitisPaneli() {
+    // ⚠️ Dar konsol kasasında sabit fontla "DÜKKANA DÖN" tek satıra sığmıyordu
+    // — FittedBox+maxLines:1 ile taşarsa küçülür (bkz. Kırgeç aynı düzeltme).
     return Center(
       child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 24),
-        padding: const EdgeInsets.fromLTRB(22, 20, 22, 18),
+        margin: const EdgeInsets.symmetric(horizontal: 16),
+        padding: const EdgeInsets.fromLTRB(18, 20, 18, 18),
         decoration: BoxDecoration(
           color: const Color(0xFF0a1020),
           borderRadius: BorderRadius.circular(16),
@@ -329,10 +353,14 @@ class _IteleOyunuState extends State<IteleOyunu> with SingleTickerProviderStateM
             onPressed: _cik,
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF29b6f6), foregroundColor: Colors.black,
-              minimumSize: const Size(180, 44),
+              minimumSize: const Size(190, 44),
+              padding: const EdgeInsets.symmetric(horizontal: 18),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
-            child: const Text('DÜKKANA DÖN', style: TextStyle(fontWeight: FontWeight.w900)),
+            child: const FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text('DÜKKANA DÖN', maxLines: 1, style: TextStyle(fontWeight: FontWeight.w900)),
+            ),
           ),
         ]),
       ),

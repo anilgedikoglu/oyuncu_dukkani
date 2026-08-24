@@ -7,9 +7,9 @@ import 'package:oyuncu_dukkani/main.dart';
 /// oyuncuyu eksiye düşürmemeli ve dükkan büyütme son seviyede patlamamalı.
 
 void main() {
-  test('havuzda 50 fal var ve hepsi benzersiz', () {
-    expect(Fal.havuz.length, 50);
-    expect(Fal.havuz.map((f) => f.metin).toSet().length, 50);
+  test('havuzda 75 fal var ve hepsi benzersiz', () {
+    expect(Fal.havuz.length, 75);
+    expect(Fal.havuz.map((f) => f.metin).toSet().length, 75);
   });
 
   test('fal metinlerinde doldurulmamış placeholder kalmıyor', () {

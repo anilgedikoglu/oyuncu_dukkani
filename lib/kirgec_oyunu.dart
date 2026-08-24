@@ -315,10 +315,14 @@ class _KirgecOyunuState extends State<KirgecOyunu> with SingleTickerProviderStat
   }
 
   Widget _buildBitisPaneli() {
+    // ⚠️ Dar konsol kasası ekranında sabit fontla "TOPLAR BİTTİ" ve
+    // "DÜKKANA DÖN" tek satıra sığmayıp bölünüyordu. FittedBox+maxLines:1
+    // ile taşarsa küçülür, hiçbir zaman satır kaymaz. Kenar boşlukları da
+    // biraz daraltıldı (24→16) — daha fazla yatay alan bıraksın.
     return Center(
       child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 24),
-        padding: const EdgeInsets.fromLTRB(22, 20, 22, 18),
+        margin: const EdgeInsets.symmetric(horizontal: 16),
+        padding: const EdgeInsets.fromLTRB(18, 20, 18, 18),
         decoration: BoxDecoration(
           color: const Color(0xFF120c1e),
           borderRadius: BorderRadius.circular(16),
@@ -327,8 +331,12 @@ class _KirgecOyunuState extends State<KirgecOyunu> with SingleTickerProviderStat
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           Text(_kazandi ? '🏆' : '💀', style: const TextStyle(fontSize: 40)),
           const SizedBox(height: 6),
-          Text(_kazandi ? 'HEPSİNİ KIRDIN!' : 'TOPLAR BİTTİ',
-            style: const TextStyle(color: Color(0xFF00e5ff), fontSize: 18, fontWeight: FontWeight.w900, letterSpacing: 1.2)),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(_kazandi ? 'HEPSİNİ KIRDIN!' : 'TOPLAR BİTTİ',
+              maxLines: 1,
+              style: const TextStyle(color: Color(0xFF00e5ff), fontSize: 18, fontWeight: FontWeight.w900, letterSpacing: 1.2)),
+          ),
           const SizedBox(height: 12),
           Text('$_puan PUAN',
             style: const TextStyle(color: Color(0xFFFFD700), fontSize: 26, fontWeight: FontWeight.w900)),
@@ -337,10 +345,14 @@ class _KirgecOyunuState extends State<KirgecOyunu> with SingleTickerProviderStat
             onPressed: _cik,
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF00e5ff), foregroundColor: Colors.black,
-              minimumSize: const Size(180, 44),
+              minimumSize: const Size(190, 44),
+              padding: const EdgeInsets.symmetric(horizontal: 18),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
-            child: const Text('DÜKKANA DÖN', style: TextStyle(fontWeight: FontWeight.w900)),
+            child: const FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text('DÜKKANA DÖN', maxLines: 1, style: TextStyle(fontWeight: FontWeight.w900)),
+            ),
           ),
         ]),
       ),

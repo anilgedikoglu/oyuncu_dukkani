@@ -1,3 +1,4 @@
+---
 ﻿# Oyuncu DÃ¼kkanÄ± â€” Claude BaÄŸlamÄ±
 
 ## ğŸš¨ MARKET BUILD Ã–NCESÄ° ZORUNLU KONTROL (KULLANICI KURALI)
@@ -132,6 +133,118 @@ Toplu iş + kontak sayfası için: `tools/toplu_isle.ps1`
 
 > ℹ️ Ayak altındaki küçük gölge izleri **önemsiz** — müşteri masanın arkasında
 > göğsünden kesiliyor (`kMusteriUstu` 0.2183 → masa 0.4833), ayaklar hiç görünmüyor.
+
+---
+
+## 🩹 v111 — 16 MADDELİK DÜZELTME LİSTESİ
+
+### 1. Ürün müşteriden yarım saniye geç giriyordu
+Sahnede ürün, müşteriyle **aynı** `_slideAnim`'i dinleyip konumunu ondan
+türetiyordu ama `AnimatedPositioned` ile sarılıydı. `AnimatedPositioned` her
+karede DEĞİŞEN bir `left` değerini (slideAnim her karede ilerlediği için)
+650ms'lik kendi geçişiyle kovalamaya çalışıyordu — hareketli bir hedefi
+kovalayan bir animasyon, sürekli geriden geliyordu.
+
+**Çözüm:** giriş konumu artık `Positioned` (animasyonsuz) — müşteriyle
+birebir aynı karede hareket ediyor. "Anlaşma sonrası masadan aşağı kayıp
+gitme" efekti konumdan bağımsız, ayrı bir `_urunKayipController`
+(`AnimationController`, 650ms) ile uygulanıyor.
+
+### 2. Yeni oyunda envanterde oynanabilir ürün OLMAMALI
+`GameState()` constructor'ında üç slotu `cd15`/`cd16`/`cd17` (KIRGEÇ/İTELE/
+TISSS) ile eziyordu — `// GECICI` yorumlu, geliştirme sırasında test
+kolaylığı için bırakılmış kod. Kaldırıldı; `slotlar` alanının kendi
+initializer'ı zaten sıradan `cd1`/`cd3`/`cd5` kullanıyor.
+
+### 3. Envanterdeki sağlam ürüne tıkla → büyüt + Çöpe At
+Masadaki ürüne tıklayınca açılan büyütme (`_buyukUrunGorseli`) sadece kapanan
+bir önizlemeydi. Envanterdeki **sağlam, oynanamaz** ürünler için aynı görsel
+dilde ama "Çöpe At" seçeneği olan ayrı bir overlay eklendi:
+`_envanterBuyukUrun` (GameItem?) → `_buildEnvanterBuyukOverlay()`. Çöpe At
+"emin misin?" onayı ister, onaylanırsa `urunCikarOrnek()` ile slottan silinir.
+Çürük ve oynanabilir ürünlerin kendi tıklama davranışı (tamir/oyun) değişmedi.
+
+### 4 & 12. Tamir popup buton stilleri + sırası
+"Vazgeç" arkaplansız `TextButton`'dı, "Tamir Et" ise gri arkaplan/soluk yazı.
+İkisi de artık eşit genişlikte, dolu arkaplanlı `ElevatedButton`; **Tamir Et
+solda** (asıl eylem), **Vazgeç sağda** — kırmızı/tehlike vurgusu yok, sade gri.
+
+### 5. Browser sabit boyut + her sayfada Geri/Kapat
+Eskiden `ConstrainedBox(maxHeight:)` + `Column(mainAxisSize.min)`
+kullanıyordu — içerik kısaysa (Banka gibi) pencere küçülüyordu. Artık dış
+kutu `SizedBox(height: sabit)`, `Column(mainAxisSize.max)` o yüksekliği
+dolduruyor, ortadaki `SingleChildScrollView` `Expanded` ile HER sayfada aynı
+alanı kaplıyor. Alt buton çubuğu kaydırma alanının DIŞINA, sabit bir
+`Container`'a taşındı: menüde sadece **Kapat**, alt sayfalarda (Kiralık
+Dükkanlar / Banka / Hedefler / Market) **Geri + Kapat**. `_browserMenuGovdesi`
+içindeki eski gömülü Kapat butonu kaldırıldı (tekrar olmasın diye).
+
+Ayarlar da (bilerek ayrı popup) aynı dile kavuştu: **Geri** sadece Ayarlar'ı
+kapatır (Browser altta açık kalır), **Kapat** hem Ayarlar'ı hem Browser'ı
+birlikte kapatır (`Navigator.pop(ctx); Navigator.pop(context);`).
+
+### 6. Ayarlar'daki ses düğmesi gerçek switch gibi görünsün
+Tek kelimelik "AÇIK"/"KAPALI" butonu neyin ne olduğunu belli etmiyordu.
+Artık iki segmentli bir switch: **Açık** ve **Kapalı** yan yana, aktif olan
+renkli (yeşil/kırmızı) dolu, diğeri soluk — hangisine dokunulursa o aktif olur.
+
+### 7. Sarı mouse (Oyuncu Mausu) konuşma balonunda çok büyüktü
+Balondaki ürün görseli sabit 100×100'dü. `oyuncumausu.png` için özel olarak
+70×70'e (%30 küçük) düşürüldü; diğer ürünler etkilenmedi.
+
+### 8 & 15. Kapı silüetinde sağda boşluk (Mahalle Köşe Dükkanı, Cadde Dükkanı)
+`kapiGen` (kapı camı kutusunun genişliği) iki seviyede de gerçek camdan dar
+ölçülmüştü. Sol kenar ve dikey ölçüler SABİT tutulup genişlik sadece sağa
+doğru **%15** uzatıldı: seviye 2 `0.1224→0.1408`, seviye 3 `0.1113→0.1280`.
+
+### 9 & 11 (kısmen). Mini oyun bitiş ekranında buton/başlık metni bölünüyordu
+Dar konsol kasası ekranında sabit fontla "TOPLAR BİTTİ" ve "DÜKKANA DÖN" tek
+satıra sığmıyordu. Kırgeç ve İtele'nin bitiş panelinde: kenar boşlukları
+daraltıldı (24→16), başlık ve buton metni `FittedBox(fit: scaleDown,
+maxLines: 1)` ile sarıldı — taşarsa küçülür, asla ikinci satıra düşmez.
+
+### 10. "X'lik seri!" bildirimi ekranın merkezine alındı
+`_buildToast()` eskiden `Positioned(left:24,right:24,bottom: %26)` ile alt
+üçte birdeydi ve dardı. Artık `Positioned.fill` + `Center` ile tam ekran
+ortasında, rozet-kazandın popup'ıyla aynı dilde; kutu `minWidth: 260` ve daha
+geniş padding ile "rahat rahat" gözüküyor.
+
+### 11. İtele oyunu — dört ayrı düzeltme
+- **Başlangıç yazısı konumu**: `_buildBaslaYazisi()` tam ortada çubukların
+  üstüne biniyordu. Artık `Positioned(top: boy/2, height: boy/2) + Center`
+  ile SADECE alt yarının (oyuncunun kendi sahası) dikey ortasında.
+- **Top hızı %20 arttı**: başlangıç 46→55.2, vuruş başı artış 1.2→1.44,
+  tavan 88→105.6 (üçü orantılı büyütüldü, denge bozulmasın diye).
+- **Kırmızı X kapatma düğmesi**: "İTELE" yazısının hemen solunda, daire
+  içinde kırmızı X. Tıklanınca `_cik()` (skor ne olursa olsun anında dükkana
+  döner).
+- **"DÜKKANA DÖN" metni**: Kırgeç'teki aynı FittedBox düzeltmesi.
+
+### 13. Falcı Faloya — 25 yeni "sadece hikâye" fal metni
+Kullanıcının verdiği örnek üsluba (harf + kişi + gelecek kehaneti) uygun 25
+yeni metin `Fal.havuz`'a eklendi (klasik kahve falı tonu: fincan, telve,
+yıldız, kavşak — dükkan ekonomisiyle ilgisi yok, `FalEtki.yok`). Havuz
+**50 → 75** metne çıktı; `test/fal_test.dart`'taki sayı testi güncellendi.
+
+### 14. TISSS — başlangıç yazısı üst 1/3'e taşındı
+`_buildBaslaYazisi()` tam ortada yılanın başlangıç konumuyla çakışıyordu.
+`Positioned(top:0, height: boy/3) + Center` ile oyun alanının (tüm ekranın
+değil) üst üçte birinde.
+
+### 16. 🐛 Kolonya "zombi müşteri" hatası
+**Belirti:** Müşteri reddedildikten (`HAYIR`) sonra ~600ms'lik çıkış
+animasyonu boyunca `aktifMusteri` hâlâ doluyken, `musteriKabulBekliyor` zaten
+`false` oluyordu. Bu dar pencerede Kolonya Tut'a basılırsa: alıcı için "tekrar
+sorar" mesajı üretiliyor (`_kolonyaIkramEt`'in reask dalı) ama ne EVET/HAYIR
+ne Teklif Ver/Reddet gösteriliyordu — müşteri ekranda donup kalıyordu.
+
+**Kök neden:** Kolonya Tut butonunun `aktif` koşulu sadece `hasMusteri &&
+!kolonyaIkramEdildi`e bakıyordu; müşterinin GERÇEKTEN etkileşimde olup
+olmadığını kontrol etmiyordu.
+
+**Düzeltme:** normal müşteride buton artık sadece `musteriKabulBekliyor ||
+_pazarlikBekleniyor` iken aktif (özel müşteride davranış değişmedi — onların
+akışı zaten kolonyayı her an kabul edecek şekilde tasarlı).
 
 ---
 
@@ -1547,6 +1660,7 @@ Base ratio hÃ¢lÃ¢ `_clamp(0.18 - progress * 0.15, 0.02, 0.18)`.
 ## Versiyon GeÃ§miÅŸi (son)
 | Commit | AÃ§Ä±klama |
 |--------|----------|
+| v111 | **16 maddelik düzeltme listesi**: ürün artık müşteriyle aynı karede giriyor (ayrı `_urunKayipController`, `AnimatedPositioned` kaldırıldı); yeni oyunda envanterde oynanabilir ürün yok (`// GECICI` kodu silindi); envanterdeki sağlam ürüne tıkla → büyüt + Çöpe At; tamir popup butonları (Tamir Et solda, Vazgeç sağda, ikisi de dolu arkaplan); browser sabit boyut + her sayfada Geri/Kapat, Ayarlar'da da; ses ayarı gerçek switch (Açık/Kapalı segment); sarı mouse balon görseli %30 küçüldü; 2 dükkan kapı silüeti sağa %15 genişledi; Kırgeç/İtele bitiş metinleri FittedBox ile taşmıyor; seri bildirimi ekran merkezinde; İtele: top %20 hızlı + kırmızı X kapatma + başlangıç yazısı alt yarıda; Falcı'ya 25 yeni fal metni (havuz 50→75); TISSS başlangıç yazısı üst 1/3'te; kolonya "zombi müşteri" hatası düzeltildi (reddedilip çıkış animasyonu oynayan müşteriye kolonya verilemez artık) |
 | v110 | **Browser tek pencere navigasyonu**: Kiralık Dükkanlar / Hedefler / Market / Banka artık ayrı popup değil, browser'ın içinde sayfa (`_BrowserSayfa` enum'u, adres çubuğu değişiyor, sarı geri oku menüye dönüyor). Banka'nın tutar/taksit seçimi `_GameScreenState` alanlarına taşındı — gövde her karede baştan çalıştığı için widget içinde tutulamıyordu; rastgele başlangıç tutarı yalnız sayfaya girerken üretiliyor. Hedefler'in `ListView`'ü `List.generate` oldu (iç içe kaydırma yok). **6 yeni karakter** (`musteri_29..34`, kaynak klasörde işlenmemiş kalanlar; 500×500 ve doluluk 0.95 geldiği için olduğu gibi kopyalandı) → roster 34. **10 yeni ekipman** (`konsol_11..19` + `joystick.png`; 9 retro el/masaüstü konsolu + arcade joystick, v109'un 0.90 doluluk hattından) → toplam ürün 59. APK 49.9 → 54.0MB |
 | v109 | **9 yeni ekipman**: 3 el konsolu (`konsol_8/9/10.png`) + 6 aksesuar (3D Gözlük, Oyuncu Kulaklığı, Kulaklık ve Stant, Kablosuz Joypad, Direksiyon Seti, Oyuncu Mausu). Görseller mevcut ekipman formatına çevrildi (500×500, doluluk 0.90, en-boy korunur). Sahnede fazla büyük durmasınlar diye `kucukGorseller` kümesine eklendiler (%85) — o liste artık `Set` sabiti, uzun `||` zinciri değil. Fiyatlar 260-850, mevcut aralıkla uyumlu. Toplam ürün 49. APK 47.6 → 49.9MB |
 | v108 | **13 yeni CD** (normal, oynanamaz): ŞEHRİŞER, UÇURBENİ, CIPCIP, TANTUNİ, VURKAÇ, BİLEZ, TAHTAKALE, SÜMSÜK, BİLEKZORU, MAHŞER, DİKİZ, TAMTAM, KOKARCA → `CD_18..30.png`, toplam CD 17'den 30'a çıktı. Görseller kullanıcının removebg kesimiyle geldi, mevcut CD formatına çevrildi (392×512, doluluk 0.83, içerik ~300×425). **Fiyatlar ortalamayı koruyacak şekilde dağıtıldı** (90-190, ortalama ~136) — yoksa "oynanabilir = normalin 2 katı" dengesi ve onu koruyan test bozulurdu. APK 43.3 → 47.6MB |

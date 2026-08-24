@@ -172,7 +172,14 @@ class _TisssOyunuState extends State<TisssOyunu> with SingleTickerProviderStateM
                               ),
                             ),
                           ),
-                          if (!_basladi && !_bitti) _buildBaslaYazisi(),
+                          // "Başlamak için dokun" oyun alanının üst 1/3'ünde
+                          // çıkıyor — tam ortada yılanın başlangıç konumuyla
+                          // çakışıyordu.
+                          if (!_basladi && !_bitti)
+                            Positioned(
+                              left: 0, right: 0, top: 0, height: boy / 3,
+                              child: Center(child: _buildBaslaYazisi()),
+                            ),
                           if (_bitti) _buildBitisPaneli(),
                         ]),
                       ),
@@ -205,25 +212,25 @@ class _TisssOyunuState extends State<TisssOyunu> with SingleTickerProviderStateM
 
   Widget _buildBaslaYazisi() {
     // Konsol kasası oyun alanını daralttı → FittedBox ile sığdır (bkz. Kırgeç)
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10),
-        child: FittedBox(
-          fit: BoxFit.scaleDown,
-          child: Container(
-            color: Colors.black54,
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-            child: const Column(mainAxisSize: MainAxisSize.min, children: [
-              Text('BAŞLAMAK İÇİN DOKUN',
-                style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w900, letterSpacing: 1.5)),
-              SizedBox(height: 8),
-              Text('Sağ yarı → 90° sağa   ·   Sol yarı → 90° sola',
-                style: TextStyle(color: Colors.white54, fontSize: 12)),
-              SizedBox(height: 4),
-              Text('Yem başına 5 puan · duvara ve kendine çarpma',
-                style: TextStyle(color: Colors.white38, fontSize: 11)),
-            ]),
-          ),
+    // Center burada YOK — dışarıdaki Positioned+Center zaten üst 1/3'e
+    // konumluyor; ikinci bir Center gereksiz.
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Container(
+          color: Colors.black54,
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+          child: const Column(mainAxisSize: MainAxisSize.min, children: [
+            Text('BAŞLAMAK İÇİN DOKUN',
+              style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w900, letterSpacing: 1.5)),
+            SizedBox(height: 8),
+            Text('Sağ yarı → 90° sağa   ·   Sol yarı → 90° sola',
+              style: TextStyle(color: Colors.white54, fontSize: 12)),
+            SizedBox(height: 4),
+            Text('Yem başına 5 puan · duvara ve kendine çarpma',
+              style: TextStyle(color: Colors.white38, fontSize: 11)),
+          ]),
         ),
       ),
     );
