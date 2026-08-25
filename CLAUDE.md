@@ -39,9 +39,9 @@ assets/                — görseller ve sesler
   bgbos_2/3/4.jpg      — seviye 2/3/4-5 arka planları (JPEG: opak, PNG'de 6.5MB olurdu)
   bgbosmasa.png        — masa (3. günden önce)
   kapidaki.png         — kapıda bekleyen silüet (müşteri yokken; dükkana göre konumlanır)
-  musteri_1..34.png    — müşteri karakterleri (34 adet, yaş/cinsiyet musteriHavuzu içinde)
+  musteri_1..42.png    — müşteri karakterleri (42 adet, yaş/cinsiyet musteriHavuzu içinde)
   hirsiz/polis/vergici/kurye/toptanci/falci.png — özel müşteri karakterleri
-  CD_1..30.png         — 30 CD ürünü (CD_15/16/17 = KIRGEÇ, İTELE, TISSS: oynanabilir)
+  CD_1..46.png         — 46 CD ürünü (CD_15/16/17 = KIRGEÇ, İTELE, TISSS: oynanabilir)
   konsol_1..19.png     — 19 konsol ürünü (PlayStatyon, Ninetendo, Ateri, El Konsolu ×12,
                          Masaüstü Konsol ×3, son sistem)
   joystick.png         — arcade joystick (v110 aksesuarı)
@@ -73,7 +73,7 @@ SplashScreen (6 sn yasal metin)
 
 ## 👥 KARAKTER HAVUZU (v103)
 
-**34 müşteri görseli** (11 eski + 17 v103 + 6 v110). Dağılım: **15 erkek, 19 kadın**.
+**42 müşteri görseli** (11 eski + 17 v103 + 6 v110 + 8 v112). Dağılım: **20 erkek, 22 kadın**.
 İsim havuzu: **150 erkek + 150 kadın**, hepsi benzersiz (tekrar kontrolü yapıldı).
 
 Her karakterin `musteriHavuzu` satırında **`cinsiyet` + `yas`** alanı ve yanında
@@ -133,6 +133,106 @@ Toplu iş + kontak sayfası için: `tools/toplu_isle.ps1`
 
 > ℹ️ Ayak altındaki küçük gölge izleri **önemsiz** — müşteri masanın arkasında
 > göğsünden kesiliyor (`kMusteriUstu` 0.2183 → masa 0.4833), ayaklar hiç görünmüyor.
+
+---
+
+## 🐛 v112 — PAZARLIĞI DONDURAN clamp HATASI (EN ÖNEMLİSİ)
+
+**Belirti (kullanıcı bildirimi):** "Teklif ver'e tıklayınca ne yazı değişiyor ne
+yeni fiyat teklifi geliyor. Artırıp tekrar basıyorum, hiçbir şey olmuyor, ta ki
+kabul edene kadar." Hem alırken hem satarken, genelde 4-5. turdan sonra.
+
+**Kök neden:** `PazarlikSeans.oyuncuTeklifVer` adım 5'te karşı teklifi
+hesaplarken:
+
+```dart
+// ESKİ — HATALI
+yeniMusteriTeklif = (musteriTeklif - move)
+    .clamp(_reservationPrice.ceil(), musteriTeklif - 1).toInt();
+```
+
+Müşterinin teklifi kendi rezervasyon sınırına dayandığında
+`musteriTeklif - 1 < _reservationPrice.ceil()` oluyor. **Dart'ın `clamp`'i alt
+sınır > üst sınır olduğunda `ArgumentError` ATAR.** İstisna `teklifVer`den yukarı
+kaçıyor; pazarlık dialogu `finally` sayesinde kapanıyor (v105'te eklenmişti) ama
+ne `mesaj` ne `musteriTeklif` güncelleniyor. `durum` da `devamEdiyor` kaldığı
+için UI "Teklif Ver / Reddet"i tekrar gösteriyor → oyuncu aynı ekranı görüyor.
+Teklifi müşterininkini geçince adım 1 (`_kabul`) clamp'e hiç ulaşmadan
+devreye girdiği için "birden bire tamam deyip gidiyor".
+
+**Düzeltme:** clamp'i çağırmadan ÖNCE kıpırdayacak yer var mı diye bak; yoksa
+zaten sınırdayız demektir, `atFloor` dalına düşsün (orada kabul/git kararı var).
+
+```dart
+final rezervAlt = _reservationPrice.ceil();   // satıcı müşterinin tabanı
+final rezervUst = _reservationPrice.floor();  // alıcı müşterinin tavanı
+final yerKaldi = musteriSatiyor
+    ? (musteriTeklif - 1) >= rezervAlt
+    : (musteriTeklif + 1) <= rezervUst;
+// yerKaldi false → yeniMusteriTeklif = musteriTeklif, atFloor = true
+```
+
+> ⚠️ **Aynı sınıftaki diğer iki clamp GÜVENLİ, dokunma:** sıkıştırma dalındaki
+> `ortaNokta.clamp(oyuncuTeklif + 1, musteriTeklif)` (ve simetriği) adım 1'in
+> `return`'ü sayesinde `oyuncuTeklif < musteriTeklif` garantisiyle çalışıyor.
+
+**Regresyon testi:** `test/pazarlik_test.dart` (6 test). Düzeltme geri alınınca
+testler `ArgumentError:<Invalid argument(s): 101>` ile patlıyor — teşhis böyle
+doğrulandı.
+
+```bash
+C:\src\flutter\bin\flutter.bat test test/pazarlik_test.dart
+```
+
+---
+
+## 🩹 v112 — DİĞER DÜZELTMELER
+
+### 1. "Yeterli paran yok"ta ürün yine de alınmış gibi kayıyordu
+`_anlasmayiTamamla` fiyat üzerinde anlaşıldığında `PazarlikDurum.anlasildi`
+döndürüyor; para yetmezse (veya envanter doluysa) alım GERÇEKLEŞMİYOR ama
+widget yine de "ürün masadan aşağı kayıp kaybolur" efektini oynatıyordu — mal
+alınmış gibi görünüyordu.
+
+`GameState.sonAnlasmaBasarisiz` bayrağı eklendi; `_pazarlikGoster`'in
+`anlasildi` dalı artık `&& !_state.sonAnlasmaBasarisiz` kontrolü yapıyor.
+Bayrak `musteriAnimasyonBitti()` içinde sıfırlanıyor. Sonuç: ürün masada
+kalıyor, müşteriyle birlikte normal şekilde sağdan çıkıyor.
+
+### 2. 🪤 Ürün büyütme, Toptancı Rıza penceresinin ALTINDA kalıyordu
+Büyütme önizlemeleri ana `Stack`'e katman olarak çiziliyordu
+(`_buyukUrunGorseli` / `_envanterBuyukUrun` bayrakları). Ama `showDialog` ile
+açılan Rıza penceresi sayfanın TAMAMININ üstünde ayrı bir **route**; sayfa
+Stack'indeki hiçbir katman onun üstüne çıkamaz. Büyütülen CD arkada kalıyor,
+ancak Rıza kapanınca görülüyordu.
+
+**Çözüm:** iki bayrak ve iki Stack katmanı kaldırıldı; büyütme artık
+`showDialog` ile açılıyor (`_urunGorseliBuyut`, `_envanterUrunBuyut`). Dialog
+route'u her zaman en son push edilen olduğu için Rıza'nın da envanterin de
+üstünde çıkar. Ayrıca **Rıza'nın tezgâhındaki ürünlere de tıkla-büyüt eklendi**
+(`t.item != null` olanlara; tamir seti/kapalı kutu emoji olduğu için hariç).
+
+> "Çöpe At" akışı iki pencere kapatıyor: onay dialogu + büyütme dialogu.
+> Bu yüzden `_envanterUrunCopeAtOnay` artık büyütme context'ini de alıyor.
+
+### 3. Bodrum Kat Dükkan kapı silüeti sağa taşıyordu
+`kapiGen` %10 kısaltıldı: `0.1330 → 0.1197`. Sol kenar ve dikey ölçüler SABİT
+kaldı (v111'de seviye 2/3 sağa **genişletilmişti**, burada tersi gerekti).
+
+### 4. İçerik: 16 CD + 8 karakter
+- **5 CD görseli yenilendi**: CİMRİCİTY, SOKAKSOCCER, ZOOMDAY, GTR 7,
+  DALAKKÜREK (`CD_2/3/4/5/8.png` üzerine yazıldı).
+- **16 yeni CD** → `CD_31..46`: ÇATAPAT, KOKOŞ, METRİS, BOMBERCAN, DOBROVSKİ,
+  İPİMLE KUŞAĞIM, RECAİ MUMUDİK, RUHİ KANTER, SATAN SATANA, ZIMBALA, KEVGİR,
+  PELTE, SEMSEK, NÖRÜN, ÇAYYNİİZ, CUMBURLOP. Toplam CD **30 → 46**.
+- **8 yeni karakter** → `musteri_35..42`. Ölçüldü: 500×500, doluluk 0.914-0.976
+  → mevcut kadroyla uyumlu, **yeniden ölçekleme yapılmadan** kopyalandı.
+  Roster **34 → 42** (20 E / 22 K).
+
+> CD görselleri `tools/`teki 0.83 doluluk hattından geçirildi (392×512 tuval,
+> alfa sınır kutusu, en-boy korunur) — v108'in birebir aynısı.
+> Fiyatlar **85-210**; ortalama korunacak şekilde dağıtıldı ki "oynanabilir =
+> normal CD ortalamasının 2 katı" dengesi ve `kirgec_test.dart` bozulmasın.
 
 ---
 
@@ -1569,6 +1669,8 @@ for (int j = 0; j < acikSlotSayisi; j++) slotlar[j] = j < dolu.length ? dolu[j] 
 | Kategori | ID | Ad | Görsel | basePrice |
 |----------|----|----|--------|-----------|
 | cd | cd1..30 | KARMAGEDDON, CİMRİCİTY, ..., KISPET, UÇARSOKAR, DÜTTÜRÜ + v106'da KIRGEÇ/İTELE/TISSS (oynanabilir) + v108'de ŞEHRİŞER, UÇURBENİ, CIPCIP, TANTUNİ, VURKAÇ, BİLEZ, TAHTAKALE, SÜMSÜK, BİLEKZORU, MAHŞER, DİKİZ, TAMTAM, KOKARCA | CD_1..30.png | 80-270 |
+| cd | cd31..41 | v112: ÇATAPAT, KOKOŞ, METRİS, BOMBERCAN, DOBROVSKİ, İPİMLE KUŞAĞIM, RECAİ MUMUDİK, RUHİ KANTER, SATAN SATANA, ZIMBALA, KEVGİR | CD_31..41.png | 95-210 |
+| cd | cd42..46 | v112: PELTE, SEMSEK, NÖRÜN, ÇAYYNİİZ, CUMBURLOP | CD_42..46.png | 85-160 |
 | konsol | konsol1 | PlayStatyon | konsol_1.png | 900 |
 | konsol | konsol2 | Ninetendo | konsol_2.png | 750 |
 | konsol | konsol3 | Ateri | konsol_3.png | 500 |
@@ -1660,6 +1762,7 @@ Base ratio hâlâ `_clamp(0.18 - progress * 0.15, 0.02, 0.18)`.
 ## Versiyon Geçmişi (son)
 | Commit | Açıklama |
 |--------|----------|
+| v112 | **🐛 Pazarlığı donduran `clamp` hatası düzeltildi**: müşterinin teklifi rezervasyon sınırına dayanınca `clamp(alt, üst)` çağrısının alt sınırı üst sınırını geçiyor, Dart `ArgumentError` atıyordu; istisna `teklifVer`den kaçtığı için ne replik ne yeni fiyat güncelleniyordu — oyuncu "Teklif Ver"e basıp duruyor, hiçbir şey olmuyordu. Artık clamp öncesi "yer kaldı mı" kontrolü var, yer yoksa `atFloor` dalına düşüp kabul/git kararı veriliyor. `test/pazarlik_test.dart` (6 test) eklendi. **Ürün büyütme artık `showDialog`** — Toptancı Rıza penceresi açıkken altında kalmıyordu (Stack katmanı → dialog route); Rıza'nın tezgâhındaki ürünlere de tıkla-büyüt eklendi. **"Yeterli paran yok"** durumunda ürün artık masadan aşağı kaymıyor, müşteriyle birlikte çıkıyor (`sonAnlasmaBasarisiz`). Bodrum Kat kapı silüeti sağdan %10 kısaldı (0.1330→0.1197). **İçerik**: 5 CD görseli yenilendi, 16 yeni CD (`CD_31..46`, toplam 46), 8 yeni karakter (`musteri_35..42`, roster 42). APK 54.0 → 60.9MB |
 | v111 | **16 maddelik düzeltme listesi**: ürün artık müşteriyle aynı karede giriyor (ayrı `_urunKayipController`, `AnimatedPositioned` kaldırıldı); yeni oyunda envanterde oynanabilir ürün yok (`// GECICI` kodu silindi); envanterdeki sağlam ürüne tıkla → büyüt + Çöpe At; tamir popup butonları (Tamir Et solda, Vazgeç sağda, ikisi de dolu arkaplan); browser sabit boyut + her sayfada Geri/Kapat, Ayarlar'da da; ses ayarı gerçek switch (Açık/Kapalı segment); sarı mouse balon görseli %30 küçüldü; 2 dükkan kapı silüeti sağa %15 genişledi; Kırgeç/İtele bitiş metinleri FittedBox ile taşmıyor; seri bildirimi ekran merkezinde; İtele: top %20 hızlı + kırmızı X kapatma + başlangıç yazısı alt yarıda; Falcı'ya 25 yeni fal metni (havuz 50→75); TISSS başlangıç yazısı üst 1/3'te; kolonya "zombi müşteri" hatası düzeltildi (reddedilip çıkış animasyonu oynayan müşteriye kolonya verilemez artık) |
 | v110 | **Browser tek pencere navigasyonu**: Kiralık Dükkanlar / Hedefler / Market / Banka artık ayrı popup değil, browser'ın içinde sayfa (`_BrowserSayfa` enum'u, adres çubuğu değişiyor, sarı geri oku menüye dönüyor). Banka'nın tutar/taksit seçimi `_GameScreenState` alanlarına taşındı — gövde her karede baştan çalıştığı için widget içinde tutulamıyordu; rastgele başlangıç tutarı yalnız sayfaya girerken üretiliyor. Hedefler'in `ListView`'ü `List.generate` oldu (iç içe kaydırma yok). **6 yeni karakter** (`musteri_29..34`, kaynak klasörde işlenmemiş kalanlar; 500×500 ve doluluk 0.95 geldiği için olduğu gibi kopyalandı) → roster 34. **10 yeni ekipman** (`konsol_11..19` + `joystick.png`; 9 retro el/masaüstü konsolu + arcade joystick, v109'un 0.90 doluluk hattından) → toplam ürün 59. APK 49.9 → 54.0MB |
 | v109 | **9 yeni ekipman**: 3 el konsolu (`konsol_8/9/10.png`) + 6 aksesuar (3D Gözlük, Oyuncu Kulaklığı, Kulaklık ve Stant, Kablosuz Joypad, Direksiyon Seti, Oyuncu Mausu). Görseller mevcut ekipman formatına çevrildi (500×500, doluluk 0.90, en-boy korunur). Sahnede fazla büyük durmasınlar diye `kucukGorseller` kümesine eklendiler (%85) — o liste artık `Set` sabiti, uzun `||` zinciri değil. Fiyatlar 260-850, mevcut aralıkla uyumlu. Toplam ürün 49. APK 47.6 → 49.9MB |

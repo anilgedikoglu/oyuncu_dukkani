@@ -183,8 +183,10 @@ class DukkanSeviye {
 // panelde %1'lik ızgarayla ölçüldü; ayrıca parlaklık projeksiyonuyla otomatik
 // doğrulandı ve dördü de emülatörde tek tek açılıp kontrol edildi.
 const List<DukkanSeviye> tumDukkanlar = [
+  // kapiGen: sağda ~%10 taşıyordu — sol kenar ve dikey ölçüler SABİT,
+  // genişlik sağdan %10 kısaltıldı (0.1330*0.90).
   DukkanSeviye(seviye: 1, isim: 'Bodrum Kat Dükkan',    kira: 300,  minGun: 1,  arkaplan: 'assets/bgbos.png',   arkaplanOrani: 719 / 1080,
-    kapiSol: 0.3157, kapiUst: 0.0880, kapiGen: 0.1330, kapiYuk: 0.1593),
+    kapiSol: 0.3157, kapiUst: 0.0880, kapiGen: 0.1197, kapiYuk: 0.1593),
   // kapiGen: sağda boşluk kalıyordu — sol kenar ve dikey ölçüler SABİT,
   // genişlik sadece sağa doğru %15 uzatıldı (0.1224*1.15, 0.1113*1.15).
   DukkanSeviye(seviye: 2, isim: 'Mahalle Köşe Dükkanı', kira: 600,  minGun: 3,  arkaplan: 'assets/bgbos_2.jpg', arkaplanOrani: 719 / 1278,
@@ -1205,19 +1207,40 @@ class PazarlikSeans {
         .clamp(1, double.infinity)
         .round();
 
+    // ⚠️ 🐛 BURASI PAZARLIĞI DONDURAN HATANIN YERİYDİ.
+    // Müşterinin teklifi kendi rezervasyon sınırına dayandığında
+    // `musteriTeklif - 1 < _reservationPrice.ceil()` oluyordu (satıcı müşteri;
+    // alıcıda simetriği). Dart'ın `clamp`'i alt sınır > üst sınır olduğunda
+    // ArgumentError ATAR — istisna `teklifVer`den yukarı kaçıyor, dialog
+    // `finally` sayesinde kapanıyor ama `mesaj` da `musteriTeklif` de HİÇ
+    // güncellenmiyordu. Oyuncu "Teklif Ver"e basıp duruyor, ne yeni replik ne
+    // yeni rakam geliyordu; ancak teklifi müşterininkini geçince (adım 1)
+    // anlaşma oluyordu. Tam olarak bildirilen davranış buydu.
+    //
+    // Çözüm: clamp'i çağırmadan ÖNCE kıpırdayacak yer var mı diye bak.
+    // Yer kalmadıysa müşteri zaten sınırındadır → `atFloor` dalına düşsün,
+    // orada kabul/git kararı verilsin.
+    final rezervAlt = _reservationPrice.ceil();   // satıcı müşterinin tabanı
+    final rezervUst = _reservationPrice.floor();  // alıcı müşterinin tavanı
+    final yerKaldi = musteriSatiyor
+        ? (musteriTeklif - 1) >= rezervAlt
+        : (musteriTeklif + 1) <= rezervUst;
+
     int yeniMusteriTeklif;
-    if (musteriSatiyor) {
+    if (!yerKaldi) {
+      yeniMusteriTeklif = musteriTeklif; // sınırda, daha fazla kıpırdayamaz
+    } else if (musteriSatiyor) {
       yeniMusteriTeklif = (musteriTeklif - move)
-          .clamp(_reservationPrice.ceil(), musteriTeklif - 1).toInt();
+          .clamp(rezervAlt, musteriTeklif - 1).toInt();
     } else {
       yeniMusteriTeklif = (musteriTeklif + move)
-          .clamp(musteriTeklif + 1, _reservationPrice.floor()).toInt();
+          .clamp(musteriTeklif + 1, rezervUst).toInt();
     }
 
     // ── 6. Rezervasyon tavanına dayandıysa: kabul/git kararı ──
-    final atFloor = musteriSatiyor
-        ? yeniMusteriTeklif <= _reservationPrice.ceil()
-        : yeniMusteriTeklif >= _reservationPrice.floor();
+    final atFloor = !yerKaldi || (musteriSatiyor
+        ? yeniMusteriTeklif <= rezervAlt
+        : yeniMusteriTeklif >= rezervUst);
 
     if (atFloor) {
       // gapToMarket: oyuncunun teklifi piyasa fiyatından ne kadar uzak (oransal, + = uzak, - = geçmiş)
@@ -2401,6 +2424,10 @@ class GameState extends ChangeNotifier {
   PazarlikSeans? aktifPazarlik;
   bool musteriGorunuyor = false;
   bool musteriKabulBekliyor = false;
+  /// Anlaşma fiyat olarak kabul edildi ama para yetmediği için GERÇEKLEŞMEDİ.
+  /// Widget bunu görüp "ürün masadan aşağı kayıp gitme" efektini atlar —
+  /// müşteri elindeki malla birlikte normal şekilde sağdan çıkar.
+  bool sonAnlasmaBasarisiz = false;
   DukkanSeviye aktifDukkan = tumDukkanlar[0]; // Seviye 1'den başla
 
   // 25 slot: her dükkan seviyesi 5 slot açar
@@ -2445,6 +2472,23 @@ class GameState extends ChangeNotifier {
     GameItem(id: 'cd28',     name: 'DİKİZ',              gorsel: 'assets/CD_28.png',               category: ItemCategory.cd,      basePrice: 115,  kondisyon: 4),
     GameItem(id: 'cd29',     name: 'TAMTAM',             gorsel: 'assets/CD_29.png',               category: ItemCategory.cd,      basePrice: 135,  kondisyon: 4),
     GameItem(id: 'cd30',     name: 'KOKARCA',            gorsel: 'assets/CD_30.png',               category: ItemCategory.cd,      basePrice: 140,  kondisyon: 5),
+    // ── v112: 11 yeni CD (YENİLEMELER klasöründen) ──
+    GameItem(id: 'cd31',     name: 'ÇATAPAT',            gorsel: 'assets/CD_31.png',               category: ItemCategory.cd,      basePrice: 95,   kondisyon: 5),
+    GameItem(id: 'cd32',     name: 'KOKOŞ',              gorsel: 'assets/CD_32.png',               category: ItemCategory.cd,      basePrice: 125,  kondisyon: 4),
+    GameItem(id: 'cd33',     name: 'METRİS',             gorsel: 'assets/CD_33.png',               category: ItemCategory.cd,      basePrice: 155,  kondisyon: 5),
+    GameItem(id: 'cd34',     name: 'BOMBERCAN',          gorsel: 'assets/CD_34.png',               category: ItemCategory.cd,      basePrice: 145,  kondisyon: 4),
+    GameItem(id: 'cd35',     name: 'DOBROVSKİ',          gorsel: 'assets/CD_35.png',               category: ItemCategory.cd,      basePrice: 110,  kondisyon: 3),
+    GameItem(id: 'cd36',     name: 'İPİMLE KUŞAĞIM',     gorsel: 'assets/CD_36.png',               category: ItemCategory.cd,      basePrice: 100,  kondisyon: 5),
+    GameItem(id: 'cd37',     name: 'RECAİ MUMUDİK',      gorsel: 'assets/CD_37.png',               category: ItemCategory.cd,      basePrice: 165,  kondisyon: 4),
+    GameItem(id: 'cd38',     name: 'RUHİ KANTER',        gorsel: 'assets/CD_38.png',               category: ItemCategory.cd,      basePrice: 120,  kondisyon: 5),
+    GameItem(id: 'cd39',     name: 'SATAN SATANA',       gorsel: 'assets/CD_39.png',               category: ItemCategory.cd,      basePrice: 175,  kondisyon: 3),
+    GameItem(id: 'cd40',     name: 'ZIMBALA',            gorsel: 'assets/CD_40.png',               category: ItemCategory.cd,      basePrice: 190,  kondisyon: 4),
+    GameItem(id: 'cd41',     name: 'KEVGİR',             gorsel: 'assets/CD_41.png',               category: ItemCategory.cd,      basePrice: 210,  kondisyon: 5),
+    GameItem(id: 'cd42',     name: 'PELTE',              gorsel: 'assets/CD_42.png',               category: ItemCategory.cd,      basePrice: 85,   kondisyon: 5),
+    GameItem(id: 'cd43',     name: 'SEMSEK',             gorsel: 'assets/CD_43.png',               category: ItemCategory.cd,      basePrice: 130,  kondisyon: 4),
+    GameItem(id: 'cd44',     name: 'NÖRÜN',              gorsel: 'assets/CD_44.png',               category: ItemCategory.cd,      basePrice: 150,  kondisyon: 4),
+    GameItem(id: 'cd45',     name: 'ÇAYYNİİZ',           gorsel: 'assets/CD_45.png',               category: ItemCategory.cd,      basePrice: 105,  kondisyon: 3),
+    GameItem(id: 'cd46',     name: 'CUMBURLOP',          gorsel: 'assets/CD_46.png',               category: ItemCategory.cd,      basePrice: 160,  kondisyon: 5),
     GameItem(id: 'konsol1',  name: 'PlayStatyon',          gorsel: 'assets/konsol_1.png',          category: ItemCategory.konsol,  basePrice: 900,  kondisyon: 4),
     GameItem(id: 'konsol2',  name: 'Ninetendo',            gorsel: 'assets/konsol_2.png',          category: ItemCategory.konsol,  basePrice: 750,  kondisyon: 3),
     GameItem(id: 'konsol3',  name: 'Ateri',                gorsel: 'assets/konsol_3.png',          category: ItemCategory.konsol,  basePrice: 500,  kondisyon: 2),
@@ -2812,6 +2856,16 @@ class GameState extends ChangeNotifier {
     {'gorsel': 'assets/musteri_32.png', 'cinsiyet': 'K', 'yas': 'genc'},     // "GRRR!" tişört, mor kargo
     {'gorsel': 'assets/musteri_33.png', 'cinsiyet': 'K', 'yas': 'genc'},     // sarışın, pembe şort ve çiçekli çanta
     {'gorsel': 'assets/musteri_34.png', 'cinsiyet': 'K', 'yas': 'yetiskin'}, // sarı bandana, çiçekli gömlek
+    // v112 — 8 yeni kesim. Ölçüldü: hepsi 500×500, doluluk 0.914-0.976,
+    // alt boşluk 7-17px → mevcut kadroyla uyumlu, olduğu gibi kopyalandı.
+    {'gorsel': 'assets/musteri_35.png', 'cinsiyet': 'K', 'yas': 'genc'},     // kızıl örgülü, hardal hırka
+    {'gorsel': 'assets/musteri_36.png', 'cinsiyet': 'E', 'yas': 'cocuk'},    // erkek çocuk, basketbol forması
+    {'gorsel': 'assets/musteri_37.png', 'cinsiyet': 'E', 'yas': 'genc'},     // rocker, siyah deri ceket
+    {'gorsel': 'assets/musteri_38.png', 'cinsiyet': 'E', 'yas': 'genc'},     // at kuyruklu, kahve gömlek
+    {'gorsel': 'assets/musteri_39.png', 'cinsiyet': 'E', 'yas': 'yetiskin'}, // gözlüklü, papyonlu takım elbise
+    {'gorsel': 'assets/musteri_40.png', 'cinsiyet': 'K', 'yas': 'genc'},     // sarışın örgülü, kargo pantolon
+    {'gorsel': 'assets/musteri_41.png', 'cinsiyet': 'E', 'yas': 'yasli'},    // kasketli amca, yelek
+    {'gorsel': 'assets/musteri_42.png', 'cinsiyet': 'K', 'yas': 'yasli'},    // başörtülü teyze, yeşil hırka
   ];
   List<int> _musteriSira = [];
 
@@ -3209,6 +3263,7 @@ class GameState extends ChangeNotifier {
     ozelMusteriGorunuyor = false;
     musteriKabulBekliyor = false;
     kolonyaIkramEdildi = false;
+    sonAnlasmaBasarisiz = false;
     _kolonyaPendingBonus = 0.0;
     notifyListeners();
   }
@@ -3234,6 +3289,7 @@ class GameState extends ChangeNotifier {
     final m = aktifMusteri!;
     final p = aktifPazarlik!;
     final anlasilanFiyat = m.musteriSatiyor ? p.musteriTeklif : p.oyuncuTeklif;
+    sonAnlasmaBasarisiz = false;
     if (m.musteriSatiyor) {
       if (para >= anlasilanFiyat) {
         if (m.item.id == 'kolonya') {
@@ -3241,13 +3297,19 @@ class GameState extends ChangeNotifier {
           kolonyaKullanim = 10;
         } else {
           final itemMaliyet = m.item.kopyaWith(maliyet: anlasilanFiyat);
-          if (!urunEkle(itemMaliyet)) { mesaj = 'Envanter dolu!'; _musteriGonder(); return; }
+          if (!urunEkle(itemMaliyet)) {
+            mesaj = 'Envanter dolu!';
+            sonAnlasmaBasarisiz = true;
+            _musteriGonder();
+            return;
+          }
         }
         para -= anlasilanFiyat;
         SesServisi.paraGirdi();
       } else {
         SesServisi.hata();
         mesaj = 'Yeterli paran yok! 💸';
+        sonAnlasmaBasarisiz = true;
         _musteriGonder();
         return;
       }
@@ -3417,12 +3479,12 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   bool _envanterAcik = false;
   /// Toptanci ekraninda envanter sekmesi acik mi (tek yonlu gecis)
   bool _toptanciEnvanterSekmesi = false;
-  /// Masadaki ürüne dokununca açılan büyük önizleme (null = kapalı)
-  String? _buyukUrunGorseli;
-  /// Envanterdeki sağlam bir ürüne dokununca açılan büyük önizleme —
-  /// aynı görsel dilde ama "Çöpe At" seçeneği var (masadaki ürün henüz
-  /// oyuncunun değil, o yüzden orada silme yok).
-  GameItem? _envanterBuyukUrun;
+  // ⚠️ Ürün büyütme önizlemeleri artık `showDialog` ile açılıyor, ana
+  // `Stack`'e katman olarak DEĞİL. Eskiden bu iki alan bir bayrak tutuyor,
+  // görsel de sahne Stack'inin en üstüne çiziliyordu; ama `showDialog` ile
+  // açılan bir pencere (Toptancı Rıza) sayfanın TAMAMININ üstünde ayrı bir
+  // route olduğu için büyütme onun ALTINDA kalıyor, Rıza kapanınca arkada
+  // duruyordu. Dialog route'u her zaman en üstte olur → sorun kökten çözülür.
   /// Anlaşma sonrası ürün masadan aşağı kayıyor mu
   bool _urunAsagiKayiyor = false;
   bool _gunBitiPopupGosterildi = false;
@@ -4330,7 +4392,16 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
           border: Border.all(color: renk.withValues(alpha: t.satildi ? 0.2 : 0.5), width: 1.2),
         ),
         child: Column(children: [
-          Expanded(child: gorselW),
+          // Gerçek bir ürün görseli varsa (tamir seti / kapalı kutu emoji
+          // değilse) dokununca büyür — envanterdekiyle aynı davranış.
+          Expanded(
+            child: t.item == null
+                ? gorselW
+                : GestureDetector(
+                    onTap: () => _urunGorseliBuyut(t.item!.gorsel),
+                    child: gorselW,
+                  ),
+          ),
           const SizedBox(height: 3),
           Text(isim, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center,
             style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white70)),
@@ -5552,8 +5623,6 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                 ),
               ),
               if (_envanterAcik) _buildEnvanterOverlay(),
-              if (_buyukUrunGorseli != null) _buildBuyukUrunOverlay(),
-              if (_envanterBuyukUrun != null) _buildEnvanterBuyukOverlay(),
               if (_toastMetin != null) _buildToast(),
             ],
           ),
@@ -5761,7 +5830,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                   },
                   child: GestureDetector(
                     // Masadaki ürüne dokununca büyük önizleme açılır
-                    onTap: _urunAsagiKayiyor ? null : () => setState(() => _buyukUrunGorseli = gorsel),
+                    onTap: _urunAsagiKayiyor ? null : () => _urunGorseliBuyut(gorsel),
                     child: Image.asset(
                       gorsel,
                       width: productSize, height: productSize, fit: BoxFit.contain,
@@ -6183,94 +6252,33 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     );
   }
 
-  /// Masadaki ürüne dokununca açılan büyük önizleme.
-  /// Görsel ekranın büyük kısmını kaplar; tekrar dokununca kapanır.
-  /// `TweenAnimationBuilder` ile büyüyerek gelir — anlık açılıp kapanmasın.
-  Widget _buildBuyukUrunOverlay() {
-    final gorsel = _buyukUrunGorseli!;
-    return GestureDetector(
-      onTap: () => setState(() => _buyukUrunGorseli = null),
-      child: Container(
-        color: Colors.black.withValues(alpha: 0.82),
-        child: Center(
-          child: TweenAnimationBuilder<double>(
-            tween: Tween(begin: 0.35, end: 1.0),
-            duration: const Duration(milliseconds: 260),
-            curve: Curves.easeOutBack,
-            builder: (context, t, child) => Transform.scale(scale: t, child: child),
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 18),
-                child: Image.asset(gorsel,
-                  width: MediaQuery.of(context).size.width * 0.86,
-                  fit: BoxFit.contain),
-              ),
-              const SizedBox(height: 14),
-              const Text('Kapatmak için dokun',
-                style: TextStyle(color: Colors.white54, fontSize: 12, fontWeight: FontWeight.w600)),
-            ]),
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// Envanterdeki sağlam ürüne dokununca açılan büyük önizleme —
-  /// masadaki ürünle aynı görsel dil, ek olarak "Çöpe At" seçeneği var.
-  Widget _buildEnvanterBuyukOverlay() {
-    final item = _envanterBuyukUrun!;
-    return GestureDetector(
-      onTap: () => setState(() => _envanterBuyukUrun = null),
-      child: Container(
-        color: Colors.black.withValues(alpha: 0.82),
-        child: Center(
-          child: GestureDetector(
-            onTap: () {}, // içeriğe dokunma dışarı tıklama sayılmasın
+  /// Bir ürün görselini ekranın ortasında büyütür (salt önizleme).
+  /// `showDialog` ile açılır → Toptancı Rıza gibi başka bir pencere açıkken
+  /// bile onun ÜSTÜNDE görünür. `TweenAnimationBuilder` ile büyüyerek gelir.
+  void _urunGorseliBuyut(String gorsel) {
+    showDialog(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.82),
+      builder: (ctx) => GestureDetector(
+        onTap: () => Navigator.pop(ctx),
+        child: Material(
+          type: MaterialType.transparency,
+          child: Center(
             child: TweenAnimationBuilder<double>(
               tween: Tween(begin: 0.35, end: 1.0),
               duration: const Duration(milliseconds: 260),
               curve: Curves.easeOutBack,
-              builder: (context, t, child) => Transform.scale(scale: t, child: child),
+              builder: (c, t, child) => Transform.scale(scale: t, child: child),
               child: Column(mainAxisSize: MainAxisSize.min, children: [
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 18),
-                  child: Image.asset(item.gorsel,
-                    width: MediaQuery.of(context).size.width * 0.86,
+                  child: Image.asset(gorsel,
+                    width: MediaQuery.of(ctx).size.width * 0.86,
                     fit: BoxFit.contain),
                 ),
-                const SizedBox(height: 18),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: Row(children: [
-                    Expanded(child: ElevatedButton(
-                      onPressed: () => _envanterUrunCopeAtOnay(item),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF3a1010),
-                        foregroundColor: const Color(0xFFff7043),
-                        minimumSize: const Size(0, 44),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          side: const BorderSide(color: Color(0xFFcc3311)),
-                        ),
-                      ),
-                      child: const Text('🗑️ Çöpe At', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                    )),
-                    const SizedBox(width: 10),
-                    Expanded(child: ElevatedButton(
-                      onPressed: () => setState(() => _envanterBuyukUrun = null),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF21262d),
-                        foregroundColor: Colors.white70,
-                        minimumSize: const Size(0, 44),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          side: const BorderSide(color: Color(0xFF30363d)),
-                        ),
-                      ),
-                      child: const Text('Kapat', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                    )),
-                  ]),
-                ),
+                const SizedBox(height: 14),
+                const Text('Kapatmak için dokun',
+                  style: TextStyle(color: Colors.white54, fontSize: 12, fontWeight: FontWeight.w600)),
               ]),
             ),
           ),
@@ -6279,8 +6287,77 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     );
   }
 
+  /// Envanterdeki sağlam ürüne dokununca açılan büyük önizleme —
+  /// masadaki ürünle aynı görsel dil, ek olarak "Çöpe At" seçeneği var.
+  /// `showDialog` ile açılır ki Toptancı Rıza penceresi açıkken de üstte kalsın.
+  void _envanterUrunBuyut(GameItem item) {
+    showDialog(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.82),
+      builder: (ctx) => GestureDetector(
+        onTap: () => Navigator.pop(ctx),
+        child: Material(
+          type: MaterialType.transparency,
+          child: Center(
+            child: GestureDetector(
+              onTap: () {}, // içeriğe dokunma dışarı tıklama sayılmasın
+              child: TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0.35, end: 1.0),
+                duration: const Duration(milliseconds: 260),
+                curve: Curves.easeOutBack,
+                builder: (c, t, child) => Transform.scale(scale: t, child: child),
+                child: Column(mainAxisSize: MainAxisSize.min, children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 18),
+                    child: Image.asset(item.gorsel,
+                      width: MediaQuery.of(ctx).size.width * 0.86,
+                      fit: BoxFit.contain),
+                  ),
+                  const SizedBox(height: 18),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Row(children: [
+                      Expanded(child: ElevatedButton(
+                        onPressed: () => _envanterUrunCopeAtOnay(item, ctx),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF3a1010),
+                          foregroundColor: const Color(0xFFff7043),
+                          minimumSize: const Size(0, 44),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            side: const BorderSide(color: Color(0xFFcc3311)),
+                          ),
+                        ),
+                        child: const Text('🗑️ Çöpe At', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                      )),
+                      const SizedBox(width: 10),
+                      Expanded(child: ElevatedButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF21262d),
+                          foregroundColor: Colors.white70,
+                          minimumSize: const Size(0, 44),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            side: const BorderSide(color: Color(0xFF30363d)),
+                          ),
+                        ),
+                        child: const Text('Kapat', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                      )),
+                    ]),
+                  ),
+                ]),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   /// "Çöpe At" onayı — yanlışlıkla bir CD'yi silmek geri alınamaz.
-  void _envanterUrunCopeAtOnay(GameItem item) {
+  /// [buyutmeCtx] büyütme dialogunun context'i — onaylanırsa o da kapanır.
+  void _envanterUrunCopeAtOnay(GameItem item, BuildContext buyutmeCtx) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -6309,9 +6386,9 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
           ),
           ElevatedButton(
             onPressed: () {
-              Navigator.pop(ctx);
+              Navigator.pop(ctx);            // onay penceresi
+              Navigator.pop(buyutmeCtx);     // büyütme penceresi
               _state.urunCikarOrnek(item);
-              setState(() => _envanterBuyukUrun = null);
             },
             style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFcc3311), foregroundColor: Colors.white),
             child: const Text('Çöpe At', style: TextStyle(fontWeight: FontWeight.bold)),
@@ -6573,7 +6650,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     return GestureDetector(
       onTap: curuk
           ? () => _tamirPopup(slotIndex)
-          : (oynanir ? () => _oyunuAcPopup(slotIndex) : () => setState(() => _envanterBuyukUrun = item)),
+          : (oynanir ? () => _oyunuAcPopup(slotIndex) : () => _envanterUrunBuyut(item)),
       child: Container(
         padding: const EdgeInsets.all(4),
         decoration: BoxDecoration(
@@ -7227,9 +7304,15 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       if (p != null && p.durum == PazarlikDurum.devamEdiyor) {
         setState(() => _pazarlikBekleniyor = true);
       } else if (p != null && p.durum == PazarlikDurum.anlasildi) {
+        // ⚠️ p.durum fiyat üzerinde ANLAŞILDIĞINI gösterir — parasızlık veya
+        // dolu envanter yüzünden alım GERÇEKLEŞMEMİŞ olabilir
+        // (bkz. `sonAnlasmaBasarisiz`, GameState._anlasmayiTamamla). Öyleyse
+        // ürün hâlâ müşteride demektir; masadan aşağı kaymamalı, müşteriyle
+        // birlikte normal şekilde sağdan çıkmalı.
+        //
         // Oyuncu SATIN ALDIYSA ürün masadan aşağı kayıp kaybolur — malın el
         // değiştirdiği görünsün. Oyuncu satıyorsa zaten masada ürün yok.
-        if (_state.aktifMusteri?.musteriSatiyor == true) {
+        if (_state.aktifMusteri?.musteriSatiyor == true && !_state.sonAnlasmaBasarisiz) {
           setState(() => _urunAsagiKayiyor = true);
           _urunKayipController.forward(from: 0);
         }
