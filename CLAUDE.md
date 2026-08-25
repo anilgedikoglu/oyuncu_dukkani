@@ -270,6 +270,24 @@ yeniden ölçmek yerine taşımak için:
 > ⚠️ Eşleşme KAYDI: v111'de "seviye 3"e yapılan %15 genişletme artık **AVM**'ye
 > ait; Cadde eski bgbos_4 ölçüleriyle gidiyor. Karıştırma.
 
+### 🪤 Güvenlikli görselin kapısı kayabilir — `kapi*GuvFark`
+Güvenlikli sürüm aynı dükkanın **yeniden çizimi**; kapı camı bir miktar
+kayabiliyor. Tek kapı ölçüsü ikisine birden dayatılınca silüet güvenlik
+açıkken camdan taşıyor.
+
+`DukkanSeviye.kapiSolGuvFark` / `kapiUstGuvFark` bu farkı tutuyor (varsayılan
+0). `_buildKapidaki` ekranda hangi arka plan varsa ona göre ekliyor:
+
+```dart
+final guv = _state.guvenlikVar;
+final kapiSol = d.kapiSol + (guv ? d.kapiSolGuvFark : 0);
+final kapiUst = d.kapiUst + (guv ? d.kapiUstGuvFark : 0);
+```
+
+> İki değerin ORTALAMASINI almak yerine fark tutuluyor — ortalama, iki
+> görselde de yanlış olurdu. Şu an sadece **Mahalle** kullanıyor
+> (-0.010 / -0.006); güvenlikli çizimi yenilendiği için camı kaymıştı.
+
 Çarşı + 5 satılık dükkanın kapı camı tek tek ölçüldü: her görsel **tek başına**
 900px panelde %1'lik ızgarayla okundu, sonra dikdörtgen görselin üstüne
 çizdirilip gözle doğrulandı. (Otomatik parlaklık tabanlı ölçüm yine duvarı cam

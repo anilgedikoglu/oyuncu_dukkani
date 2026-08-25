@@ -161,6 +161,14 @@ class DukkanSeviye {
   /// `kapi*` ölçüleri iki görsel için de geçerli.
   final String arkaplanGuv;
 
+  /// Güvenlikli görsel AYNI dükkanın yeniden çizimi olduğu için kapı camı bir
+  /// miktar kayabiliyor. Silüet iki sürümde de tam camda dursun diye güvenlikli
+  /// sürüme uygulanan fark (0..1 oranı, varsayılan 0 = kayma yok).
+  ///
+  /// ⚠️ Ortalama bir değerle idare etmek yerine fark tutuluyor: ortalama, iki
+  /// görselde de yanlış olurdu.
+  final double kapiSolGuvFark, kapiUstGuvFark;
+
   /// Satılık dükkanlarda satın alma bedeli; kiralıklarda null.
   /// Satın alınan dükkanda **günlük kira ödenmez** (`kira` 0 verilir).
   final int? satinAlmaFiyati;
@@ -172,6 +180,7 @@ class DukkanSeviye {
     required this.arkaplan, required this.arkaplanGuv, required this.arkaplanOrani,
     required this.kapiSol, required this.kapiUst, required this.kapiGen, required this.kapiYuk,
     this.satinAlmaFiyati,
+    this.kapiSolGuvFark = 0, this.kapiUstGuvFark = 0,
   });
 
   /// Günlük müşteri sayısını ağırlıklı random ile belirle
@@ -217,7 +226,10 @@ const List<DukkanSeviye> tumDukkanlar = [
     arkaplan: 'assets/dukkan_mahalle.jpg', arkaplanGuv: 'assets/dukkan_mahalle_guv.jpg', arkaplanOrani: 719 / 1278,
     // kapiUst: silüet yukarıda kalıyordu — kendi yüksekliğinin %10'u kadar
     // aşağı indirildi (0.1228 + 0.1667*0.10). Boy ve yatay ölçüler SABİT.
-    kapiSol: 0.3380, kapiUst: 0.1395, kapiGen: 0.1408, kapiYuk: 0.1667),
+    kapiSol: 0.3380, kapiUst: 0.1395, kapiGen: 0.1408, kapiYuk: 0.1667,
+    // Güvenlikli sürüm yeniden çizildi ve kapı camı biraz kaydı: ızgarayla
+    // ölçüldü, cam 0.010 sola / 0.006 yukarı gitmiş.
+    kapiSolGuvFark: -0.010, kapiUstGuvFark: -0.006),
   DukkanSeviye(seviye: 3, isim: 'Cadde Dükkanı',        kira: 900,  minGun: 5,
     arkaplan: 'assets/dukkan_cadde.jpg',   arkaplanGuv: 'assets/dukkan_cadde_guv.jpg',   arkaplanOrani: 719 / 1278,
     kapiSol: 0.3350, kapiUst: 0.1517, kapiGen: 0.1160, kapiYuk: 0.1582),
@@ -6050,11 +6062,16 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
         dh = sh; dw = sh * gorselOrani;
       }
       final sol = (sw - dw) / 2, ust = (sh - dh) / 2;
+      // Ekranda hangi arka plan varsa kapı ona göre konumlanır: güvenlikli
+      // sürüm ayrı bir çizim olduğu için camı biraz kaymış olabiliyor.
+      final guv = _state.guvenlikVar;
+      final kapiSol = d.kapiSol + (guv ? d.kapiSolGuvFark : 0);
+      final kapiUst = d.kapiUst + (guv ? d.kapiUstGuvFark : 0);
       // Kutu = kapı camı. `fill` ile silüet camı boşluksuz doldurur.
       return Stack(children: [
         Positioned(
-          left:   sol + d.kapiSol * dw,
-          top:    ust + d.kapiUst * dh,
+          left:   sol + kapiSol * dw,
+          top:    ust + kapiUst * dh,
           width:  d.kapiGen * dw,
           height: d.kapiYuk * dh,
           child: Image.asset('assets/kapidaki.png', fit: BoxFit.fill),
