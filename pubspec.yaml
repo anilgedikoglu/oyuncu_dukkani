@@ -40,10 +40,26 @@ flutter:
     - assets/anamenu.png
     - assets/bg1.png
     - assets/bg2.png
-    - assets/bgbos.png
-    - assets/bgbos_2.jpg
-    - assets/bgbos_3.jpg
-    - assets/bgbos_4.jpg
+    - assets/dukkan_bodrum.jpg
+    - assets/dukkan_bodrum_guv.jpg
+    - assets/dukkan_mahalle.jpg
+    - assets/dukkan_mahalle_guv.jpg
+    - assets/dukkan_cadde.jpg
+    - assets/dukkan_cadde_guv.jpg
+    - assets/dukkan_carsi.jpg
+    - assets/dukkan_carsi_guv.jpg
+    - assets/dukkan_avm.jpg
+    - assets/dukkan_avm_guv.jpg
+    - assets/dukkan_satilik1.jpg
+    - assets/dukkan_satilik1_guv.jpg
+    - assets/dukkan_satilik2.jpg
+    - assets/dukkan_satilik2_guv.jpg
+    - assets/dukkan_satilik3.jpg
+    - assets/dukkan_satilik3_guv.jpg
+    - assets/dukkan_satilik4.jpg
+    - assets/dukkan_satilik4_guv.jpg
+    - assets/dukkan_satilik5.jpg
+    - assets/dukkan_satilik5_guv.jpg
     - assets/konsol_cerceve_1.jpg
     - assets/konsol_cerceve_2.jpg
     - assets/bgbosmasa.png
@@ -113,6 +129,11 @@ flutter:
     - assets/musteri_40.png
     - assets/musteri_41.png
     - assets/musteri_42.png
+    - assets/musteri_43.png
+    - assets/musteri_44.png
+    - assets/musteri_45.png
+    - assets/musteri_46.png
+    - assets/guvenlik.png
     - assets/CD_1.png
     - assets/CD_2.png
     - assets/CD_3.png
@@ -178,3 +199,12 @@ flutter:
     - assets/konsol_18.png
     - assets/konsol_19.png
     - assets/joystick.png
+    - assets/konsol_20.png
+    - assets/konsol_21.png
+    - assets/konsol_22.png
+    - assets/konsol_23.png
+    - assets/konsol_24.png
+    - assets/cicitechmouse.png
+    - assets/oyuntutgaci.png
+    - assets/sahanoyuncudireksiyon.png
+    - assets/sonyakulaklik.png

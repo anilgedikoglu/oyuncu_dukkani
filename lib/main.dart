@@ -156,10 +156,22 @@ class DukkanSeviye {
   /// kalıyordu.
   final double kapiSol, kapiUst, kapiGen, kapiYuk;
 
+  /// Yakışıklı Güvenlik tutulduğunda kullanılan arka plan — aynı dükkan, ama
+  /// kapının yanında güvenlik duruyor. Kapı camının yeri DEĞİŞMEZ, o yüzden
+  /// `kapi*` ölçüleri iki görsel için de geçerli.
+  final String arkaplanGuv;
+
+  /// Satılık dükkanlarda satın alma bedeli; kiralıklarda null.
+  /// Satın alınan dükkanda **günlük kira ödenmez** (`kira` 0 verilir).
+  final int? satinAlmaFiyati;
+
+  bool get satilik => satinAlmaFiyati != null;
+
   const DukkanSeviye({
     required this.seviye, required this.isim, required this.kira, required this.minGun,
-    required this.arkaplan, required this.arkaplanOrani,
+    required this.arkaplan, required this.arkaplanGuv, required this.arkaplanOrani,
     required this.kapiSol, required this.kapiUst, required this.kapiGen, required this.kapiYuk,
+    this.satinAlmaFiyati,
   });
 
   /// Günlük müşteri sayısını ağırlıklı random ile belirle
@@ -182,22 +194,70 @@ class DukkanSeviye {
 // Kapı oranları = kapı CAMININ dikdörtgeni. Her görsel tek başına, 900px'lik
 // panelde %1'lik ızgarayla ölçüldü; ayrıca parlaklık projeksiyonuyla otomatik
 // doğrulandı ve dördü de emülatörde tek tek açılıp kontrol edildi.
+/// ⚠️ Görsel dosyaları artık DÜKKAN ADIYLA eşleşiyor (`dukkan_<ad>.jpg` /
+/// `dukkan_<ad>_guv.jpg`). Eski `bgbos*` isimleri kaldırıldı.
+///
+/// Sanat eşleşmesi doğrulandı (görsel imza karşılaştırmasıyla):
+///   dukkan_bodrum  == eski bgbos.png     → ölçüler aynen korundu
+///   dukkan_mahalle == eski bgbos_2.jpg   → ölçüler aynen korundu
+///   dukkan_cadde   == eski bgbos_4.jpg   → bgbos_4'ün ölçüleri taşındı
+///   dukkan_avm     == eski bgbos_3.jpg   → bgbos_3'ün ölçüleri taşındı
+///   dukkan_carsi   = YENİ sanat          → yeniden ölçüldü
+/// Yani v111'de sv3'e yapılan %15 genişletme artık AVM'ye ait; Cadde eski
+/// bgbos_4 ölçüleriyle gidiyor. Karıştırma.
 const List<DukkanSeviye> tumDukkanlar = [
   // kapiGen: sağda ~%10 taşıyordu — sol kenar ve dikey ölçüler SABİT,
   // genişlik sağdan %10 kısaltıldı (0.1330*0.90).
-  DukkanSeviye(seviye: 1, isim: 'Bodrum Kat Dükkan',    kira: 300,  minGun: 1,  arkaplan: 'assets/bgbos.png',   arkaplanOrani: 719 / 1080,
+  DukkanSeviye(seviye: 1, isim: 'Bodrum Kat Dükkan',    kira: 300,  minGun: 1,
+    arkaplan: 'assets/dukkan_bodrum.jpg',  arkaplanGuv: 'assets/dukkan_bodrum_guv.jpg',  arkaplanOrani: 719 / 1080,
     kapiSol: 0.3157, kapiUst: 0.0880, kapiGen: 0.1197, kapiYuk: 0.1593),
   // kapiGen: sağda boşluk kalıyordu — sol kenar ve dikey ölçüler SABİT,
-  // genişlik sadece sağa doğru %15 uzatıldı (0.1224*1.15, 0.1113*1.15).
-  DukkanSeviye(seviye: 2, isim: 'Mahalle Köşe Dükkanı', kira: 600,  minGun: 3,  arkaplan: 'assets/bgbos_2.jpg', arkaplanOrani: 719 / 1278,
-    kapiSol: 0.3380, kapiUst: 0.1228, kapiGen: 0.1408, kapiYuk: 0.1667),
-  DukkanSeviye(seviye: 3, isim: 'Cadde Dükkanı',        kira: 900,  minGun: 5,  arkaplan: 'assets/bgbos_3.jpg', arkaplanOrani: 719 / 1278,
+  // genişlik sadece sağa doğru %15 uzatıldı (0.1224*1.15).
+  DukkanSeviye(seviye: 2, isim: 'Mahalle Köşe Dükkanı', kira: 600,  minGun: 3,
+    arkaplan: 'assets/dukkan_mahalle.jpg', arkaplanGuv: 'assets/dukkan_mahalle_guv.jpg', arkaplanOrani: 719 / 1278,
+    // kapiUst: silüet yukarıda kalıyordu — kendi yüksekliğinin %10'u kadar
+    // aşağı indirildi (0.1228 + 0.1667*0.10). Boy ve yatay ölçüler SABİT.
+    kapiSol: 0.3380, kapiUst: 0.1395, kapiGen: 0.1408, kapiYuk: 0.1667),
+  DukkanSeviye(seviye: 3, isim: 'Cadde Dükkanı',        kira: 900,  minGun: 5,
+    arkaplan: 'assets/dukkan_cadde.jpg',   arkaplanGuv: 'assets/dukkan_cadde_guv.jpg',   arkaplanOrani: 719 / 1278,
+    kapiSol: 0.3350, kapiUst: 0.1517, kapiGen: 0.1160, kapiYuk: 0.1582),
+  // Yeni sanat — kapı camı 900px panelde %1 ızgarayla ölçüldü, çizdirilip doğrulandı.
+  DukkanSeviye(seviye: 4, isim: 'Çarşı Dükkanı',        kira: 1200, minGun: 8,
+    arkaplan: 'assets/dukkan_carsi.jpg',   arkaplanGuv: 'assets/dukkan_carsi_guv.jpg',   arkaplanOrani: 719 / 1080,
+    kapiSol: 0.3440, kapiUst: 0.1110, kapiGen: 0.1170, kapiYuk: 0.1770),
+  DukkanSeviye(seviye: 5, isim: 'AVM Dükkanı',          kira: 1500, minGun: 10,
+    arkaplan: 'assets/dukkan_avm.jpg',     arkaplanGuv: 'assets/dukkan_avm_guv.jpg',     arkaplanOrani: 719 / 1278,
     kapiSol: 0.3588, kapiUst: 0.1385, kapiGen: 0.1280, kapiYuk: 0.1541),
-  DukkanSeviye(seviye: 4, isim: 'Çarşı Dükkanı',        kira: 1200, minGun: 8,  arkaplan: 'assets/bgbos_4.jpg', arkaplanOrani: 719 / 1278,
-    kapiSol: 0.3350, kapiUst: 0.1517, kapiGen: 0.1160, kapiYuk: 0.1582),
-  DukkanSeviye(seviye: 5, isim: 'AVM Dükkanı',          kira: 1500, minGun: 10, arkaplan: 'assets/bgbos_4.jpg', arkaplanOrani: 719 / 1278,
-    kapiSol: 0.3350, kapiUst: 0.1517, kapiGen: 0.1160, kapiYuk: 0.1582),
 ];
+
+/// ─── SATILIK DÜKKANLAR ──────────────────────────────────────────────────────
+///
+/// Kiralık değil, **satın alınır**. Satın alınınca günlük kira ödenmez
+/// (`kira: 0`). `seviye` alanı burada slot sayısını belirlemeye devam ediyor —
+/// pahalı dükkan daha çok slot açar.
+///
+/// Kapı camları her biri tek başına 900px panelde %1 ızgarayla ölçüldü,
+/// sonra dikdörtgen görselin üstüne çizdirilip gözle doğrulandı.
+const List<DukkanSeviye> satilikDukkanlar = [
+  DukkanSeviye(seviye: 2, isim: 'Fakir Dükkan',        kira: 0, minGun: 5, satinAlmaFiyati: 5000,
+    arkaplan: 'assets/dukkan_satilik1.jpg', arkaplanGuv: 'assets/dukkan_satilik1_guv.jpg', arkaplanOrani: 719 / 1080,
+    kapiSol: 0.3550, kapiUst: 0.1630, kapiGen: 0.1100, kapiYuk: 0.1590),
+  DukkanSeviye(seviye: 3, isim: 'Derme Çatma Dükkan',  kira: 0, minGun: 5, satinAlmaFiyati: 7000,
+    arkaplan: 'assets/dukkan_satilik2.jpg', arkaplanGuv: 'assets/dukkan_satilik2_guv.jpg', arkaplanOrani: 719 / 1080,
+    kapiSol: 0.3530, kapiUst: 0.1330, kapiGen: 0.1030, kapiYuk: 0.1590),
+  DukkanSeviye(seviye: 4, isim: 'Lüks Dükkan',         kira: 0, minGun: 5, satinAlmaFiyati: 10000,
+    arkaplan: 'assets/dukkan_satilik3.jpg', arkaplanGuv: 'assets/dukkan_satilik3_guv.jpg', arkaplanOrani: 719 / 1080,
+    kapiSol: 0.3520, kapiUst: 0.1500, kapiGen: 0.1030, kapiYuk: 0.1630),
+  DukkanSeviye(seviye: 4, isim: 'Klas Dükkan',         kira: 0, minGun: 5, satinAlmaFiyati: 13000,
+    arkaplan: 'assets/dukkan_satilik4.jpg', arkaplanGuv: 'assets/dukkan_satilik4_guv.jpg', arkaplanOrani: 719 / 1080,
+    kapiSol: 0.3550, kapiUst: 0.1580, kapiGen: 0.1250, kapiYuk: 0.1870),
+  DukkanSeviye(seviye: 5, isim: 'Rezidans Dükkanı',    kira: 0, minGun: 5, satinAlmaFiyati: 20000,
+    arkaplan: 'assets/dukkan_satilik5.jpg', arkaplanGuv: 'assets/dukkan_satilik5_guv.jpg', arkaplanOrani: 719 / 1080,
+    kapiSol: 0.3530, kapiUst: 0.2500, kapiGen: 0.1040, kapiYuk: 0.1480),
+];
+
+/// Kiralık + satılık tüm dükkanlar (kayıt yüklerken isimle arama için).
+List<DukkanSeviye> get butunDukkanlar => [...tumDukkanlar, ...satilikDukkanlar];
 
 // ═══════════════════════════════════════════════════════════════════════════
 //  SAHNE METRİĞİ — ÇÖZÜNÜRLÜKTEN BAĞIMSIZ KONUMLANDIRMA
@@ -606,7 +666,7 @@ class MusteriOzellik {
 
 // ─── ÖZEL MÜŞTERİ (HIRSIZ / POLİS / VERGİCİ / KURYE / TOPTANCI / FALCI) ─────
 
-enum OzelMusteriTip { hirsiz, polis, vergici, kurye, toptanci, falci }
+enum OzelMusteriTip { hirsiz, polis, vergici, kurye, toptanci, falci, guvenlik }
 
 class OzelMusteri {
   final OzelMusteriTip tip;
@@ -623,8 +683,23 @@ class OzelMusteri {
   /// Bu polis ceza kesmiyor, matematik sorusu soruyor.
   bool get alkolTesti => sikSol != null && dogruCevap != null;
 
+  /// Güvenlik "işe alalım mı?" değil, "işi bırakayım mı?" diye soruyor.
+  /// (Oyuncu dükkanda duran güvenliğe tıklayınca bu hâlde gelir.)
+  final bool istifaSorusu;
+
   OzelMusteri({required this.tip, required this.gorsel, required this.ad, required this.ilkMiktar, required this.ilkMesaj,
-    this.kuryeAd, this.kuryeYemek, this.sikSol, this.sikSag, this.dogruCevap});
+    this.kuryeAd, this.kuryeYemek, this.sikSol, this.sikSag, this.dogruCevap,
+    this.istifaSorusu = false});
+
+  /// Dükkandaki güvenliğe tıklanınca müşteri gibi öne gelir ve istifayı sorar.
+  factory OzelMusteri.guvenlikIstifa() => OzelMusteri(
+        tip: OzelMusteriTip.guvenlik,
+        gorsel: 'assets/guvenlik.png',
+        ad: 'Yakışıklı Güvenlik',
+        ilkMiktar: 0,
+        ilkMesaj: 'İşi bırakmamı ister misin?',
+        istifaSorusu: true,
+      );
 
   static OzelMusteri olustur(OzelMusteriTip tip) {
     final rng = Random();
@@ -722,6 +797,15 @@ class OzelMusteri {
         ];
         return OzelMusteri(tip: tip, gorsel: 'assets/falci.png', ad: 'Falcı Faloya',
           ilkMiktar: ucret, ilkMesaj: falSelamlar[rng.nextInt(falSelamlar.length)]);
+      case OzelMusteriTip.guvenlik:
+        // Ücret SABİT (günde 50 lira) — oyuncu neye evet dediğini bilsin.
+        // CD alıp satmaz; tek işi hırsızı dükkana sokmamak.
+        return OzelMusteri(
+          tip: tip, gorsel: 'assets/guvenlik.png', ad: 'Yakışıklı Güvenlik',
+          ilkMiktar: GameState.guvenlikGunlukUcret,
+          ilkMesaj: 'Merhaba, ben Yakışıklı Güvenlik. Günde '
+                    '${GameState.guvenlikGunlukUcret} liraya senin için çalışırsam, '
+                    'bu dükkana hırsız giremez. İster misin?');
     }
   }
 }
@@ -2430,6 +2514,47 @@ class GameState extends ChangeNotifier {
   bool sonAnlasmaBasarisiz = false;
   DukkanSeviye aktifDukkan = tumDukkanlar[0]; // Seviye 1'den başla
 
+  // ── YAKIŞIKLI GÜVENLİK ────────────────────────────────────────────────────
+  /// Güvenlik tutulduysa arka plan güvenlikli sürüme geçer ve **hırsız asla
+  /// gelmez**. Ücret her gün kirayla birlikte kesilir; para yetmezse işi bırakır.
+  bool guvenlikVar = false;
+  static const int guvenlikGunlukUcret = 50;
+
+  /// Teklif 3. günde bir kez gelir. HAYIR denirse 3'ün katlarında tekrar dener.
+  /// Kabul edildiyse (ya da hâlâ çalışıyorsa) bir daha teklif gelmez.
+  int guvenlikSonTeklifGunu = 0;
+
+  /// Ücreti ödenemediği için güvenlik işi bıraktı — gün sonu popup'ı duyurur,
+  /// gösterildikten sonra UI sıfırlar.
+  bool guvenlikIsiBirakti = false;
+
+  /// Aktif dükkanın o anki arka planı (güvenlik varsa güvenlikli sürüm).
+  /// ⚠️ Güvenlik "işi bırakmamı ister misin?" diye sormak üzere ÖNE geldiğinde
+  /// arka plan güvenliksiz sürüme döner. Yoksa ekranda aynı anda iki güvenlik
+  /// olurdu: biri tezgâhta konuşan, biri arka planda hâlâ kapıda duran.
+  String get aktifArkaplan =>
+      (guvenlikVar && !_guvenlikOnde) ? aktifDukkan.arkaplanGuv : aktifDukkan.arkaplan;
+
+  /// Güvenlik şu an müşteri gibi öne gelmiş mi (istifa sorusu).
+  bool _guvenlikOnde = false;
+
+  // ── SAHİP OLUNAN DÜKKANLAR ────────────────────────────────────────────────
+  /// Satın alınmış satılık dükkanların isimleri. Bunlarda günlük kira yok.
+  Set<String> sahipDukkanlar = {};
+
+  /// Sahip olunup KİRAYA VERİLEN dükkanların isimleri — her gün gelir getirir.
+  /// Oyuncu kendi oturduğu dükkanı kiraya veremez.
+  Set<String> kirayaVerilenDukkanlar = {};
+
+  /// Kiraya verilen bir dükkanın günlük getirisi: bedelinin %1'i.
+  /// (Fakir Dükkan 5000 → 50/gün, Rezidans 20000 → 200/gün.)
+  static int kiraGeliriHesapla(DukkanSeviye d) =>
+      ((d.satinAlmaFiyati ?? 0) * 0.01).round();
+
+  int get gunlukKiraGeliri => kirayaVerilenDukkanlar
+      .map((isim) => satilikDukkanlar.firstWhere((d) => d.isim == isim))
+      .fold(0, (t, d) => t + kiraGeliriHesapla(d));
+
   // 25 slot: her dükkan seviyesi 5 slot açar
   // null = boş slot, GameItem = dolu slot
   // Başlangıç: 3 ürün + 2 boş (seviye 1 = 5 slot), geri 20 slot kilitli
@@ -2523,6 +2648,17 @@ class GameState extends ChangeNotifier {
     GameItem(id: 'konsol18', name: 'El Konsolu',           gorsel: 'assets/konsol_18.png',         category: ItemCategory.konsol,  basePrice: 580,  kondisyon: 4),
     GameItem(id: 'konsol19', name: 'El Konsolu',           gorsel: 'assets/konsol_19.png',         category: ItemCategory.konsol,  basePrice: 700,  kondisyon: 5),
     GameItem(id: 'aksesuar9',name: 'Arcade Joystick',      gorsel: 'assets/joystick.png',          category: ItemCategory.aksesuar,basePrice: 470,  kondisyon: 4),
+    // ── v113: 9 yeni ekipman. Adları kullanıcı verdi, marka gibi yazılıyor
+    //    (büyük/küçük harfler bilerek böyle: SikstenDo GaMboy, SkeymDeck).
+    GameItem(id: 'konsol20', name: 'Masaüstü Konsol',      gorsel: 'assets/konsol_20.png',         category: ItemCategory.konsol,  basePrice: 620,  kondisyon: 5),
+    GameItem(id: 'konsol21', name: 'Masaüstü Konsol',      gorsel: 'assets/konsol_21.png',         category: ItemCategory.konsol,  basePrice: 430,  kondisyon: 3),
+    GameItem(id: 'konsol22', name: 'Masaüstü Konsol',      gorsel: 'assets/konsol_22.png',         category: ItemCategory.konsol,  basePrice: 510,  kondisyon: 4),
+    GameItem(id: 'konsol23', name: 'SikstenDo GaMboy',     gorsel: 'assets/konsol_23.png',         category: ItemCategory.konsol,  basePrice: 340,  kondisyon: 3),
+    GameItem(id: 'konsol24', name: 'SkeymDeck',            gorsel: 'assets/konsol_24.png',         category: ItemCategory.konsol,  basePrice: 980,  kondisyon: 5),
+    GameItem(id: 'aksesuar10',name: 'Cicitech Mouse',      gorsel: 'assets/cicitechmouse.png',     category: ItemCategory.aksesuar,basePrice: 290,  kondisyon: 4),
+    GameItem(id: 'aksesuar11',name: 'Gavrak Oyuncu Tutgacı', gorsel: 'assets/oyuntutgaci.png',    category: ItemCategory.aksesuar,basePrice: 520,  kondisyon: 5),
+    GameItem(id: 'aksesuar12',name: 'Şahan Oyuncu Seti',   gorsel: 'assets/sahanoyuncudireksiyon.png', category: ItemCategory.aksesuar,basePrice: 810, kondisyon: 5),
+    GameItem(id: 'aksesuar13',name: 'Sonya Kulaklık',      gorsel: 'assets/sonyakulaklik.png',     category: ItemCategory.aksesuar,basePrice: 360,  kondisyon: 4),
   ];
 
   // 25 slot: index 0-24. Slot bazlı envanter.
@@ -2866,6 +3002,13 @@ class GameState extends ChangeNotifier {
     {'gorsel': 'assets/musteri_40.png', 'cinsiyet': 'K', 'yas': 'genc'},     // sarışın örgülü, kargo pantolon
     {'gorsel': 'assets/musteri_41.png', 'cinsiyet': 'E', 'yas': 'yasli'},    // kasketli amca, yelek
     {'gorsel': 'assets/musteri_42.png', 'cinsiyet': 'K', 'yas': 'yasli'},    // başörtülü teyze, yeşil hırka
+    // ── SABİT ADLI KARAKTERLER ──
+    // 'ad' dolu olduğu için rastgele isim havuzundan isim ÇEKİLMEZ; bu kişiler
+    // her gelişlerinde aynı adla tanınır ("Merhaba, ben Kahraman Memo").
+    {'gorsel': 'assets/musteri_43.png', 'cinsiyet': 'E', 'yas': 'yetiskin', 'ad': 'Recai Carlos'},   // futbolcu, sarı forma
+    {'gorsel': 'assets/musteri_44.png', 'cinsiyet': 'E', 'yas': 'cocuk',    'ad': 'Kahraman Memo'},  // çocuk süper kahraman
+    {'gorsel': 'assets/musteri_45.png', 'cinsiyet': 'E', 'yas': 'yetiskin', 'ad': 'Şakir Oneyıl'},   // basketbolcu, mor forma
+    {'gorsel': 'assets/musteri_46.png', 'cinsiyet': 'E', 'yas': 'yetiskin'},                          // takım elbiseli bey
   ];
   List<int> _musteriSira = [];
 
@@ -2883,7 +3026,23 @@ class GameState extends ChangeNotifier {
     musteriSayisi = j['musteriSayisi'] as int;
     gunlukMusteriSayisi = j['gunlukMusteriSayisi'] as int;
     gunlukMusteriLimiti = j['gunlukMusteriLimiti'] as int;
-    aktifDukkan = tumDukkanlar[(j['aktifDukkanSeviye'] as int) - 1];
+    // ⚠️ Dükkan artık İSİMLE saklanıyor: satılık dükkanlar kiralıklarla aynı
+    // `seviye` değerini paylaşabiliyor, sıra/seviye indeksi tek başına yetmez.
+    // Eski kayıtlarda sadece `aktifDukkanSeviye` var — ona düşülür.
+    final dukkanIsim = j['aktifDukkanIsim'] as String?;
+    if (dukkanIsim != null) {
+      aktifDukkan = butunDukkanlar.firstWhere((d) => d.isim == dukkanIsim,
+          orElse: () => tumDukkanlar[0]);
+    } else {
+      final sv = (j['aktifDukkanSeviye'] as int).clamp(1, tumDukkanlar.length);
+      aktifDukkan = tumDukkanlar[sv - 1];
+    }
+    guvenlikVar = j['guvenlikVar'] as bool? ?? false;
+    guvenlikSonTeklifGunu = j['guvenlikSonTeklifGunu'] as int? ?? 0;
+    sahipDukkanlar = ((j['sahipDukkanlar'] as List?) ?? const [])
+        .map((e) => e as String).toSet();
+    kirayaVerilenDukkanlar = ((j['kirayaVerilenDukkanlar'] as List?) ?? const [])
+        .map((e) => e as String).toSet();
     final raw = j['slotlar'] as List;
     slotlar = List.generate(25, (i) => raw[i] != null ? GameItem.fromJson(raw[i] as Map<String, dynamic>) : null);
     _sonrakiOzelMusteriSayisi = j['sonrakiOzelMusteri'] as int;
@@ -2894,11 +3053,14 @@ class GameState extends ChangeNotifier {
     }
     // Eski kayıt migrasyonu: eksik "olay" tipleri sıraya ekle
     for (final tip in OzelMusteriTip.values) {
-      if (tip == OzelMusteriTip.toptanci) continue; // Rıza ayrı programda
+      // Rıza ve Güvenlik rotasyonda DEĞİL — ikisinin de kendi programı var
+      // (Rıza gün bazlı ziyaret, Güvenlik 3'ün katlarında tek teklif).
+      if (tip == OzelMusteriTip.toptanci || tip == OzelMusteriTip.guvenlik) continue;
       if (!_ozelTipSirasi.contains(tip)) _ozelTipSirasi.add(tip);
     }
-    // Rıza rotasyona sızmışsa çıkar (ara sürüm kayıtları için)
-    _ozelTipSirasi.removeWhere((t) => t == OzelMusteriTip.toptanci);
+    // Rotasyona sızmışlarsa çıkar (ara sürüm kayıtları için)
+    _ozelTipSirasi.removeWhere((t) =>
+        t == OzelMusteriTip.toptanci || t == OzelMusteriTip.guvenlik);
     _ozelTipIndex = j['ozelTipIndex'] as int;
     // Falcı kehaneti kayıtta bekliyor olabilir (fal bakıldı, müşteri gelmedi)
     final zorunlu = j['zorunluOzelTip'] as String?;
@@ -2958,7 +3120,12 @@ class GameState extends ChangeNotifier {
     'musteriSayisi': musteriSayisi,
     'gunlukMusteriSayisi': gunlukMusteriSayisi,
     'gunlukMusteriLimiti': gunlukMusteriLimiti,
-    'aktifDukkanSeviye': aktifDukkan.seviye,
+    'aktifDukkanSeviye': aktifDukkan.seviye, // eski sürümler için bırakıldı
+    'aktifDukkanIsim': aktifDukkan.isim,
+    'guvenlikVar': guvenlikVar,
+    'guvenlikSonTeklifGunu': guvenlikSonTeklifGunu,
+    'sahipDukkanlar': sahipDukkanlar.toList(),
+    'kirayaVerilenDukkanlar': kirayaVerilenDukkanlar.toList(),
     'slotlar': slotlar.map((s) => s?.toJson()).toList(),
     'sonrakiOzelMusteri': _sonrakiOzelMusteriSayisi,
     'ozelSayac': _ozelMusteriSayaci,
@@ -3007,6 +3174,66 @@ class GameState extends ChangeNotifier {
 
   void dukkanDegistir(DukkanSeviye yeniDukkan) {
     aktifDukkan = yeniDukkan;
+    // Taşınılan dükkan kiraya verilmiş olamaz — oyuncu kendi oturduğu yeri
+    // kiracıya bırakamaz.
+    kirayaVerilenDukkanlar.remove(yeniDukkan.isim);
+    notifyListeners();
+  }
+
+  // ── YAKIŞIKLI GÜVENLİK ────────────────────────────────────────────────────
+
+  void guvenligiIseAl() {
+    guvenlikVar = true;
+    notifyListeners();
+  }
+
+  void guvenligiIstenCikar() {
+    guvenlikVar = false;
+    notifyListeners();
+  }
+
+  /// Dükkandaki güvenliğe tıklandı — müşteri gibi öne gelip istifayı sorar.
+  /// Müşteri sayacına DOKUNMAZ: bu bir ziyaret değil, oyuncunun kendi eylemi;
+  /// günlük müşteri hakkını tüketmesi haksızlık olur.
+  void guvenligiOneCagir() {
+    if (!guvenlikVar) return;
+    _guvenlikOnde = true; // arka plandaki kopyası silinsin, iki güvenlik olmasın
+    aktifOzelMusteri = OzelMusteri.guvenlikIstifa();
+    ozelMusteriGorunuyor = true;
+    musteriKabulBekliyor = true;
+    mesaj = aktifOzelMusteri!.ilkMesaj;
+    notifyListeners();
+  }
+
+  // ── SATILIK DÜKKANLAR ─────────────────────────────────────────────────────
+
+  bool dukkanSahibiMi(DukkanSeviye d) => sahipDukkanlar.contains(d.isim);
+
+  /// Satın alma. Başarılıysa null, değilse hata metni döner.
+  /// Satın alınan dükkana OTOMATİK geçilmez — oyuncu isterse geçer, isterse
+  /// kiraya verir (ikinci dükkan senaryosu).
+  String? dukkanSatinAl(DukkanSeviye d) {
+    if (!d.satilik) return 'Bu dükkan satılık değil.';
+    if (dukkanSahibiMi(d)) return 'Bu dükkan zaten senin.';
+    if (gun < d.minGun) return '${d.minGun}. günden önce satılık dükkan alınamaz.';
+    final fiyat = d.satinAlmaFiyati!;
+    if (para < fiyat) return 'Yeterli paran yok! ($fiyat lira gerekli)';
+    para -= fiyat;
+    sahipDukkanlar.add(d.isim);
+    SesServisi.paraGirdi();
+    notifyListeners();
+    return null;
+  }
+
+  /// Sahip olunan bir dükkanı kiraya ver / kiradan çek.
+  void kirayaVerToggle(DukkanSeviye d) {
+    if (!dukkanSahibiMi(d)) return;
+    if (d.isim == aktifDukkan.isim) return; // oturduğun yeri kiraya veremezsin
+    if (kirayaVerilenDukkanlar.contains(d.isim)) {
+      kirayaVerilenDukkanlar.remove(d.isim);
+    } else {
+      kirayaVerilenDukkanlar.add(d.isim);
+    }
     notifyListeners();
   }
 
@@ -3090,8 +3317,27 @@ class GameState extends ChangeNotifier {
     }
   }
 
+  /// Yakışıklı Güvenlik bugün teklife gelmeli mi?
+  ///
+  /// 3. günde BİR KEZ gelir. Oyuncu HAYIR derse bir sonraki denemesi 3'ün
+  /// katlarında (6, 9, 12...) olur. Zaten çalışıyorsa bir daha gelmez.
+  bool get _guvenlikTeklifiZamani =>
+      !guvenlikVar && gun >= 3 && gun % 3 == 0 && guvenlikSonTeklifGunu != gun;
+
   void yeniMusteriGonder() {
     _ozelMusteriSayaci++;
+    // Yakışıklı Güvenlik: gün başına en fazla bir teklif, rotasyondan bağımsız.
+    if (_guvenlikTeklifiZamani && gunlukMusteriSayisi >= 2) {
+      guvenlikSonTeklifGunu = gun;
+      aktifOzelMusteri = OzelMusteri.olustur(OzelMusteriTip.guvenlik);
+      ozelMusteriGorunuyor = true;
+      musteriKabulBekliyor = true;
+      musteriSayisi++;
+      gunlukMusteriSayisi++;
+      mesaj = aktifOzelMusteri!.ilkMesaj;
+      notifyListeners();
+      return;
+    }
     // Toptancı Rıza günde bir uğrar (özel müşteri rotasyonundan bağımsız)
     if (!_rizaBugunGeldi && gunlukMusteriSayisi >= _rizaZiyaretSirasi) {
       _rizaBugunGeldi = true;
@@ -3105,6 +3351,11 @@ class GameState extends ChangeNotifier {
       return;
     }
     // Falcı kehaneti bekliyorsa sıradaki müşteri O — sayaç beklemeden gelir.
+    // 🛡️ Güvenlik varken "hırsız gelecek" kehaneti de tutmaz: kehanet
+    // tüketilir ama hırsız içeri alınmaz, sıradan müşteri gelir.
+    if (zorunluOzelTip == OzelMusteriTip.hirsiz && guvenlikVar) {
+      zorunluOzelTip = null;
+    }
     if (zorunluOzelTip != null) {
       final tip = zorunluOzelTip!;
       zorunluOzelTip = null;
@@ -3119,8 +3370,23 @@ class GameState extends ChangeNotifier {
     }
     // Özel müşteri vakti mi?
     if (_ozelMusteriSayaci >= _sonrakiOzelMusteriSayisi) {
-      final tip = _ozelTipSirasi[_ozelTipIndex % _ozelTipSirasi.length];
+      var tip = _ozelTipSirasi[_ozelTipIndex % _ozelTipSirasi.length];
       _ozelTipIndex++;
+      // 🛡️ Güvenlik çalışıyorsa HIRSIZ dükkana giremez. Sıra hırsıza
+      // geldiyse rotasyonda ilerleyip başka bir tip seçilir (tur atmayı
+      // önlemek için en fazla liste uzunluğu kadar denenir).
+      if (guvenlikVar && tip == OzelMusteriTip.hirsiz) {
+        for (int i = 0; i < _ozelTipSirasi.length; i++) {
+          final aday = _ozelTipSirasi[_ozelTipIndex % _ozelTipSirasi.length];
+          _ozelTipIndex++;
+          if (aday != OzelMusteriTip.hirsiz) { tip = aday; break; }
+        }
+        // Hepsi hırsızsa (olmamalı) normal müşteriye düş
+        if (tip == OzelMusteriTip.hirsiz) {
+          _ozelMusteriSayaciniAyarla();
+          tip = OzelMusteriTip.polis;
+        }
+      }
       aktifOzelMusteri = OzelMusteri.olustur(tip);
       ozelMusteriGorunuyor = true;
       musteriKabulBekliyor = true;
@@ -3140,8 +3406,10 @@ class GameState extends ChangeNotifier {
     final gorsel = secilen['gorsel']!;
     final cinsiyet = secilen['cinsiyet']!;
     final yas = yasGrubuCoz(secilen['yas']);
+    // Bazı karakterlerin SABİT adı var (havuzda 'ad' alanı dolu). Onlara
+    // rastgele isim verilmez — hep aynı kişi olarak tanınırlar.
     final isimListesi = cinsiyet == 'E' ? _erkekIsimleri : _kadinIsimleri;
-    final isim = isimListesi[rng.nextInt(isimListesi.length)];
+    final isim = secilen['ad'] ?? isimListesi[rng.nextInt(isimListesi.length)];
     final musteriSatiyor = rng.nextBool();
     final ozellik = MusteriOzellik.random();
 
@@ -3264,6 +3532,9 @@ class GameState extends ChangeNotifier {
     musteriKabulBekliyor = false;
     kolonyaIkramEdildi = false;
     sonAnlasmaBasarisiz = false;
+    // Güvenlik öne gelmişti ve gitti: hâlâ çalışıyorsa arka planda kapıdaki
+    // yerine geri döner (istifa ettiyse `guvenlikVar` zaten false yapılıyor).
+    _guvenlikOnde = false;
     _kolonyaPendingBonus = 0.0;
     notifyListeners();
   }
@@ -3390,6 +3661,18 @@ class GameState extends ChangeNotifier {
     _bugunOynanabilirGeldi = false;
     para -= kira;
     SesServisi.paraGirdi();
+    // 🛡️ Güvenlik ücreti — parası yetmiyorsa işi bırakır ve arka plan
+    // güvenliksiz sürüme döner. Sessizce çalışmaya devam etmesi haksızlık olur.
+    if (guvenlikVar) {
+      if (para >= guvenlikGunlukUcret) {
+        para -= guvenlikGunlukUcret;
+      } else {
+        guvenlikVar = false;
+        guvenlikIsiBirakti = true; // UI gün sonu popup'ında duyurur
+      }
+    }
+    // 🏠 Kiraya verilen dükkanların günlük getirisi
+    para += gunlukKiraGeliri;
     int krediKesinti = 0;
     if (krediKalanTaksit > 0) {
       krediKesinti = krediTaksitMiktar;
@@ -3461,7 +3744,7 @@ class GameScreen extends StatefulWidget {
 }
 
 /// Browser penceresinde acilabilen sayfalar.
-enum _BrowserSayfa { menu, dukkanlar, hedefler, market, banka }
+enum _BrowserSayfa { menu, dukkanlar, satilik, hedefler, market, banka }
 
 class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   late GameState _state;
@@ -3476,6 +3759,12 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   // animasyonsuz) — müşteriyle birebir aynı anda hareket ediyor. Aşağı kayıp
   // gitme efekti bu ayrı controller ile, konumdan bağımsız olarak uygulanıyor.
   late AnimationController _urunKayipController;
+
+  /// 🛡️ Güvenlik "işi bırakmamı ister misin?" sorusuna HAYIR alınca kullanılan
+  /// çıkış: sağdan kayıp gitmek yerine hafifçe YUKARI süzülüp saydamlaşır.
+  /// Kaybolduğu anda arka plan güvenlikli sürüme döndüğü için "yerine geçti"
+  /// gibi görünür — dükkandan çıkıp gitmiş gibi değil.
+  late AnimationController _guvenlikSolmaController;
   bool _envanterAcik = false;
   /// Toptanci ekraninda envanter sekmesi acik mi (tek yonlu gecis)
   bool _toptanciEnvanterSekmesi = false;
@@ -3520,6 +3809,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     _slideController = AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
     _slideAnim = Tween<double>(begin: 1.0, end: 0.0).animate(CurvedAnimation(parent: _slideController, curve: Curves.easeOutCubic));
     _urunKayipController = AnimationController(vsync: this, duration: const Duration(milliseconds: 650));
+    _guvenlikSolmaController = AnimationController(vsync: this, duration: const Duration(milliseconds: 480));
     _state.addListener(_daireHedefGuncelle);
     _daireTicker = createTicker(_daireTick)..start();
   }
@@ -3566,6 +3856,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     _state.removeListener(_daireHedefGuncelle);
     _slideController.dispose();
     _urunKayipController.dispose();
+    _guvenlikSolmaController.dispose();
     super.dispose();
   }
 
@@ -4211,7 +4502,17 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     }
     await showDialog(
       context: context,
-      builder: (ctx) => StatefulBuilder(
+      // ⚠️ ListenableBuilder ŞART. Bu pencere bir `StatefulBuilder`; kendi
+      // `setDlg`'i dışında hiçbir şey onu yenilemiyordu. Kapalı kutu açmak
+      // (`kutuAc`) ve ürün çöpe atmak (`urunCikarOrnek`) `_state` üzerinden
+      // çalışıp `notifyListeners()` çağırıyor ama bu pencere onu DİNLEMİYORDU:
+      // model doğru güncelleniyor, ekran eski listeyi çizmeye devam ediyordu.
+      // Kullanıcıya "kutu açılmıyor / ürün silinmiyor" gibi görünüyordu — üstelik
+      // ikinci denemede `kutuAc` artık kutu olmayan bir slota bakıp `null`
+      // döndüğü için sonuç penceresi de hiç açılmıyordu.
+      builder: (ctx) => ListenableBuilder(
+        listenable: _state,
+        builder: (ctx, _) => StatefulBuilder(
         builder: (ctx, setDlg) {
           final indirimliGun = _state.gunlukToptanciIndirim > 0;
           return Dialog(
@@ -4336,6 +4637,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
           );
         },
       ),
+      ),
     );
   }
 
@@ -4348,6 +4650,11 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     late final String isim;
     late final String altBilgi;
     late final Color renk;
+    // Tezgâhtaki HER kart aynı sarı çerçeve ve sarı butonla çizilir. Eskiden
+    // kart rengi ürün tipinden geliyordu (mavi/mor/kırmızı/sarı) ve tezgâh
+    // rengarenk görünüyordu. `renk` hâlâ tipe özel — sadece alt bilgi yazısında
+    // kullanılıyor (ör. "ÇÜRÜK · Tamir edilebilir" kırmızı kalsın).
+    const tezgahRenk = Color(0xFFd29922);
     switch (t.tip) {
       case ToptanciTip.tamirSeti:
         gorselW = const Center(child: Text('🔧', style: TextStyle(fontSize: 42)));
@@ -4389,7 +4696,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
         decoration: BoxDecoration(
           color: const Color(0xFF1c1610),
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: renk.withValues(alpha: t.satildi ? 0.2 : 0.5), width: 1.2),
+          border: Border.all(color: tezgahRenk.withValues(alpha: t.satildi ? 0.2 : 0.5), width: 1.2),
         ),
         child: Column(children: [
           // Gerçek bir ürün görseli varsa (tamir seti / kapalı kutu emoji
@@ -4423,7 +4730,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                     setDlg(() {});
                   } : null,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: renk, foregroundColor: Colors.black,
+                    backgroundColor: tezgahRenk, foregroundColor: Colors.black,
                     disabledBackgroundColor: const Color(0xFF2a2a2a),
                     disabledForegroundColor: Colors.white24,
                     padding: EdgeInsets.zero,
@@ -4785,7 +5092,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 side: const BorderSide(color: Color(0xFFE6A800)),
               ),
-              child: const Text('← Geri', style: TextStyle(fontWeight: FontWeight.bold)),
+              child: const Text('Geri', style: TextStyle(fontWeight: FontWeight.bold)),
             )),
             const SizedBox(width: 10),
             // Kapat: Ayarlar'ı VE altındaki browser'ı birlikte kapatır.
@@ -4817,6 +5124,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     switch (s) {
       case _BrowserSayfa.menu:      return 'oyuncu_dukkani';
       case _BrowserSayfa.dukkanlar: return 'kiralik_dukkanlar';
+      case _BrowserSayfa.satilik:   return 'satilik_dukkanlar';
       case _BrowserSayfa.hedefler:  return 'hedefler';
       case _BrowserSayfa.market:    return 'market';
       case _BrowserSayfa.banka:     return 'banka_kredisi';
@@ -4928,7 +5236,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                               side: const BorderSide(color: Color(0xFFE6A800)),
                             ),
-                            child: const Text('← Geri', style: TextStyle(fontWeight: FontWeight.bold)),
+                            child: const Text('Geri', style: TextStyle(fontWeight: FontWeight.bold)),
                           )),
                           const SizedBox(width: 10),
                         ],
@@ -4966,6 +5274,19 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
           altyazi: 'DükkanKirala.com — ${_state.aktifDukkan.isim}',
           renk: const Color(0xFF58a6ff),
           onTap: () => git(_BrowserSayfa.dukkanlar),
+        ),
+        const SizedBox(height: 10),
+        _browserMenuItem(
+          ikon: '🔑',
+          baslik: 'Satılık Dükkanlar',
+          altyazi: _state.gun < 5
+              ? '5. günde açılır'
+              : (_state.sahipDukkanlar.isEmpty
+                  ? 'Kirayı bitir, dükkanın sahibi ol'
+                  : '${_state.sahipDukkanlar.length} dükkanın var'),
+          renk: const Color(0xFF3fb950),
+          kilitli: _state.gun < 5,
+          onTap: () => git(_BrowserSayfa.satilik),
         ),
         const SizedBox(height: 10),
         _browserMenuItem(
@@ -5021,6 +5342,8 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     switch (_browserSayfa) {
       case _BrowserSayfa.dukkanlar:
         return _dukkanlarGovdesi(() => Navigator.pop(ctx));
+      case _BrowserSayfa.satilik:
+        return _satilikDukkanlarGovdesi(ctx, setDlg);
       case _BrowserSayfa.hedefler:
         return _hedeflerGovdesi();
       case _BrowserSayfa.market:
@@ -5086,33 +5409,41 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     required String altyazi,
     required Color renk,
     required VoidCallback onTap,
+    bool kilitli = false,
   }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: const Color(0xFF161b22),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: renk.withValues(alpha: 0.35), width: 1),
-        ),
-        child: Row(children: [
-          Container(
-            width: 44, height: 44,
-            decoration: BoxDecoration(
-              color: renk.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Center(child: Text(ikon, style: const TextStyle(fontSize: 22))),
+    // Kilitli satır: soluk, tıklanamaz, sağda kilit ikonu. Gizlemek yerine
+    // göstermek daha iyi — oyuncu neyin açılacağını görsün.
+    final opak = kilitli ? 0.40 : 1.0;
+    return Opacity(
+      opacity: opak,
+      child: GestureDetector(
+        onTap: kilitli ? null : onTap,
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: const Color(0xFF161b22),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: renk.withValues(alpha: 0.35), width: 1),
           ),
-          const SizedBox(width: 12),
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(baslik, style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: renk)),
-            const SizedBox(height: 3),
-            Text(altyazi, style: const TextStyle(fontSize: 11, color: Colors.white38)),
-          ])),
-          Icon(Icons.chevron_right, color: renk.withValues(alpha: 0.6), size: 20),
-        ]),
+          child: Row(children: [
+            Container(
+              width: 44, height: 44,
+              decoration: BoxDecoration(
+                color: renk.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Center(child: Text(ikon, style: const TextStyle(fontSize: 22))),
+            ),
+            const SizedBox(width: 12),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(baslik, style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: renk)),
+              const SizedBox(height: 3),
+              Text(altyazi, style: const TextStyle(fontSize: 11, color: Colors.white38)),
+            ])),
+            Icon(kilitli ? Icons.lock : Icons.chevron_right,
+                color: renk.withValues(alpha: 0.6), size: 20),
+          ]),
+        ),
       ),
     );
   }
@@ -5380,6 +5711,229 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
 
   /// Kiralık dükkanlar — browser sayfası gövdesi.
   /// `onKirala`: dükkan seçilince çağrılır (browser'ı kapatmak için).
+  /// Satılık Dükkanlar — browser sayfası.
+  ///
+  /// Kiralıklardan farkı: burada dükkan SATIN ALINIR, günlük kira ödenmez.
+  /// Sahip olunan bir dükkana tekrar tıklanınca "geçmek mi, kiraya vermek mi?"
+  /// diye sorulur — ikinci dükkan hem yaşanacak yer hem gelir kapısı olabilir.
+  Widget _satilikDukkanlarGovdesi(BuildContext ctx, void Function(VoidCallback) setDlg) {
+    return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      const Text('🔑 SatilikDukkan.com', textAlign: TextAlign.center,
+        style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Color(0xFF3fb950), letterSpacing: 1)),
+      const SizedBox(height: 3),
+      Text(
+        _state.sahipDukkanlar.isEmpty
+            ? 'Satın aldığın dükkanda kira ödemezsin.'
+            : 'Kira geliri: ${_state.gunlukKiraGeliri}/gün',
+        textAlign: TextAlign.center,
+        style: const TextStyle(fontSize: 11, color: Colors.white38)),
+      const SizedBox(height: 12),
+      ...List.generate(satilikDukkanlar.length, (i) {
+        final d = satilikDukkanlar[i];
+        final sahip = _state.dukkanSahibiMi(d);
+        final oturuyor = _state.aktifDukkan.isim == d.isim;
+        final kirada = _state.kirayaVerilenDukkanlar.contains(d.isim);
+        final kilitli = _state.gun < d.minGun;
+        final alinabilir = !sahip && !kilitli && _state.para >= d.satinAlmaFiyati!;
+        final renk = sahip ? const Color(0xFF3fb950) : const Color(0xFFFFD700);
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Opacity(
+            opacity: kilitli ? 0.45 : 1.0,
+            child: GestureDetector(
+              onTap: kilitli
+                  ? null
+                  : (sahip
+                      ? () => _sahipDukkanSecenekleri(ctx, d, setDlg)
+                      : () => _dukkanSatinAlOnay(ctx, d, setDlg)),
+              child: Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: oturuyor ? const Color(0xFF12200f) : const Color(0xFF161b22),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: renk.withValues(alpha: oturuyor ? 0.9 : 0.35),
+                    width: oturuyor ? 1.6 : 1),
+                ),
+                child: Row(children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(6),
+                    child: Image.asset(d.arkaplan, width: 54, height: 54, fit: BoxFit.cover),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text(d.isim, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: renk)),
+                    const SizedBox(height: 2),
+                    if (kilitli)
+                      Text('🔒 ${d.minGun}. günde açılır',
+                        style: const TextStyle(fontSize: 11, color: Colors.white38))
+                    else ...[
+                      Row(children: [
+                        const Text('Büyüklük: ', style: TextStyle(fontSize: 10, color: Colors.white38)),
+                        Text(d.yildizlar, style: const TextStyle(fontSize: 11, color: Color(0xFFFFD700))),
+                      ]),
+                      const SizedBox(height: 2),
+                      Text(
+                        sahip
+                            ? (oturuyor
+                                ? '✓ Burada oturuyorsun'
+                                : (kirada
+                                    ? '🔑 Kirada — ${GameState.kiraGeliriHesapla(d)}/gün'
+                                    : 'Senin · boş duruyor'))
+                            : '${d.satinAlmaFiyati} lira · kira YOK',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: sahip
+                              ? const Color(0xFF3fb950)
+                              : (alinabilir ? const Color(0xFF00FF88) : Colors.redAccent)),
+                      ),
+                    ],
+                  ])),
+                  if (oturuyor) const Icon(Icons.check_circle, color: Color(0xFF3fb950), size: 20)
+                  else if (!kilitli) Icon(Icons.chevron_right, color: renk.withValues(alpha: 0.6), size: 20),
+                ]),
+              ),
+            ),
+          ),
+        );
+      }),
+    ]);
+  }
+
+  /// Satın alma onayı.
+  void _dukkanSatinAlOnay(BuildContext ctx, DukkanSeviye d, void Function(VoidCallback) setDlg) {
+    showDialog(
+      context: context,
+      builder: (c2) => AlertDialog(
+        backgroundColor: const Color(0xFF0d1117),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: Color(0xFF3fb950), width: 1.5),
+        ),
+        title: Column(mainAxisSize: MainAxisSize.min, children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Image.asset(d.arkaplan, width: 130, height: 90, fit: BoxFit.cover),
+          ),
+          const SizedBox(height: 8),
+          Text(d.isim, textAlign: TextAlign.center,
+            style: const TextStyle(color: Color(0xFF3fb950), fontSize: 18, fontWeight: FontWeight.bold)),
+        ]),
+        content: Text(
+          '${d.satinAlmaFiyati} liraya satın alınacak.\n\n'
+          'Satın alınan dükkanda günlük kira ÖDEMEZSİN. '
+          'İstersen buraya taşınır, istersen kiraya verip gelir elde edersin.',
+          textAlign: TextAlign.center,
+          style: const TextStyle(color: Colors.white70, fontSize: 13, height: 1.4),
+        ),
+        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        actions: [Row(children: [
+          Expanded(child: ElevatedButton(
+            onPressed: () {
+              final hata = _state.dukkanSatinAl(d);
+              Navigator.pop(c2);
+              if (hata != null) {
+                SesServisi.hata();
+                _dialogBildirim(ctx, hata, hata: true);
+              } else {
+                _dialogBildirim(ctx, '🔑 ${d.isim} senin oldu!');
+                setDlg(() {});
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF3fb950), foregroundColor: Colors.black,
+              minimumSize: const Size(0, 44),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+            child: const Text('Satın Al', style: TextStyle(fontWeight: FontWeight.bold)),
+          )),
+          const SizedBox(width: 10),
+          Expanded(child: ElevatedButton(
+            onPressed: () => Navigator.pop(c2),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF21262d), foregroundColor: Colors.white70,
+              minimumSize: const Size(0, 44),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              side: const BorderSide(color: Color(0xFF30363d))),
+            child: const Text('Vazgeç', style: TextStyle(fontWeight: FontWeight.bold)),
+          )),
+        ])],
+      ),
+    );
+  }
+
+  /// Sahip olunan dükkana tıklanınca: taşın ya da kiraya ver.
+  void _sahipDukkanSecenekleri(BuildContext ctx, DukkanSeviye d, void Function(VoidCallback) setDlg) {
+    final oturuyor = _state.aktifDukkan.isim == d.isim;
+    final kirada = _state.kirayaVerilenDukkanlar.contains(d.isim);
+    showDialog(
+      context: context,
+      builder: (c2) => AlertDialog(
+        backgroundColor: const Color(0xFF0d1117),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: Color(0xFF3fb950), width: 1.5),
+        ),
+        title: Text(d.isim, textAlign: TextAlign.center,
+          style: const TextStyle(color: Color(0xFF3fb950), fontSize: 18, fontWeight: FontWeight.bold)),
+        content: Text(
+          oturuyor
+              ? 'Şu an bu dükkandasın. Kiraya vermek için önce başka bir dükkana geçmelisin.'
+              : (kirada
+                  ? 'Bu dükkan kirada, günde ${GameState.kiraGeliriHesapla(d)} lira getiriyor.\n\n'
+                    'Bu dükkana geçmek mi, kirayı sonlandırmak mı istiyorsun?'
+                  : 'Bu dükkana geçmek mi kiraya vermek mi istiyorsun?'),
+          textAlign: TextAlign.center,
+          style: const TextStyle(color: Colors.white70, fontSize: 13, height: 1.4),
+        ),
+        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        actions: [
+          if (oturuyor)
+            Center(child: ElevatedButton(
+              onPressed: () => Navigator.pop(c2),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF21262d), foregroundColor: Colors.white70,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+              child: const Text('Tamam', style: TextStyle(fontWeight: FontWeight.bold)),
+            ))
+          else
+            Row(children: [
+              Expanded(child: ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(c2);
+                  Navigator.pop(ctx); // browser'ı kapat, yeni dükkan görünsün
+                  _state.dukkanDegistir(d);
+                  _yeniDukkanPopup(d.isim);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF3fb950), foregroundColor: Colors.black,
+                  minimumSize: const Size(0, 44),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+                child: const Text('Buraya Geç', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+              )),
+              const SizedBox(width: 10),
+              Expanded(child: ElevatedButton(
+                onPressed: () {
+                  _state.kirayaVerToggle(d);
+                  Navigator.pop(c2);
+                  setDlg(() {});
+                  _dialogBildirim(ctx, kirada
+                      ? '🔑 Kira sonlandırıldı.'
+                      : '🔑 Kiraya verildi — ${GameState.kiraGeliriHesapla(d)}/gün');
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFd29922), foregroundColor: Colors.black,
+                  minimumSize: const Size(0, 44),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+                child: Text(kirada ? 'Kirayı Bitir' : 'Kiraya Ver',
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+              )),
+            ]),
+        ],
+      ),
+    );
+  }
+
   Widget _dukkanlarGovdesi(VoidCallback onKirala) {
     return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       const Text('🏠 DükkanKirala.com', textAlign: TextAlign.center,
@@ -5503,6 +6057,69 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     });
   }
 
+  // Güvenliğin arka plan görseli İÇİNDEKİ yeri (0..1). Beş dükkanda da
+  // kapının hemen sağında, neredeyse aynı yerde duruyor — tek kutu yetiyor.
+  // Kutu güvenliğin figüründen biraz GENİŞ tutuldu: parmakla vurulacak bir
+  // hedef, piksel hassasiyetinde olması gerekmiyor.
+  static const double kGuvenlikSol = 0.45;
+  static const double kGuvenlikUst = 0.11;
+  static const double kGuvenlikGen = 0.21;
+  static const double kGuvenlikYuk = 0.34;
+
+  /// Görünmez dokunma kutusu: dükkanda duran güvenliğe basılınca müşteri gibi
+  /// öne gelip "İşi bırakmamı ister misin?" diye sorar.
+  Widget _buildGuvenlikDokunmaAlani() {
+    return LayoutBuilder(builder: (context, kutu) {
+      final d = _state.aktifDukkan;
+      final sw = kutu.maxWidth, sh = kutu.maxHeight;
+      // Kapı silüetiyle BİREBİR aynı cover matematiği — ikisi de arka planın
+      // ekrandaki kutusuna kilitli olmalı, yoksa çözünürlük değişince kayarlar.
+      final gorselOrani = d.arkaplanOrani;
+      final ekranOrani = sw / sh;
+      final double dw, dh;
+      if (ekranOrani > gorselOrani) { dw = sw; dh = sw / gorselOrani; }
+      else                          { dh = sh; dw = sh * gorselOrani; }
+      final sol = (sw - dw) / 2, ust = (sh - dh) / 2;
+      return Stack(children: [
+        Positioned(
+          left:   sol + kGuvenlikSol * dw,
+          top:    ust + kGuvenlikUst * dh,
+          width:  kGuvenlikGen * dw,
+          height: kGuvenlikYuk * dh,
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: _guvenligeDokun,
+            child: const SizedBox.expand(),
+          ),
+        ),
+      ]);
+    });
+  }
+
+  /// Güvenlik görevine geri dönüyor: repliği okunacak kadar beklenir, sonra
+  /// yukarı süzülüp saydamlaşır. Animasyon bitince `musteriAnimasyonBitti`
+  /// `_guvenlikOnde`i sıfırlar → arka plan güvenlikli sürüme döner ve güvenlik
+  /// kapıdaki yerinde belirir.
+  void _guvenlikYerineDon() {
+    Future.delayed(const Duration(milliseconds: 900), () {
+      if (!mounted) return;
+      _guvenlikSolmaController.forward(from: 0).then((_) {
+        if (!mounted) return;
+        _state.musteriAnimasyonBitti();
+        _guvenlikSolmaController.reset();
+      });
+    });
+  }
+
+  /// Güvenliği "müşteri" olarak öne çağırır (istifa sorusu modunda).
+  void _guvenligeDokun() {
+    if (!_state.guvenlikVar) return;
+    if (_state.aktifMusteri != null || _state.aktifOzelMusteri != null) return;
+    if (_state.gunBitmeli) return;
+    _state.guvenligiOneCagir();
+    _slideController.forward(from: 0);
+  }
+
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
@@ -5529,8 +6146,11 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                     children: [...previous, if (current != null) current],
                   ),
                   child: Image.asset(
-                    _state.aktifDukkan.arkaplan,
-                    key: ValueKey(_state.aktifDukkan.arkaplan),
+                    // Güvenlik tutulduysa aynı dükkanın güvenlikli sürümü.
+                    // key arka plan yoluna bağlı → güvenlik gelince/gidince
+                    // AnimatedSwitcher çapraz solmayı kendiliğinden oynatır.
+                    _state.aktifArkaplan,
+                    key: ValueKey(_state.aktifArkaplan),
                     fit: BoxFit.cover, alignment: Alignment.center,
                   ),
                 ),
@@ -5581,11 +6201,25 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                       child: child!,
                     );
                   },
-                  child: Image.asset(
-                    _state.aktifOzelMusteri != null
-                      ? _state.aktifOzelMusteri!.gorsel
-                      : _state.aktifMusteri!.gorsel,
-                    fit: BoxFit.contain, isAntiAlias: true, filterQuality: FilterQuality.high,
+                  // 🛡️ Güvenlik "kal" dediğinde sağdan çıkmaz: hafifçe yukarı
+                  // süzülüp saydamlaşır. Tam kaybolduğu anda arka plan
+                  // güvenlikli sürüme döndüğü için yerine geçmiş gibi olur.
+                  child: AnimatedBuilder(
+                    animation: _guvenlikSolmaController,
+                    builder: (context, child) {
+                      final t = _guvenlikSolmaController.value;
+                      if (t == 0) return child!;
+                      return Opacity(
+                        opacity: (1 - t).clamp(0.0, 1.0),
+                        child: Transform.translate(offset: Offset(0, -70 * t), child: child),
+                      );
+                    },
+                    child: Image.asset(
+                      _state.aktifOzelMusteri != null
+                        ? _state.aktifOzelMusteri!.gorsel
+                        : _state.aktifMusteri!.gorsel,
+                      fit: BoxFit.contain, isAntiAlias: true, filterQuality: FilterQuality.high,
+                    ),
                   ),
                 ),
               // 4. Masa layer'ı (müşterinin üzerinde, SafeArea'nın altında)
@@ -5624,6 +6258,17 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
               ),
               if (_envanterAcik) _buildEnvanterOverlay(),
               if (_toastMetin != null) _buildToast(),
+              // 🛡️ Güvenliğe dokunma alanı — Stack'in EN SONUNDA.
+              //
+              // ⚠️ Sıra kritik: Stack'te sonra gelen çocuk önce hit-test edilir.
+              // Bu katman arka planın hemen üstündeyken dokunuş masa
+              // katmanı/SafeArea tarafından yutuluyor, güvenliğe basılamıyordu.
+              // Kutu küçük ve sahnenin üst kısmında; alt bardaki butonlarla,
+              // header'la ya da browser düğmesiyle çakışmıyor.
+              if (_state.guvenlikVar &&
+                  _state.aktifMusteri == null &&
+                  _state.aktifOzelMusteri == null)
+                Positioned.fill(child: _buildGuvenlikDokunmaAlani()),
             ],
           ),
         );
@@ -5790,6 +6435,11 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                 'assets/konsol_14.png', 'assets/konsol_15.png', 'assets/konsol_16.png',
                 'assets/konsol_17.png', 'assets/konsol_18.png', 'assets/konsol_19.png',
                 'assets/joystick.png',
+                // v113 — aynı 0.90 doluluk hattından geçtiler
+                'assets/konsol_20.png', 'assets/konsol_21.png', 'assets/konsol_22.png',
+                'assets/konsol_23.png', 'assets/konsol_24.png',
+                'assets/cicitechmouse.png', 'assets/oyuntutgaci.png',
+                'assets/sahanoyuncudireksiyon.png', 'assets/sonyakulaklik.png',
               };
               final kucukUrun = kucukGorseller.contains(gorsel);
               // Tek tek ince ayar gereken ürünler: gruptaki %85 onlara oturmuyor.
@@ -5921,6 +6571,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       case OzelMusteriTip.kurye:    return const Color(0xFFFF8C00); // parlak turuncu
       case OzelMusteriTip.toptanci: return const Color(0xFFd29922); // toptancı altın sarısı
       case OzelMusteriTip.falci:    return const Color(0xFFB967FF); // falcı moru
+      case OzelMusteriTip.guvenlik: return const Color(0xFF4FC3F7); // güvenlik mavisi
     }
   }
 
@@ -6656,11 +7307,14 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
         decoration: BoxDecoration(
           color: curuk ? const Color(0xFF2a1010).withValues(alpha: 0.9) : const Color(0xFF2a1a0a).withValues(alpha: 0.9),
           borderRadius: BorderRadius.circular(10),
+          // Envanter kartları TURKUAZ çerçeveli — tezgâhın sarısından ayrılsın,
+          // hangi listeye baktığın bir bakışta belli olsun. ÇÜRÜK kırmızı
+          // kalıyor (bilgi taşıyor), oynanabilir de kendi parlak camgöbeğinde.
           border: Border.all(color: curuk
               ? const Color(0xFFcc3311).withValues(alpha: 0.8)
               : (oynanir ? const Color(0xFF00e5ff).withValues(alpha: 0.85)
-                         : const Color(0xFFFFD700).withValues(alpha: 0.5)),
-              width: curuk ? 1.3 : (oynanir ? 1.4 : 1)),
+                         : const Color(0xFF40E0D0).withValues(alpha: 0.65)),
+              width: curuk ? 1.3 : (oynanir ? 1.4 : 1.1)),
           boxShadow: oynanir
               ? [BoxShadow(color: const Color(0xFF00e5ff).withValues(alpha: 0.20), blurRadius: 7)]
               : null,
@@ -6919,82 +7573,160 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     );
   }
 
-  // ── Çürük ürün tamiri ──
+  /// Çürük ürüne dokununca açılan ekran.
+  ///
+  /// Sağlam üründeki büyütmeyle AYNI görsel dil: görsel ekranın büyük kısmını
+  /// kaplar, bilgiler onun altında, en altta butonlar. Fark, iki eylemin
+  /// olması: üst satırda "Çöpe At / Tamir Et", altında tam genişlikte "Kapat".
   void _tamirPopup(int slotIndex) {
     final item = _state.slotlar[slotIndex];
     if (item == null || !item.curuk) return;
-    final setVar = _state.tamirSetiAdet > 0;
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF16100c),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: const BorderSide(color: Color(0xFF58a6ff), width: 2)),
-        title: const Column(mainAxisSize: MainAxisSize.min, children: [
-          Text('🔧', style: TextStyle(fontSize: 40)),
-          SizedBox(height: 4),
-          Text('Tamir', textAlign: TextAlign.center, style: TextStyle(color: Color(0xFF58a6ff), fontSize: 19)),
-        ]),
-        content: Column(mainAxisSize: MainAxisSize.min, children: [
-          Text(item.name, textAlign: TextAlign.center,
-            style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
-          Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-            Column(children: [
-              const Text('Şu an', style: TextStyle(color: Colors.white38, fontSize: 10)),
-              Text('${item.etkinFiyat}', style: const TextStyle(color: Color(0xFFff7043), fontSize: 17, fontWeight: FontWeight.bold)),
-            ]),
-            const Padding(padding: EdgeInsets.symmetric(horizontal: 14),
-              child: Text('→', style: TextStyle(color: Colors.white38, fontSize: 20))),
-            Column(children: [
-              const Text('Tamir sonrası', style: TextStyle(color: Colors.white38, fontSize: 10)),
-              Text('~${item.basePrice}', style: const TextStyle(color: Color(0xFF3fb950), fontSize: 17, fontWeight: FontWeight.bold)),
-            ]),
-          ]),
-          const SizedBox(height: 10),
-          Text(
-            setVar
-              ? '1 tamir seti kullanılacak. (Kalan: ${_state.tamirSetiAdet})'
-              : 'Tamir setin yok! Toptancıdan alabilirsin.',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: setVar ? Colors.white60 : const Color(0xFFff7043), fontSize: 12)),
-        ]),
-        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-        actions: [Row(children: [
-          // Tamir Et solda (asıl eylem), Vazgeç sağda — ikisi de dolu buton.
-          Expanded(child: ElevatedButton(
-            onPressed: setVar ? () {
-              Navigator.pop(ctx);
-              if (_state.tamirEt(slotIndex)) {
-                _dialogBildirim(context, '🔧 Ürün tamir edildi!');
-              }
-            } : null,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF58a6ff), foregroundColor: Colors.black,
-              disabledBackgroundColor: const Color(0xFF2a2a2a), disabledForegroundColor: Colors.white24,
-              minimumSize: const Size(0, 44),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      barrierColor: Colors.black.withValues(alpha: 0.82),
+      builder: (ctx) {
+        // Tamir seti sayısı popup açıkken değişebilir (başka bir yerden değil
+        // ama yine de) — state'i dinleyip taze göstermek zararsız.
+        final setVar = _state.tamirSetiAdet > 0;
+        return GestureDetector(
+          onTap: () => Navigator.pop(ctx),
+          child: Material(
+            type: MaterialType.transparency,
+            child: Center(
+              child: GestureDetector(
+                onTap: () {}, // içeriğe dokunma dışarı tıklama sayılmasın
+                child: TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0.35, end: 1.0),
+                  duration: const Duration(milliseconds: 260),
+                  curve: Curves.easeOutBack,
+                  builder: (c, t, child) => Transform.scale(scale: t, child: child),
+                  child: Column(mainAxisSize: MainAxisSize.min, children: [
+                    // ── Büyük ürün görseli (çürük olduğu için soluk) ──
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 18),
+                      child: Opacity(
+                        opacity: 0.6,
+                        child: Image.asset(item.gorsel,
+                          width: MediaQuery.of(ctx).size.width * 0.72,
+                          fit: BoxFit.contain),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    // ── Bilgiler ──
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFcc3311),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: const Text('ÇÜRÜK',
+                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white)),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(item.name, textAlign: TextAlign.center,
+                      style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 10),
+                    Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                      Column(children: [
+                        const Text('Şu an', style: TextStyle(color: Colors.white38, fontSize: 10)),
+                        Text('${item.etkinFiyat}',
+                          style: const TextStyle(color: Color(0xFFff7043), fontSize: 17, fontWeight: FontWeight.bold)),
+                      ]),
+                      const Padding(padding: EdgeInsets.symmetric(horizontal: 14),
+                        child: Text('→', style: TextStyle(color: Colors.white38, fontSize: 20))),
+                      Column(children: [
+                        const Text('Tamir sonrası', style: TextStyle(color: Colors.white38, fontSize: 10)),
+                        Text('~${item.basePrice}',
+                          style: const TextStyle(color: Color(0xFF3fb950), fontSize: 17, fontWeight: FontWeight.bold)),
+                      ]),
+                    ]),
+                    const SizedBox(height: 8),
+                    Text(
+                      setVar
+                        ? '1 tamir seti kullanılacak. (Kalan: ${_state.tamirSetiAdet})'
+                        : 'Tamir setin yok! Toptancıdan alabilirsin.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: setVar ? Colors.white60 : const Color(0xFFff7043), fontSize: 12)),
+                    const SizedBox(height: 16),
+                    // ── Üst satır: Çöpe At / Tamir Et ──
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: Row(children: [
+                        Expanded(child: ElevatedButton(
+                          onPressed: () => _envanterUrunCopeAtOnay(item, ctx),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF3a1010),
+                            foregroundColor: const Color(0xFFff7043),
+                            minimumSize: const Size(0, 44),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              side: const BorderSide(color: Color(0xFFcc3311)),
+                            ),
+                          ),
+                          child: const Text('🗑️ Çöpe At',
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                        )),
+                        const SizedBox(width: 10),
+                        Expanded(child: ElevatedButton(
+                          onPressed: setVar ? () {
+                            Navigator.pop(ctx);
+                            if (_state.tamirEt(slotIndex)) {
+                              _dialogBildirim(context, '🔧 Ürün tamir edildi!');
+                            }
+                          } : null,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF58a6ff), foregroundColor: Colors.black,
+                            disabledBackgroundColor: const Color(0xFF2a2a2a),
+                            disabledForegroundColor: Colors.white24,
+                            minimumSize: const Size(0, 44),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          ),
+                          child: const Text('🔧 Tamir Et',
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                        )),
+                      ]),
+                    ),
+                    const SizedBox(height: 10),
+                    // ── Alt satır: iki butonun toplam genişliğinde Kapat ──
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: () => Navigator.pop(ctx),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF21262d),
+                            foregroundColor: Colors.white70,
+                            minimumSize: const Size(0, 44),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              side: const BorderSide(color: Color(0xFF30363d)),
+                            ),
+                          ),
+                          child: const Text('Kapat',
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                        ),
+                      ),
+                    ),
+                  ]),
+                ),
+              ),
             ),
-            child: const Text('Tamir Et', style: TextStyle(fontWeight: FontWeight.bold)),
-          )),
-          const SizedBox(width: 10),
-          Expanded(child: ElevatedButton(
-            onPressed: () => Navigator.pop(ctx),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF21262d), foregroundColor: Colors.white70,
-              minimumSize: const Size(0, 44),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-              side: const BorderSide(color: Color(0xFF30363d)),
-            ),
-            child: const Text('Vazgeç', style: TextStyle(fontWeight: FontWeight.bold)),
-          )),
-        ])],
-      ),
+          ),
+        );
+      },
     );
   }
 
-  void _ozelMusteriGonder() {
+  /// Özel müşteriyi sağdan çıkarır. [bitince] çıkış animasyonu BİTTİKTEN sonra
+  /// çalışır — arka planı değiştiren işler (güvenlik istifası) buraya verilmeli,
+  /// yoksa karakter daha ekrandayken sahne altından değişir.
+  void _ozelMusteriGonder({VoidCallback? bitince}) {
     _slideController.reverse().then((_) {
-      if (mounted) _state.musteriAnimasyonBitti();
+      if (!mounted) return;
+      _state.musteriAnimasyonBitti();
+      bitince?.call();
     });
   }
 
@@ -7055,6 +7787,26 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     final rng = Random();
     String mesaj = '';
     int kesinti = 0;
+
+    if (om.tip == OzelMusteriTip.guvenlik) {
+      if (om.istifaSorusu) {
+        // İstifa onaylandı. Arka plan zaten güvenliksiz sürümde (öne geldiğinde
+        // `_guvenlikOnde` ile değişmişti), o yüzden `guvenlikVar`ı HEMEN
+        // kapatmak güvenli — bir kare bile "iki güvenlik" görünmüyor.
+        _state.guvenligiIstenCikar();
+        _state.mesaj = 'Sana hırsızlarla dolu bir hayatta başarılar!';
+        _state.notifyListeners();
+        _ozelMusteriGonder();
+        return;
+      }
+      // 🛡️ İşe alındı — arka plan güvenlikli sürüme geçer, hırsız gelmez.
+      // İlk günün ücreti hemen değil, gün sonunda kirayla birlikte kesilir.
+      _state.guvenligiIseAl();
+      _state.mesaj = 'Anlaştık! Bugünden itibaren kapıdayım, kimse giremez.';
+      _state.notifyListeners();
+      _ozelMusteriGonder();
+      return;
+    }
 
     if (om.tip == OzelMusteriTip.hirsiz) {
       kesinti = om.ilkMiktar;
@@ -7189,6 +7941,23 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     final rng = Random();
     String mesaj = '';
     int kesinti = 0;
+
+    if (om.tip == OzelMusteriTip.guvenlik) {
+      if (om.istifaSorusu) {
+        // Çalışmaya devam ediyor: dükkandan ÇIKMIYOR, kapıdaki yerine dönüyor.
+        // O yüzden sağa kaydırmak yanlış olurdu — yukarı süzülüp kayboluyor,
+        // kaybolduğu anda arka plan güvenlikli sürüme geçiyor.
+        _state.mesaj = 'İyi o zaman, kapıdayım patron.';
+        _state.notifyListeners();
+        _guvenlikYerineDon();
+        return;
+      }
+      // İşe alma teklifine HAYIR → küsmeden gider, 3'ün katlarında tekrar dener.
+      _state.mesaj = 'Peki, fikrini değiştirirsen buralardayım.';
+      _state.notifyListeners();
+      _ozelMusteriGonder();
+      return;
+    }
 
     if (om.tip == OzelMusteriTip.hirsiz) {
       final y = 10 + rng.nextInt(91);

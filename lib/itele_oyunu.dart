@@ -44,9 +44,11 @@ class _IteleOyunuState extends State<IteleOyunu> with SingleTickerProviderStateM
   static const double _topR = 1.7;
   double _topX = 50, _topY = 70;
   double _hizX = 0, _hizY = 0;
-  // %20 hızlandırıldı (46→55.2, artış 1.2→1.44, tavan 88→105.6)
-  double _topHiz = 55.2;
-  static const double _topHizBaslangic = 55.2;
+  // İki turda hızlandırıldı: önce %20 (46→55.2), sonra %30 daha (→71.8).
+  // Üçü de aynı oranla büyütülüyor ki oynanış dengesi bozulmasın:
+  // başlangıç 71.8, vuruş başı artış 1.87, tavan 137.3.
+  double _topHiz = 71.8;
+  static const double _topHizBaslangic = 71.8;
 
   // ── Skor ──
   static const int _hedefSayi = 10;
@@ -185,7 +187,7 @@ class _IteleOyunuState extends State<IteleOyunu> with SingleTickerProviderStateM
   /// Çubuğun neresine çarptıysa o yöne saptır; her vuruşta hafif hızlan.
   void _sektir(double cubukMerkez, {required bool yukari}) {
     final fark = ((_topX - cubukMerkez) / (_cubukEn / 2)).clamp(-1.0, 1.0);
-    _topHiz = min(_topHiz + 1.44, 105.6);
+    _topHiz = min(_topHiz + 1.87, 137.3);
     final aci = fark * 55 * pi / 180; // dikeyden sapma
     _hizX = sin(aci) * _topHiz;
     _hizY = cos(aci) * _topHiz * (yukari ? -1 : 1);

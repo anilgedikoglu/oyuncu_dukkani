@@ -39,8 +39,11 @@ assets/                — görseller ve sesler
   bgbos_2/3/4.jpg      — seviye 2/3/4-5 arka planları (JPEG: opak, PNG'de 6.5MB olurdu)
   bgbosmasa.png        — masa (3. günden önce)
   kapidaki.png         — kapıda bekleyen silüet (müşteri yokken; dükkana göre konumlanır)
-  musteri_1..42.png    — müşteri karakterleri (42 adet, yaş/cinsiyet musteriHavuzu içinde)
-  hirsiz/polis/vergici/kurye/toptanci/falci.png — özel müşteri karakterleri
+  musteri_1..46.png    — müşteri karakterleri (46 adet, yaş/cinsiyet musteriHavuzu içinde)
+                         musteri_43/44/45 SABİT adlı (Recai Carlos, Kahraman Memo, Şakir Oneyıl)
+  hirsiz/polis/vergici/kurye/toptanci/falci/guvenlik.png — özel müşteri karakterleri
+  dukkan_<ad>.jpg      — dükkan arka planı (bodrum/mahalle/cadde/carsi/avm + satilik1..5)
+  dukkan_<ad>_guv.jpg  — aynı dükkanın GÜVENLİKLİ sürümü (kapıda güvenlik durur)
   CD_1..46.png         — 46 CD ürünü (CD_15/16/17 = KIRGEÇ, İTELE, TISSS: oynanabilir)
   konsol_1..19.png     — 19 konsol ürünü (PlayStatyon, Ninetendo, Ateri, El Konsolu ×12,
                          Masaüstü Konsol ×3, son sistem)
@@ -73,7 +76,12 @@ SplashScreen (6 sn yasal metin)
 
 ## 👥 KARAKTER HAVUZU (v103)
 
-**42 müşteri görseli** (11 eski + 17 v103 + 6 v110 + 8 v112). Dağılım: **20 erkek, 22 kadın**.
+**46 müşteri görseli** (11 eski + 17 v103 + 6 v110 + 8 v112 + 4 v113). Dağılım: **24 erkek, 22 kadın**.
+
+> ⚠️ **Sabit adlı karakterler**: `musteriHavuzu` satırında `'ad'` alanı doluysa
+> rastgele isim havuzundan isim ÇEKİLMEZ. `musteri_43` = Recai Carlos,
+> `musteri_44` = Kahraman Memo, `musteri_45` = Şakir Oneyıl. Bu kişiler her
+> gelişlerinde aynı adla tanınır.
 İsim havuzu: **150 erkek + 150 kadın**, hepsi benzersiz (tekrar kontrolü yapıldı).
 
 Her karakterin `musteriHavuzu` satırında **`cinsiyet` + `yas`** alanı ve yanında
@@ -133,6 +141,158 @@ Toplu iş + kontak sayfası için: `tools/toplu_isle.ps1`
 
 > ℹ️ Ayak altındaki küçük gölge izleri **önemsiz** — müşteri masanın arkasında
 > göğsünden kesiliyor (`kMusteriUstu` 0.2183 → masa 0.4833), ayaklar hiç görünmüyor.
+
+---
+---
+
+## 🛡️ v113 — YAKIŞIKLI GÜVENLİK
+
+Yeni özel müşteri. **3. günde bir kez** gelir (günün 3. müşterisi olarak);
+HAYIR denirse 3'ün katlarında (6, 9, 12…) tekrar dener. Kabul edilirse bir
+daha teklif gelmez.
+
+> "Merhaba, ben Yakışıklı Güvenlik. Günde 50 liraya senin için çalışırsam,
+> bu dükkana hırsız giremez. İster misin?"
+
+| Durum | Sonuç |
+|---|---|
+| **EVET** | Arka plan `arkaplanGuv` sürümüne geçer, **hırsız bir daha gelmez** |
+| **HAYIR** | Küsmeden gider, 3'ün katlarında tekrar sorar |
+| Ücret ödenemezse | Gün sonunda işi bırakır (`guvenlikIsiBirakti` bayrağı) |
+
+Ücret (`guvenlikGunlukUcret` = 50) her gün kirayla birlikte kesilir.
+
+### Hırsız engelleme — üç ayrı yol kapatıldı
+1. **Rotasyon**: sıra hırsıza gelirse rotasyonda ilerlenip başka tip seçilir.
+2. **Falcı kehaneti**: "hırsız gelecek" kehaneti tüketilir ama hırsız gelmez.
+3. **Rotasyona sızma**: `guvenlik` tipi `_ozelTipSirasi`'na hiç eklenmez
+   (Rıza gibi kendi programı var). Eski kayıtlardan sızmışsa temizlenir.
+
+### 🪤 İki güvenlik tuzağı
+Güvenliğe dokununca müşteri gibi öne gelir ve *"İşi bırakmamı ister misin?"*
+diye sorar. Ama güvenlik **arka planın parçası** — öne gelirken arka plan
+güvenlikli kalırsa ekranda AYNI ANDA İKİ güvenlik olur.
+
+Çözüm: `_guvenlikOnde` bayrağı. `aktifArkaplan` bu bayrak doluyken güvenliksiz
+sürümü döndürür; `musteriAnimasyonBitti()` bayrağı sıfırlar.
+
+```dart
+String get aktifArkaplan =>
+    (guvenlikVar && !_guvenlikOnde) ? aktifDukkan.arkaplanGuv : aktifDukkan.arkaplan;
+```
+
+### Çıkış animasyonu — HAYIR'da sağa kaymaz
+İstifa sorusuna HAYIR denince güvenlik dükkandan ÇIKMIYOR, kapıdaki yerine
+dönüyor. Sağdan kaydırmak "gitti" hissi verirdi. Bunun yerine ayrı bir
+`_guvenlikSolmaController` (480ms) ile **yukarı süzülüp saydamlaşıyor**;
+kaybolduğu anda arka plan güvenlikli sürüme döndüğü için yerine geçmiş gibi
+görünüyor. Replik okunabilsin diye 900ms beklenip başlıyor.
+
+### 🪤 Dokunma alanı Stack'in EN SONUNDA olmalı
+Güvenlik ayrı bir sprite değil, arka planın içinde. Dokunmak için görünmez bir
+kutu, kapı silüetiyle **aynı cover matematiğiyle** konumlanıyor.
+
+> ⚠️ Kutu arka planın hemen üstüne konunca dokunuş HİÇ ULAŞMIYOR: Stack'te
+> **sonra gelen çocuk önce hit-test edilir**, yani masa katmanı ve SafeArea
+> dokunuşu yutuyordu. Katman Stack'in en sonuna alınınca çalıştı.
+> (Kutu küçük ve sahnenin üstünde; alt bar/header/browser düğmesiyle çakışmıyor.)
+
+```dart
+static const kGuvenlikSol = 0.45, kGuvenlikUst = 0.11;
+static const kGuvenlikGen = 0.21, kGuvenlikYuk = 0.34;
+```
+
+---
+
+## 🔑 v113 — SATILIK DÜKKANLAR
+
+Browser menüsünde yeni bölüm. **5. günden önce kilitli** (soluk + kilit ikonu,
+tıklanamaz). Kiralıklardan farkı: dükkan **satın alınır**, günlük kira YOK.
+
+| Dosya | Oyundaki ad | Fiyat |
+|---|---|---|
+| `satilik1` | Fakir Dükkan | 5000 |
+| `satilik2` | Derme Çatma Dükkan | 7000 |
+| `satilik3` | Lüks Dükkan | 10000 |
+| `satilik4` | Klas Dükkan | 13000 |
+| `satilik5` | Rezidans Dükkanı | 20000 |
+
+- Satın alınca **otomatik taşınılmaz** — dükkan senin olur, geçiş ayrı karar.
+- Sahip olunan dükkana tekrar tıklanınca: *"Bu dükkana geçmek mi kiraya vermek
+  mi istiyorsun?"*
+- **Kiraya verme geliri**: bedelin %1'i / gün (Fakir 50, Rezidans 200).
+  `gunuBitir()` içinde kasaya eklenir.
+- Oturulan dükkan kiraya verilemez; kiradaki bir dükkana taşınınca kira biter.
+
+### ⚠️ Dükkan artık İSİMLE saklanıyor
+Satılık dükkanlar kiralıklarla aynı `seviye` değerini paylaşabildiği için
+seviye indeksi tek başına yetmiyor. `toJson`/`fromJson` `aktifDukkanIsim`
+kullanıyor; eski kayıtlarda sadece `aktifDukkanSeviye` olduğu için ona düşülür.
+
+---
+
+## 🏠 v113 — DÜKKAN GÖRSELLERİ DOSYA ADIYLA EŞLEŞTİ
+
+Eski `bgbos*.png/jpg` isimleri kaldırıldı. Artık her dükkanın adıyla eşleşen
+iki dosyası var: `dukkan_<ad>.jpg` ve `dukkan_<ad>_guv.jpg`.
+
+**Sanat eşleşmesi görsel imza karşılaştırmasıyla doğrulandı** — ölçüleri
+yeniden ölçmek yerine taşımak için:
+
+| Yeni dosya | Eski karşılığı | Kapı ölçüsü |
+|---|---|---|
+| `dukkan_bodrum` | `bgbos.png` | aynen korundu |
+| `dukkan_mahalle` | `bgbos_2.jpg` | korundu (+ v113'te %10 aşağı) |
+| `dukkan_cadde` | **`bgbos_4.jpg`** | bgbos_4'ün ölçüleri taşındı |
+| `dukkan_avm` | **`bgbos_3.jpg`** | bgbos_3'ün ölçüleri taşındı |
+| `dukkan_carsi` | YENİ sanat | yeniden ölçüldü |
+
+> ⚠️ Eşleşme KAYDI: v111'de "seviye 3"e yapılan %15 genişletme artık **AVM**'ye
+> ait; Cadde eski bgbos_4 ölçüleriyle gidiyor. Karıştırma.
+
+Çarşı + 5 satılık dükkanın kapı camı tek tek ölçüldü: her görsel **tek başına**
+900px panelde %1'lik ızgarayla okundu, sonra dikdörtgen görselin üstüne
+çizdirilip gözle doğrulandı. (Otomatik parlaklık tabanlı ölçüm yine duvarı cam
+sandı — CLAUDE.md'deki uyarı hâlâ geçerli, tek başına güvenme.)
+
+> Arka planlar **JPEG q92, 719px genişlik**. 20 dosya toplam ~4.8MB; PNG
+> bırakılsa ~42MB olurdu.
+
+---
+
+## 🎨 v113 — DİĞER DEĞİŞİKLİKLER
+
+### Toptancı Rıza renkleri
+Tezgâhtaki kartlar tipe göre mavi/mor/kırmızı/sarı çerçeve ve buton
+kullanıyordu, tezgâh rengarenk görünüyordu. Artık **hepsi sarı**
+(`tezgahRenk` = `0xFFd29922`) — çerçeve ve buton. `renk` değişkeni hâlâ tipe
+özel ama sadece alt bilgi yazısında (ör. çürükte kırmızı "Tamir edilebilir").
+
+Envanter kartlarının çerçevesi **turkuaz** (`0xFF40E0D0`) — hangi listeye
+bakıldığı bir bakışta belli olsun. ÇÜRÜK kırmızı, oynanabilir camgöbeği kalır
+(ikisi de bilgi taşıyor).
+
+### Çürük ürün ekranı
+Sağlam üründeki büyütmeyle aynı dile getirildi: büyük görsel (soluk) + ÇÜRÜK
+rozeti + fiyat karşılaştırması, altında **Çöpe At / Tamir Et** yan yana, en
+altta iki butonun genişliğinde **Kapat**.
+
+### İTELE topu %30 daha hızlı
+İki turda hızlandı: önce %20 (46→55.2), sonra %30 daha (→71.8). Üçü de aynı
+oranla büyütüldü ki denge bozulmasın: başlangıç 71.8, vuruş başı artış 1.87,
+tavan 137.3.
+
+### 9 yeni ekipman + 4 yeni karakter
+Ekipman: 3 masaüstü konsol (`konsol_20..22`), `SikstenDo GaMboy`
+(`konsol_23`), `SkeymDeck` (`konsol_24`), `Cicitech Mouse`,
+`Gavrak Oyuncu Tutgacı`, `Şahan Oyuncu Seti`, `Sonya Kulaklık`.
+Adlar kullanıcı tarafından verildi — büyük/küçük harfler bilerek böyle.
+
+Karakter: `musteri_43..46` (üçü sabit adlı) + `guvenlik.png`.
+
+> `YeniGames` klasöründe eklenmemiş oyun KALMADI (16 kaynak da oyunda).
+> Ekipman hattı deterministik olduğu için md5 ile hangi kaynağın işlendiği
+> tespit edilebiliyor; CD hattı değil, orada görsel karşılaştırma gerekiyor.
 
 ---
 
@@ -1762,6 +1922,7 @@ Base ratio hâlâ `_clamp(0.18 - progress * 0.15, 0.02, 0.18)`.
 ## Versiyon Geçmişi (son)
 | Commit | Açıklama |
 |--------|----------|
+| v113 | **🛡️ Yakışıklı Güvenlik**: 3. günde (ve reddedilirse 3'ün katlarında) gelen özel müşteri; günde 50 liraya çalışır, tutulduğu sürece **hırsız hiç gelmez** ve arka plan güvenlikli sürüme geçer. Güvenliğe dokununca müşteri gibi öne gelip "İşi bırakmamı ister misin?" diye sorar — öne gelirken arka plandaki kopyası silinir (`_guvenlikOnde`), yoksa ekranda iki güvenlik olurdu. HAYIR'da sağa kaymaz, yukarı süzülüp kaybolur ve yerine geçmiş gibi görünür. Dokunma katmanı Stack'in EN SONUNDA olmak zorunda (sonra gelen çocuk önce hit-test edilir; masa/SafeArea dokunuşu yutuyordu). **🔑 Satılık Dükkanlar**: 5. günde açılan yeni browser bölümü, 5 dükkan (5000-20000), satın alınınca kira yok; ikinci dükkan kiraya verilip günlük gelir sağlanabilir. Dükkan artık kayıtta İSİMLE saklanıyor. **🏠 Dükkan görselleri dosya adıyla eşleşti** (`dukkan_<ad>.jpg` / `_guv.jpg`, eski `bgbos*` kaldırıldı); Cadde↔AVM sanatı yer değiştirdi, Çarşı ve 5 satılık için kapı camı yeniden ölçüldü. **Diğer**: Toptancı tezgâhı tek renk sarı, envanter turkuaz; çürük ürün ekranı büyütme diline geçti (Çöpe At/Tamir Et + tam genişlik Kapat); İTELE topu %30 hızlandı; 9 yeni ekipman + 4 yeni karakter (3'ü sabit adlı: Recai Carlos, Kahraman Memo, Şakir Oneyıl). `test/guvenlik_test.dart` (21 test). APK 60.9 → 65.8MB |
 | v112 | **🐛 Pazarlığı donduran `clamp` hatası düzeltildi**: müşterinin teklifi rezervasyon sınırına dayanınca `clamp(alt, üst)` çağrısının alt sınırı üst sınırını geçiyor, Dart `ArgumentError` atıyordu; istisna `teklifVer`den kaçtığı için ne replik ne yeni fiyat güncelleniyordu — oyuncu "Teklif Ver"e basıp duruyor, hiçbir şey olmuyordu. Artık clamp öncesi "yer kaldı mı" kontrolü var, yer yoksa `atFloor` dalına düşüp kabul/git kararı veriliyor. `test/pazarlik_test.dart` (6 test) eklendi. **Ürün büyütme artık `showDialog`** — Toptancı Rıza penceresi açıkken altında kalmıyordu (Stack katmanı → dialog route); Rıza'nın tezgâhındaki ürünlere de tıkla-büyüt eklendi. **"Yeterli paran yok"** durumunda ürün artık masadan aşağı kaymıyor, müşteriyle birlikte çıkıyor (`sonAnlasmaBasarisiz`). Bodrum Kat kapı silüeti sağdan %10 kısaldı (0.1330→0.1197). **İçerik**: 5 CD görseli yenilendi, 16 yeni CD (`CD_31..46`, toplam 46), 8 yeni karakter (`musteri_35..42`, roster 42). APK 54.0 → 60.9MB |
 | v111 | **16 maddelik düzeltme listesi**: ürün artık müşteriyle aynı karede giriyor (ayrı `_urunKayipController`, `AnimatedPositioned` kaldırıldı); yeni oyunda envanterde oynanabilir ürün yok (`// GECICI` kodu silindi); envanterdeki sağlam ürüne tıkla → büyüt + Çöpe At; tamir popup butonları (Tamir Et solda, Vazgeç sağda, ikisi de dolu arkaplan); browser sabit boyut + her sayfada Geri/Kapat, Ayarlar'da da; ses ayarı gerçek switch (Açık/Kapalı segment); sarı mouse balon görseli %30 küçüldü; 2 dükkan kapı silüeti sağa %15 genişledi; Kırgeç/İtele bitiş metinleri FittedBox ile taşmıyor; seri bildirimi ekran merkezinde; İtele: top %20 hızlı + kırmızı X kapatma + başlangıç yazısı alt yarıda; Falcı'ya 25 yeni fal metni (havuz 50→75); TISSS başlangıç yazısı üst 1/3'te; kolonya "zombi müşteri" hatası düzeltildi (reddedilip çıkış animasyonu oynayan müşteriye kolonya verilemez artık) |
 | v110 | **Browser tek pencere navigasyonu**: Kiralık Dükkanlar / Hedefler / Market / Banka artık ayrı popup değil, browser'ın içinde sayfa (`_BrowserSayfa` enum'u, adres çubuğu değişiyor, sarı geri oku menüye dönüyor). Banka'nın tutar/taksit seçimi `_GameScreenState` alanlarına taşındı — gövde her karede baştan çalıştığı için widget içinde tutulamıyordu; rastgele başlangıç tutarı yalnız sayfaya girerken üretiliyor. Hedefler'in `ListView`'ü `List.generate` oldu (iç içe kaydırma yok). **6 yeni karakter** (`musteri_29..34`, kaynak klasörde işlenmemiş kalanlar; 500×500 ve doluluk 0.95 geldiği için olduğu gibi kopyalandı) → roster 34. **10 yeni ekipman** (`konsol_11..19` + `joystick.png`; 9 retro el/masaüstü konsolu + arcade joystick, v109'un 0.90 doluluk hattından) → toplam ürün 59. APK 49.9 → 54.0MB |
