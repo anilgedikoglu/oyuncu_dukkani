@@ -181,12 +181,32 @@ String get aktifArkaplan =>
     (guvenlikVar && !_guvenlikOnde) ? aktifDukkan.arkaplanGuv : aktifDukkan.arkaplan;
 ```
 
-### Çıkış animasyonu — HAYIR'da sağa kaymaz
-İstifa sorusuna HAYIR denince güvenlik dükkandan ÇIKMIYOR, kapıdaki yerine
-dönüyor. Sağdan kaydırmak "gitti" hissi verirdi. Bunun yerine ayrı bir
-`_guvenlikSolmaController` (480ms) ile **yukarı süzülüp saydamlaşıyor**;
-kaybolduğu anda arka plan güvenlikli sürüme döndüğü için yerine geçmiş gibi
-görünüyor. Replik okunabilsin diye 900ms beklenip başlıyor.
+### Geliş/gidiş animasyonu — güvenlik sağdan KAYMAZ
+Güvenlik dükkanın içinde zaten duruyor; normal müşteriler gibi sağdan kayıp
+gelmesi/gitmesi yanlış olurdu. Tek controller (`_guvenlikBelirmeController`,
+480ms) iki yönde çalışıyor — gidiş, gelişin birebir tersi:
+
+| Yön | Görünüm |
+|---|---|
+| `forward` (dokununca) | Yukarıdan belirir, aşağı iner, **büyüyerek** tezgâha gelir |
+| `reverse` (HAYIR) | Aynı hareketin tersi: küçülerek yukarı süzülüp kaybolur |
+
+```dart
+// 0 = kapıdaki yerinde (görünmez), 1 = tezgâhta (tam görünür)
+final t = Curves.easeOutCubic.transform(_guvenlikBelirmeController.value);
+Opacity(opacity: t,
+  child: Transform.translate(offset: Offset(0, -130 * (1 - t)),
+    child: Transform.scale(scale: 0.78 + 0.22 * t, child: child)));
+```
+
+- Dönüşüm **sadece** güvenlik öndeyken uygulanır (`om.istifaSorusu`); diğer
+  müşteriler etkilenmez, yoksa hepsi `t == 0`'da görünmez olurdu.
+- `_guvenligeDokun` yatay konumu `_slideController.value = 1.0` ile doğrudan
+  "ortalanmış"a atlatır (animasyonsuz). Değeri set etmek yine de şart: **EVET**
+  (istifa) seçilirse güvenlik gerçekten gidiyor ve çıkış o controller'ın
+  `reverse`ıyla sağa doğru oynatılıyor.
+- HAYIR'da kaybolduğu anda arka plan güvenlikli sürüme döndüğü için yerine
+  geçmiş gibi görünüyor. Replik okunabilsin diye 900ms beklenip başlıyor.
 
 ### 🪤 Dokunma alanı Stack'in EN SONUNDA olmalı
 Güvenlik ayrı bir sprite değil, arka planın içinde. Dokunmak için görünmez bir

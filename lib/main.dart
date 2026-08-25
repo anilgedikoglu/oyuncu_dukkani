@@ -3760,11 +3760,17 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   // gitme efekti bu ayrı controller ile, konumdan bağımsız olarak uygulanıyor.
   late AnimationController _urunKayipController;
 
-  /// 🛡️ Güvenlik "işi bırakmamı ister misin?" sorusuna HAYIR alınca kullanılan
-  /// çıkış: sağdan kayıp gitmek yerine hafifçe YUKARI süzülüp saydamlaşır.
-  /// Kaybolduğu anda arka plan güvenlikli sürüme döndüğü için "yerine geçti"
-  /// gibi görünür — dükkandan çıkıp gitmiş gibi değil.
-  late AnimationController _guvenlikSolmaController;
+  /// 🛡️ Güvenliğin "kapıdaki yeri ↔ tezgâh" geçişi. Normal müşterilerin sağdan
+  /// kayması burada YANLIŞ olurdu: güvenlik dükkanın içinde zaten duruyor,
+  /// dışarıdan gelmiyor.
+  ///
+  /// Tek controller, iki yön:
+  ///   `forward` → yukarıdan belirip aşağı iner ve büyür (tezgâha gelir)
+  ///   `reverse` → aynı hareketin tersi; kaybolduğu anda arka plan güvenlikli
+  ///               sürüme döndüğü için yerine geçmiş gibi görünür.
+  ///
+  /// 0 = kapıdaki yerinde (görünmez), 1 = tezgâhta (tam görünür).
+  late AnimationController _guvenlikBelirmeController;
   bool _envanterAcik = false;
   /// Toptanci ekraninda envanter sekmesi acik mi (tek yonlu gecis)
   bool _toptanciEnvanterSekmesi = false;
@@ -3809,7 +3815,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     _slideController = AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
     _slideAnim = Tween<double>(begin: 1.0, end: 0.0).animate(CurvedAnimation(parent: _slideController, curve: Curves.easeOutCubic));
     _urunKayipController = AnimationController(vsync: this, duration: const Duration(milliseconds: 650));
-    _guvenlikSolmaController = AnimationController(vsync: this, duration: const Duration(milliseconds: 480));
+    _guvenlikBelirmeController = AnimationController(vsync: this, duration: const Duration(milliseconds: 480));
     _state.addListener(_daireHedefGuncelle);
     _daireTicker = createTicker(_daireTick)..start();
   }
@@ -3856,7 +3862,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     _state.removeListener(_daireHedefGuncelle);
     _slideController.dispose();
     _urunKayipController.dispose();
-    _guvenlikSolmaController.dispose();
+    _guvenlikBelirmeController.dispose();
     super.dispose();
   }
 
@@ -6097,16 +6103,15 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   }
 
   /// Güvenlik görevine geri dönüyor: repliği okunacak kadar beklenir, sonra
-  /// yukarı süzülüp saydamlaşır. Animasyon bitince `musteriAnimasyonBitti`
-  /// `_guvenlikOnde`i sıfırlar → arka plan güvenlikli sürüme döner ve güvenlik
-  /// kapıdaki yerinde belirir.
+  /// beliriş animasyonu TERSİNE oynatılır (yukarı süzülüp küçülerek kaybolur).
+  /// Bitince `musteriAnimasyonBitti` `_guvenlikOnde`i sıfırlar → arka plan
+  /// güvenlikli sürüme döner ve güvenlik kapıdaki yerinde belirir.
   void _guvenlikYerineDon() {
     Future.delayed(const Duration(milliseconds: 900), () {
       if (!mounted) return;
-      _guvenlikSolmaController.forward(from: 0).then((_) {
+      _guvenlikBelirmeController.reverse().then((_) {
         if (!mounted) return;
         _state.musteriAnimasyonBitti();
-        _guvenlikSolmaController.reset();
       });
     });
   }
@@ -6117,7 +6122,13 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     if (_state.aktifMusteri != null || _state.aktifOzelMusteri != null) return;
     if (_state.gunBitmeli) return;
     _state.guvenligiOneCagir();
-    _slideController.forward(from: 0);
+    // ⚠️ Sağdan kaydırma YOK: `_slideController` doğrudan "ortalanmış"
+    // değerine (1.0) atlatılıyor, yatay konum sabit kalıyor. Beliriş
+    // yalnızca `_guvenlikBelirmeController` ile dikeyde + ölçekte oluyor.
+    // Yine de değeri set etmek şart: EVET (istifa) seçilirse çıkış bu
+    // controller'ın `reverse`ıyla sağa doğru oynatılıyor.
+    _slideController.value = 1.0;
+    _guvenlikBelirmeController.forward(from: 0);
   }
 
   @override
@@ -6201,17 +6212,28 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                       child: child!,
                     );
                   },
-                  // 🛡️ Güvenlik "kal" dediğinde sağdan çıkmaz: hafifçe yukarı
-                  // süzülüp saydamlaşır. Tam kaybolduğu anda arka plan
-                  // güvenlikli sürüme döndüğü için yerine geçmiş gibi olur.
+                  // 🛡️ Güvenlik tezgâha SAĞDAN kaymaz — dükkanın içinde zaten
+                  // duruyor, dışarıdan gelmiyor. Yukarıdan belirip aşağı iner
+                  // ve büyür; gidişi de bunun birebir tersidir (aynı controller
+                  // ters yönde). Diğer müşteriler bu dönüşümden etkilenmez.
                   child: AnimatedBuilder(
-                    animation: _guvenlikSolmaController,
+                    animation: _guvenlikBelirmeController,
                     builder: (context, child) {
-                      final t = _guvenlikSolmaController.value;
-                      if (t == 0) return child!;
+                      final om = _state.aktifOzelMusteri;
+                      final guvenlikOnde =
+                          om != null && om.tip == OzelMusteriTip.guvenlik && om.istifaSorusu;
+                      if (!guvenlikOnde) return child!;
+                      // easeOut: hızlı belirip yumuşak oturur (iniş hissi)
+                      final t = Curves.easeOutCubic
+                          .transform(_guvenlikBelirmeController.value.clamp(0.0, 1.0));
                       return Opacity(
-                        opacity: (1 - t).clamp(0.0, 1.0),
-                        child: Transform.translate(offset: Offset(0, -70 * t), child: child),
+                        opacity: t,
+                        child: Transform.translate(
+                          // yukarıdan gelir: t=0'da 130px yukarıda, t=1'de yerinde
+                          offset: Offset(0, -130 * (1 - t)),
+                          // büyüyerek gelir
+                          child: Transform.scale(scale: 0.78 + 0.22 * t, child: child),
+                        ),
                       );
                     },
                     child: Image.asset(
