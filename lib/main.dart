@@ -2023,6 +2023,64 @@ Widget dialogButonlari({
   ]);
 }
 
+/// Koleksiyon ızgarası: 6 sütun × 10 satır. Kutular 8'liyken çok küçüktü.
+const int kKoleksiyonSutun = 6;
+const int kKoleksiyonKutuSayisi = 60;
+
+/// Koleksiyon hedefi — ödülü bir kez alınır.
+///
+/// `ilerleme` doğrudan koleksiyonun İÇİNE bakar; envantere ya da satışlara
+/// değil. Koleksiyon bir vitrin: ürünü oraya koymak satmaktan vazgeçmek demek,
+/// hedefler de bu fedakârlığı ödüllendiriyor.
+class KoleksiyonHedefi {
+  final String id;
+  final String baslik;
+  final int hedef;
+  final int odul;
+  final int Function(GameState) ilerleme;
+
+  const KoleksiyonHedefi({
+    required this.id, required this.baslik, required this.hedef,
+    required this.odul, required this.ilerleme,
+  });
+
+  static int _kategoriSay(GameState s, ItemCategory k) =>
+      s.koleksiyonNesneleri.where((u) => u.category == k).length;
+
+  static int _adGecen(GameState s, String parca) => s.koleksiyonNesneleri
+      .where((u) => u.name.toLowerCase().contains(parca.toLowerCase())).length;
+
+  static final List<KoleksiyonHedefi> tumu = [
+    KoleksiyonHedefi(id: 'ilk', baslik: 'İlk parçanı koleksiyona koy',
+      hedef: 1, odul: 150, ilerleme: (s) => s.koleksiyondakiler.length),
+    KoleksiyonHedefi(id: 'oynanabilir3', baslik: '3 oynanabilir oyun bul',
+      hedef: 3, odul: 600,
+      ilerleme: (s) => s.koleksiyonNesneleri.where((u) => u.oynanabilir).length),
+    KoleksiyonHedefi(id: 'cd10', baslik: '10 CD biriktir',
+      hedef: 10, odul: 500, ilerleme: (s) => _kategoriSay(s, ItemCategory.cd)),
+    KoleksiyonHedefi(id: 'cd25', baslik: '25 CD biriktir',
+      hedef: 25, odul: 1400, ilerleme: (s) => _kategoriSay(s, ItemCategory.cd)),
+    KoleksiyonHedefi(id: 'elkonsolu10', baslik: '10 el konsolu biriktir',
+      hedef: 10, odul: 900, ilerleme: (s) => _adGecen(s, 'El Konsolu')),
+    KoleksiyonHedefi(id: 'konsol5', baslik: '5 oyun konsolu biriktir',
+      hedef: 5, odul: 450, ilerleme: (s) => _kategoriSay(s, ItemCategory.konsol)),
+    KoleksiyonHedefi(id: 'masaustu3', baslik: '3 masaüstü konsol biriktir',
+      hedef: 3, odul: 400, ilerleme: (s) => _adGecen(s, 'Masaüstü Konsol')),
+    KoleksiyonHedefi(id: 'direksiyon2', baslik: '2 oyuncu direksiyonu biriktir',
+      hedef: 2, odul: 350, ilerleme: (s) => _adGecen(s, 'Direksiyon')),
+    KoleksiyonHedefi(id: 'kulaklik2', baslik: '2 kulaklık biriktir',
+      hedef: 2, odul: 300, ilerleme: (s) => _adGecen(s, 'Kulaklık')),
+    KoleksiyonHedefi(id: 'aksesuar6', baslik: '6 aksesuar biriktir',
+      hedef: 6, odul: 550, ilerleme: (s) => _kategoriSay(s, ItemCategory.aksesuar)),
+    KoleksiyonHedefi(id: 'yarim', baslik: 'Koleksiyonun yarısını doldur',
+      hedef: kKoleksiyonKutuSayisi ~/ 2, odul: 2000,
+      ilerleme: (s) => s.koleksiyondakiler.length),
+    KoleksiyonHedefi(id: 'tam', baslik: 'Tüm koleksiyonu doldur',
+      hedef: kKoleksiyonKutuSayisi, odul: 6000,
+      ilerleme: (s) => s.koleksiyondakiler.length),
+  ];
+}
+
 class KayitServisi {
   static const _key = 'oyun_kayit';
   static const _enYuksekGunKey = 'en_yuksek_gun';
@@ -2623,6 +2681,59 @@ class GameState extends ChangeNotifier {
   int acilanKutuSayisi = 0;
   int basariliPazarlik = 0;
   Set<String> satilanUrunIdleri = {};
+
+  // ── 📚 KOLEKSİYON ─────────────────────────────────────────────────────────
+  /// ⚠️ Koleksiyona girmenin TEK yolu: envanterdeki bir ürünü SATMAK YERİNE
+  /// "Koleksiyona Taşı" ile buraya koymak. Satılan ürünler artık koleksiyonda
+  /// GÖRÜNMEZ — eskiden her satış otomatik açıyordu ve koleksiyon bir başarı
+  /// değil, kendiliğinden dolan bir liste oluyordu.
+  ///
+  /// Ürün id'leri; aynı üründen ikinci kopya koleksiyonu şişirmesin diye Set.
+  Set<String> koleksiyondakiler = {};
+
+  /// Tamamlanıp ödülü alınmış koleksiyon hedeflerinin id'leri.
+  Set<String> koleksiyonOdulAlinan = {};
+
+  /// Koleksiyona konan ürünlerin gerçek nesneleri (kategori/oynanabilirlik
+  /// hedeflerini sayabilmek için id'den çözülüyor).
+  List<GameItem> get koleksiyonNesneleri => koleksiyondakiler
+      .map((id) => koleksiyonUrunleri.where((u) => u.id == id).firstOrNull)
+      .whereType<GameItem>()
+      .toList();
+
+  /// Envanterdeki ürünü kalıcı olarak koleksiyona taşır.
+  /// Slot boşalır ama ürün bir daha satılamaz — bilinçli bir takas.
+  bool koleksiyonaTasi(GameItem item) {
+    if (koleksiyondakiler.length >= kKoleksiyonKutuSayisi) return false;
+    if (koleksiyondakiler.contains(item.id)) return false; // zaten var
+    if (!urunCikarOrnek(item)) return false;
+    koleksiyondakiler.add(item.id);
+    notifyListeners();
+    return true;
+  }
+
+  /// Bu ürün koleksiyona konabilir mi? (zaten varsa ya da yer yoksa hayır)
+  bool koleksiyonaKonabilir(GameItem item) =>
+      !koleksiyondakiler.contains(item.id) &&
+      koleksiyondakiler.length < kKoleksiyonKutuSayisi;
+
+  /// Tamamlanmış ama ödülü alınmamış hedefleri ödüllendirir; toplam ödülü döner.
+  int koleksiyonOdulleriTopla() {
+    int toplam = 0;
+    for (final h in KoleksiyonHedefi.tumu) {
+      if (koleksiyonOdulAlinan.contains(h.id)) continue;
+      if (h.ilerleme(this) >= h.hedef) {
+        koleksiyonOdulAlinan.add(h.id);
+        toplam += h.odul;
+      }
+    }
+    if (toplam > 0) {
+      para += toplam;
+      SesServisi.paraGirdi();
+      notifyListeners();
+    }
+    return toplam;
+  }
   int enYuksekPara = 1000;
 
   // ── Rozetler ──
@@ -3317,6 +3428,8 @@ class GameState extends ChangeNotifier {
     basariliPazarlik       = (j['basariliPazarlik'] as int?) ?? 0;
     enYuksekPara           = (j['enYuksekPara'] as int?) ?? para;
     satilanUrunIdleri      = ((j['satilanUrunIdleri'] as List?) ?? []).map((e) => e as String).toSet();
+    koleksiyondakiler      = ((j['koleksiyondakiler'] as List?) ?? []).map((e) => e as String).toSet();
+    koleksiyonOdulAlinan   = ((j['koleksiyonOdulAlinan'] as List?) ?? []).map((e) => e as String).toSet();
     kazanilanRozetler      = ((j['kazanilanRozetler'] as List?) ?? []).map((e) => e as String).toSet();
     _rizaBugunGeldi        = (j['rizaBugunGeldi'] as bool?) ?? false;
     _rizaZiyaretSirasi     = (j['rizaZiyaretSirasi'] as int?) ?? 2;
@@ -3369,6 +3482,8 @@ class GameState extends ChangeNotifier {
     'basariliPazarlik': basariliPazarlik,
     'enYuksekPara': enYuksekPara,
     'satilanUrunIdleri': satilanUrunIdleri.toList(),
+    'koleksiyondakiler': koleksiyondakiler.toList(),
+    'koleksiyonOdulAlinan': koleksiyonOdulAlinan.toList(),
     'kazanilanRozetler': kazanilanRozetler.toList(),
     'rizaBugunGeldi': _rizaBugunGeldi,
     'rizaZiyaretSirasi': _rizaZiyaretSirasi,
@@ -4041,6 +4156,11 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   bool _envanterAcik = false;
   /// Toptanci ekraninda envanter sekmesi acik mi (tek yonlu gecis)
   bool _toptanciEnvanterSekmesi = false;
+
+  /// Hedefler sayfasındaki sekme: 0 = HEDEFLER, 1 = KOLEKSİYON.
+  /// ⚠️ Browser gövdesi her karede baştan çalıştığı için widget içinde
+  /// tutulamaz — banka sayfasının tutar/taksit seçimiyle aynı sebep.
+  int _hedefSekme = 0;
   // ⚠️ Ürün büyütme önizlemeleri artık `showDialog` ile açılıyor, ana
   // `Stack`'e katman olarak DEĞİL. Eskiden bu iki alan bir bayrak tutuyor,
   // görsel de sahne Stack'inin en üstüne çiziliyordu; ama `showDialog` ile
@@ -4341,15 +4461,32 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     }
   }
 
-  void _toastGoster(String metin, {required String altYazi, required String emoji, required Color renk}) {
+  /// Toast ekrandayken müşteri çıkış animasyonu BEKLETİLİR — bildirimi
+  /// okurken müşterinin kayıp gitmesi dikkati bölüyordu. Toast kapanınca
+  /// bekleyen çıkış hemen başlar.
+  VoidCallback? _toastSonrasiIs;
+
+  void _toastGoster(String metin, {required String altYazi, required String emoji,
+      required Color renk, int ms = 4200}) {
     _toastTimer?.cancel();
     setState(() {
       _toastId++;
       _toastMetin = metin; _toastAltYazi = altYazi; _toastEmoji = emoji; _toastRenk = renk;
     });
-    _toastTimer = Timer(const Duration(milliseconds: 2400), () {
-      if (mounted) setState(() => _toastMetin = null);
+    _toastTimer = Timer(Duration(milliseconds: ms), () {
+      if (!mounted) return;
+      setState(() => _toastMetin = null);
+      final is_ = _toastSonrasiIs;
+      _toastSonrasiIs = null;
+      is_?.call();
     });
+  }
+
+  /// Ekranda süreli bir bildirim varsa [is_] onu bekler, yoksa hemen çalışır.
+  void _toastBitinceCalistir(VoidCallback is_) {
+    if (_toastMetin == null) { is_(); return; }
+    final onceki = _toastSonrasiIs;
+    _toastSonrasiIs = () { onceki?.call(); is_(); };
   }
 
   /// Polisin alkol testine cevap verildi. Doğruysa ceza yok, yanlışsa
@@ -5000,7 +5137,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
             child: t.item == null
                 ? gorselW
                 : GestureDetector(
-                    onTap: () => _urunGorseliBuyut(t.item!.gorsel),
+                    onTap: () => _urunGorseliBuyut(t.item!.gorsel, oynanabilir: t.item!.oynanabilir),
                     child: gorselW,
                   ),
           ),
@@ -5096,41 +5233,110 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   }
 
   /// Koleksiyon: hangi ürünleri en az bir kez sattın?
-  Widget _koleksiyonPaneli() {
-    final tum = GameState.koleksiyonUrunleri;
-    final satilan = _state.satilanUrunIdleri;
-    final yuzde = tum.isEmpty ? 0 : (satilan.where((id) => tum.any((u) => u.id == id)).length * 100 / tum.length).round();
-    return Container(
-      padding: const EdgeInsets.all(11),
-      decoration: BoxDecoration(
-        color: const Color(0xFF16131c),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFF58a6ff).withValues(alpha: 0.4), width: 1.2),
-      ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+  /// 📚 Koleksiyon sekmesi: 6×10 ızgara + altında koleksiyon hedefleri.
+  ///
+  /// ⚠️ Izgara ürün listesinden DEĞİL, sabit 60 kutudan oluşuyor. Koleksiyona
+  /// konan ürünler sırayla kutuları dolduruyor; kalanlar boş "?" olarak
+  /// duruyor. Eskiden her ürün için bir kutu vardı ve satılan her şey
+  /// kendiliğinden açılıyordu.
+  Widget _koleksiyonGovdesi(void Function(VoidCallback) setDlg) {
+    final nesneler = _state.koleksiyonNesneleri;
+    final dolu = nesneler.length;
+    final yuzde = (dolu * 100 / kKoleksiyonKutuSayisi).round();
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
         Row(children: [
-          const Text('📚 KOLEKSİYON', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF58a6ff), letterSpacing: 1)),
+          const Text('📚 KOLEKSİYON',
+            style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold,
+              color: Color(0xFF58a6ff), letterSpacing: 1)),
           const Spacer(),
-          Text('%$yuzde', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF58a6ff))),
+          Text('$dolu / $kKoleksiyonKutuSayisi  ·  %$yuzde',
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF58a6ff))),
         ]),
         const SizedBox(height: 3),
-        const Text('Sattığın her ürün burada açılır', style: TextStyle(fontSize: 9, color: Colors.white30)),
+        const Text('Bir ürünü satmak yerine envanterden buraya taşıyabilirsin.',
+          style: TextStyle(fontSize: 10, color: Panel.yaziSoluk)),
+        const SizedBox(height: 10),
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: kKoleksiyonSutun,
+            mainAxisSpacing: 6, crossAxisSpacing: 6, childAspectRatio: 1),
+          itemCount: kKoleksiyonKutuSayisi,
+          itemBuilder: (c, i) {
+            final u = i < nesneler.length ? nesneler[i] : null;
+            return Container(
+              decoration: BoxDecoration(
+                color: u != null ? const Color(0xFF0d2137) : Colors.black38,
+                borderRadius: BorderRadius.circular(7),
+                border: Border.all(
+                  color: u != null
+                    ? const Color(0xFF58a6ff).withValues(alpha: 0.7)
+                    : Colors.white12),
+              ),
+              child: u != null
+                ? Padding(padding: const EdgeInsets.all(3),
+                    child: Image.asset(u.gorsel, fit: BoxFit.contain))
+                : const Icon(Icons.question_mark, size: 16, color: Colors.white24),
+            );
+          },
+        ),
+        const SizedBox(height: 14),
+        const Text('🎯 KOLEKSİYON HEDEFLERİ',
+          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold,
+            color: Color(0xFFd29922), letterSpacing: 1)),
         const SizedBox(height: 8),
-        Wrap(spacing: 5, runSpacing: 5, children: tum.map((u) {
-          final acik = satilan.contains(u.id);
-          return Container(
-            width: 34, height: 34,
-            decoration: BoxDecoration(
-              color: acik ? const Color(0xFF0d2137) : Colors.black38,
-              borderRadius: BorderRadius.circular(5),
-              border: Border.all(color: acik ? const Color(0xFF58a6ff).withValues(alpha: 0.7) : Colors.white12),
+        ...KoleksiyonHedefi.tumu.map((h) {
+          final ilerleme = h.ilerleme(_state).clamp(0, h.hedef);
+          final tamam = ilerleme >= h.hedef;
+          final odulAlindi = _state.koleksiyonOdulAlinan.contains(h.id);
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 7),
+            child: Container(
+              padding: const EdgeInsets.all(9),
+              decoration: BoxDecoration(
+                color: tamam ? const Color(0xFF14200f) : const Color(0xFF16131c),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: tamam
+                    ? const Color(0xFF3fb950).withValues(alpha: 0.7)
+                    : Colors.white12),
+              ),
+              child: Row(children: [
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(h.baslik, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold,
+                    color: tamam ? const Color(0xFF3fb950) : Panel.yazi)),
+                  const SizedBox(height: 4),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(3),
+                    child: LinearProgressIndicator(
+                      value: h.hedef == 0 ? 1 : ilerleme / h.hedef,
+                      minHeight: 5,
+                      backgroundColor: Colors.white10,
+                      valueColor: AlwaysStoppedAnimation(
+                        tamam ? const Color(0xFF3fb950) : const Color(0xFF58a6ff)),
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text('$ilerleme / ${h.hedef}',
+                    style: const TextStyle(fontSize: 9, color: Colors.white30)),
+                ])),
+                const SizedBox(width: 8),
+                Column(children: [
+                  Text('🎁 ${h.odul}',
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold,
+                      color: tamam ? const Color(0xFF3fb950) : Colors.white38)),
+                  if (odulAlindi)
+                    const Text('alındı', style: TextStyle(fontSize: 8, color: Colors.white24)),
+                ]),
+              ]),
             ),
-            child: acik
-              ? Padding(padding: const EdgeInsets.all(2), child: Image.asset(u.gorsel, fit: BoxFit.contain))
-              : const Icon(Icons.question_mark, size: 13, color: Colors.white24),
           );
-        }).toList()),
-      ]),
+        }),
+      ],
     );
   }
 
@@ -5138,27 +5344,52 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   //  HEDEFLER — bugünün hedefi, rozetler, koleksiyon
   // ═══════════════════════════════════════════════════════════════════════════
   /// Hedefler — browser sayfası gövdesi.
-  Widget _hedeflerGovdesi() {
+  Widget _hedeflerGovdesi(void Function(VoidCallback) setDlg) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Column(children: [
-          const Text('🏆 HEDEFLER',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFFa371f7), letterSpacing: 2)),
-          const SizedBox(height: 2),
-          Text('${_state.kazanilanRozetler.length} / ${Rozet.tumu.length} rozet',
-            style: const TextStyle(fontSize: 11, color: Colors.white38)),
+        // ── Sekmeler: HEDEFLER / KOLEKSİYON ──
+        Row(children: [
+          Expanded(child: _hedefSekmeButonu('🏆 HEDEFLER', 0, setDlg)),
+          const SizedBox(width: 8),
+          Expanded(child: _hedefSekmeButonu('📚 KOLEKSİYON', 1, setDlg)),
         ]),
         const SizedBox(height: 12),
-        // +1 bugün paneli (başta), +1 koleksiyon paneli (sonda)
-        // ⚠️ ListView değil: browser içeriği zaten kaydırılabilir bir
-        // SingleChildScrollView; iç içe iki kaydırma alanı istemiyoruz.
-        ...List.generate(Rozet.tumu.length + 2, (i) => Padding(
-          padding: const EdgeInsets.only(bottom: 8),
-          child: _hedefSatiri(i),
-        )),
+        if (_hedefSekme == 1)
+          _koleksiyonGovdesi(setDlg)
+        else
+          // +1 bugün paneli (başta)
+          // ⚠️ ListView değil: browser içeriği zaten kaydırılabilir bir
+          // SingleChildScrollView; iç içe iki kaydırma alanı istemiyoruz.
+          ...List.generate(Rozet.tumu.length + 1, (i) => Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: _hedefSatiri(i),
+          )),
       ],
+    );
+  }
+
+  /// Hedefler sayfasının üstündeki iki sekmeden biri.
+  Widget _hedefSekmeButonu(String etiket, int idx, void Function(VoidCallback) setDlg) {
+    final aktif = _hedefSekme == idx;
+    return GestureDetector(
+      onTap: () { SesServisi.dokun(); setDlg(() => _hedefSekme = idx); },
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 9),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: aktif ? const Color(0xFF2a1d3d) : Panel.ikincilZemin,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: aktif ? const Color(0xFFa371f7) : Panel.ikincilKenar,
+            width: aktif ? 1.5 : 1),
+        ),
+        child: FittedBox(fit: BoxFit.scaleDown, child: Text(etiket,
+          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold,
+            letterSpacing: 1,
+            color: aktif ? const Color(0xFFa371f7) : Panel.yaziSoluk))),
+      ),
     );
   }
 
@@ -5166,7 +5397,6 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   /// aradakiler rozet kartı.
   Widget _hedefSatiri(int i) {
     if (i == 0) return _bugunPaneli();
-    if (i == Rozet.tumu.length + 1) return _koleksiyonPaneli();
     final r = Rozet.tumu[i - 1];
     final kazanildi = _state.rozetVar(r.id);
     final ilerleme = _state.rozetIlerleme(r.id).clamp(0, r.hedefDeger);
@@ -5570,6 +5800,16 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        // Hedefler EN ÜSTTE: oyuncunun en sık baktığı yer.
+        _browserMenuItem(
+          ikon: '🏆',
+          baslik: 'Hedefler',
+          altyazi: '${_state.kazanilanRozetler.length}/${Rozet.tumu.length} rozet · '
+                   '${_state.koleksiyondakiler.length}/$kKoleksiyonKutuSayisi koleksiyon',
+          renk: const Color(0xFFa371f7),
+          onTap: () => git(_BrowserSayfa.hedefler),
+        ),
+        const SizedBox(height: 10),
         _browserMenuItem(
           ikon: '🏠',
           baslik: 'Kiralık Dükkanlar',
@@ -5579,7 +5819,8 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
         ),
         const SizedBox(height: 10),
         _browserMenuItem(
-          ikon: '🔑',
+          // Anahtar yerine ev: burada satılan şey dükkan, anahtar soyut kalıyordu.
+          ikon: '🏡',
           baslik: 'Satılık Dükkanlar',
           altyazi: _state.gun < 5
               ? '5. günde açılır'
@@ -5594,23 +5835,18 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
         _browserMenuItem(
           ikon: '🏦',
           baslik: 'Banka Kredisi',
-          altyazi: _state.aktifKrediVar
-              ? 'Aktif kredi: ${_state.krediTaksitMiktar} × ${_state.krediKalanTaksit} taksit kaldı'
-              : 'İhtiyaç kredisi başvurusu yap',
+          altyazi: _state.gun < 3
+              ? '3. günde açılır'
+              : (_state.aktifKrediVar
+                  ? 'Aktif kredi: ${_state.krediTaksitMiktar} × ${_state.krediKalanTaksit} taksit kaldı'
+                  : 'İhtiyaç kredisi başvurusu yap'),
           renk: const Color(0xFF3fb950),
+          kilitli: _state.gun < 3,
           onTap: () { _bankaSayfasiHazirla(); git(_BrowserSayfa.banka); },
         ),
         // ⚠️ Toptancı Rıza BİLEREK burada yok. Alışveriş sadece Rıza kapıya
         // geldiğinde yapılabilir; menüden istediği an açmak ziyaretini
         // anlamsızlaştırıyordu.
-        const SizedBox(height: 10),
-        _browserMenuItem(
-          ikon: '🏆',
-          baslik: 'Hedefler',
-          altyazi: '${_state.kazanilanRozetler.length}/${Rozet.tumu.length} rozet kazanıldı',
-          renk: const Color(0xFFa371f7),
-          onTap: () => git(_BrowserSayfa.hedefler),
-        ),
         const SizedBox(height: 10),
         _browserMenuItem(
           ikon: '🛒',
@@ -5648,7 +5884,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       case _BrowserSayfa.satilik:
         return _satilikDukkanlarGovdesi(ctx, setDlg);
       case _BrowserSayfa.hedefler:
-        return _hedeflerGovdesi();
+        return _hedeflerGovdesi(setDlg);
       case _BrowserSayfa.market:
         return _marketGovdesi(ctx);
       case _BrowserSayfa.banka:
@@ -5670,36 +5906,28 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
         title: const Text('⚠️ Emin misin?', textAlign: TextAlign.center,
             style: TextStyle(color: Color(0xFFE07B00), fontSize: 18, fontWeight: FontWeight.bold)),
         content: const Text(
-          'Her şey kaybolacak!\nOyun baştan başlatılsın mı?',
+          'Her şey kaybolacak!\nAna menüye dönülsün mü?',
           textAlign: TextAlign.center,
           style: TextStyle(color: Panel.yazi, fontSize: 15),
         ),
-        actionsAlignment: MainAxisAlignment.center,
+        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
         actions: [
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Panel.ikincilZemin,
-              foregroundColor: Colors.white70,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-              side: const BorderSide(color: Panel.ikincilKenar),
-            ),
-            child: const Text('Hayır', style: TextStyle(fontWeight: FontWeight.bold)),
-          ),
-          ElevatedButton(
-            onPressed: () {
+          dialogButonlari(
+            anaEtiket: 'Evet',
+            anaRenk: const Color(0xFFE07B00),
+            anaYazi: Colors.white,
+            anaOnTap: () {
               Navigator.pop(ctx);
               KayitServisi.sil();
-              Navigator.of(context).pushReplacement(
-                MaterialPageRoute(builder: (_) => const GameScreen(yeniOyun: true)),
+              // ⚠️ Yeni oyunu doğrudan başlatmıyoruz: oyuncu ANA MENÜYE dönsün.
+              // Oradan "Başla"ya kendisi bassın — "Devam Et" de artık pasif olur.
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(builder: (_) => const AnaMenuEkrani()),
+                (route) => false,
               );
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFE07B00),
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            ),
-            child: const Text('Evet', style: TextStyle(fontWeight: FontWeight.bold)),
+            ikincilEtiket: 'Hayır',
+            ikincilOnTap: () => Navigator.pop(ctx),
           ),
         ],
       ),
@@ -5770,9 +5998,10 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   int get _krediMaxTutar => 3000 * _krediCarpan;
 
   /// Taksit limiti önceki kredi geçmişine göre açılır.
+  /// İlk kredide 3 çok azdı — taban 6'ya çıkarıldı.
   int get _krediMaxTaksit {
     final t = _state.tamamlananKrediSayisi;
-    return t == 0 ? 3 : t == 1 ? 6 : 9;
+    return t == 0 ? 6 : t == 1 ? 8 : 10;
   }
 
   /// Faiz: her ek taksit %5 (2 taksit = %5 … 9 taksit = %40)
@@ -6909,7 +7138,8 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                   },
                   child: GestureDetector(
                     // Masadaki ürüne dokununca büyük önizleme açılır
-                    onTap: _urunAsagiKayiyor ? null : () => _urunGorseliBuyut(gorsel),
+                    onTap: _urunAsagiKayiyor ? null : () => _urunGorseliBuyut(gorsel,
+                        oynanabilir: _state.aktifMusteri?.item.oynanabilir ?? false),
                     child: Image.asset(
                       gorsel,
                       width: productSize, height: productSize, fit: BoxFit.contain,
@@ -7371,7 +7601,10 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   /// Bir ürün görselini ekranın ortasında büyütür (salt önizleme).
   /// `showDialog` ile açılır → Toptancı Rıza gibi başka bir pencere açıkken
   /// bile onun ÜSTÜNDE görünür. `TweenAnimationBuilder` ile büyüyerek gelir.
-  void _urunGorseliBuyut(String gorsel) {
+  /// [oynanabilir] verilirse görselin altında "Oynanabilir Oyun!" rozeti
+  /// çıkar — masadaki CD'nin sıradan bir ürün olmadığı satın almadan ÖNCE
+  /// belli olsun.
+  void _urunGorseliBuyut(String gorsel, {bool oynanabilir = false}) {
     showDialog(
       context: context,
       barrierColor: Colors.black.withValues(alpha: 0.82),
@@ -7392,6 +7625,21 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                     width: MediaQuery.of(ctx).size.width * 0.86,
                     fit: BoxFit.contain),
                 ),
+                if (oynanabilir) ...[
+                  const SizedBox(height: 14),
+                  const Text('⭐ Oynanabilir Oyun!', textAlign: TextAlign.center,
+                    style: TextStyle(color: Color(0xFF00E5D0), fontSize: 17,
+                      fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+                  const SizedBox(height: 6),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 28),
+                    child: Text(
+                      'Bu oyun satın alındığında Oyuncu Dükkanı\'nda başlatılıp oynanabilir.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.white.withValues(alpha: 0.82),
+                        fontSize: 13, height: 1.35, fontWeight: FontWeight.w600)),
+                  ),
+                ],
                 const SizedBox(height: 14),
                 const Text('Kapatmak için dokun',
                   style: TextStyle(color: Colors.white54, fontSize: 12, fontWeight: FontWeight.w600)),
@@ -7430,6 +7678,38 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                       fit: BoxFit.contain),
                   ),
                   const SizedBox(height: 18),
+                  // ── Koleksiyona Taşı: Çöpe At / Kapat satırının ÜSTÜNDE ──
+                  // Koleksiyona girmenin TEK yolu bu; ürün satılmak yerine
+                  // kalıcı olarak vitrine konuyor.
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: _state.koleksiyonaKonabilir(item)
+                          ? () => _koleksiyonaTasiOnay(item, ctx) : null,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF2a1d3d),
+                          foregroundColor: const Color(0xFFa371f7),
+                          disabledBackgroundColor: const Color(0xFF201a26),
+                          disabledForegroundColor: Colors.white24,
+                          minimumSize: const Size(0, 44),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            side: BorderSide(
+                              color: _state.koleksiyonaKonabilir(item)
+                                ? const Color(0xFFa371f7) : Colors.white12),
+                          ),
+                        ),
+                        child: Text(
+                          _state.koleksiyondakiler.contains(item.id)
+                            ? '📚 Zaten Koleksiyonda'
+                            : '📚 Koleksiyona Taşı',
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24),
                     child: Row(children: [
@@ -7467,6 +7747,49 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  /// "Koleksiyona Taşı" onayı — ürün bir daha satılamaz, geri dönüşü yok.
+  /// [buyutmeCtx] büyütme dialogunun context'i — onaylanırsa o da kapanır.
+  void _koleksiyonaTasiOnay(GameItem item, BuildContext buyutmeCtx) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Panel.zemin,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: Color(0xFFa371f7), width: 1.5),
+        ),
+        title: const Text('📚 Koleksiyona konsun mu?', textAlign: TextAlign.center,
+          style: TextStyle(color: Color(0xFFa371f7), fontSize: 16, fontWeight: FontWeight.bold)),
+        content: Text(
+          '"${item.name}" kalıcı olarak koleksiyona girer.\n'
+          'Bir daha satamazsın ama koleksiyon hedeflerine sayılır.',
+          textAlign: TextAlign.center,
+          style: const TextStyle(color: Panel.yazi, fontSize: 13)),
+        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+        actions: [
+          dialogButonlari(
+            anaEtiket: 'Koleksiyona Koy',
+            anaRenk: const Color(0xFFa371f7),
+            anaOnTap: () {
+              Navigator.pop(ctx);
+              if (_state.koleksiyonaTasi(item)) {
+                if (Navigator.canPop(buyutmeCtx)) Navigator.pop(buyutmeCtx);
+                final odul = _state.koleksiyonOdulleriTopla();
+                _toastGoster('📚 Koleksiyona eklendi!',
+                  altYazi: odul > 0
+                    ? 'Hedef tamamlandı: +$odul lira'
+                    : '${_state.koleksiyondakiler.length}/$kKoleksiyonKutuSayisi kutu dolu',
+                  emoji: '📚', renk: const Color(0xFFa371f7));
+              }
+            },
+            ikincilEtiket: 'Vazgeç',
+            ikincilOnTap: () => Navigator.pop(ctx),
+          ),
+        ],
       ),
     );
   }
@@ -8162,10 +8485,13 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   /// çalışır — arka planı değiştiren işler (güvenlik istifası) buraya verilmeli,
   /// yoksa karakter daha ekrandayken sahne altından değişir.
   void _ozelMusteriGonder({VoidCallback? bitince}) {
-    _slideController.reverse().then((_) {
+    _toastBitinceCalistir(() {
       if (!mounted) return;
-      _state.musteriAnimasyonBitti();
-      bitince?.call();
+      _slideController.reverse().then((_) {
+        if (!mounted) return;
+        _state.musteriAnimasyonBitti();
+        bitince?.call();
+      });
     });
   }
 
@@ -8524,14 +8850,19 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
           setState(() => _urunAsagiKayiyor = true);
           _urunKayipController.forward(from: 0);
         }
-        // Kabul mesajı balonda görünsün, 1.5 sn sonra müşteri gitsin
+        // Kabul mesajı balonda görünsün, 1.5 sn sonra müşteri gitsin.
+        // ⚠️ Ekranda seri/hedef bildirimi varsa çıkış onu BEKLER; bildirim
+        // kapanır kapanmaz müşteri gitmeye başlar.
         Future.delayed(const Duration(milliseconds: 1500), () {
           if (!mounted) return;
-          _slideController.reverse().then((_) {
+          _toastBitinceCalistir(() {
             if (!mounted) return;
-            _state.musteriAnimasyonBitti();
-            setState(() => _urunAsagiKayiyor = false); // sonraki müşteri için sıfırla
-            _urunKayipController.reset();
+            _slideController.reverse().then((_) {
+              if (!mounted) return;
+              _state.musteriAnimasyonBitti();
+              setState(() => _urunAsagiKayiyor = false); // sonraki müşteri için sıfırla
+              _urunKayipController.reset();
+            });
           });
         });
       } else {
@@ -8606,7 +8937,10 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     _state.teklifVer(p.musteriTeklif); // musteriSatiyor + oyuncuTeklif == musteriTeklif → anlasildi
     Future.delayed(const Duration(milliseconds: 1500), () {
       if (!mounted) return;
-      _slideController.reverse().then((_) { if (mounted) _state.musteriAnimasyonBitti(); });
+      _toastBitinceCalistir(() {
+        if (!mounted) return;
+        _slideController.reverse().then((_) { if (mounted) _state.musteriAnimasyonBitti(); });
+      });
     });
   }
 

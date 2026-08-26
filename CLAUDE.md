@@ -146,6 +146,90 @@ Toplu iş + kontak sayfası için: `tools/toplu_isle.ps1`
 ---
 ---
 
+---
+
+## 📚 v117 — KOLEKSİYON ARTIK KAZANILIYOR
+
+Eskiden koleksiyon **otomatik** doluyordu: satılan her ürün kendiliğinden
+açılıyordu (`satilanUrunIdleri`). Karar yoktu, dolayısıyla değeri de yoktu.
+Artık koleksiyona girmenin **tek yolu** bir ürünü satmak yerine oraya koymak.
+
+| | Eski | Yeni |
+|---|---|---|
+| Dolma | satılan ürün otomatik açılır | envanterden elle taşınır |
+| Kutu sayısı | ürün sayısı kadar (58) | sabit **60** (6×10) |
+| Sütun | 8 (küçük kutu) | **6** (büyük kutu) |
+| Yer | Hedefler listesinin sonunda bir panel | ayrı **KOLEKSİYON sekmesi** |
+
+```dart
+const int kKoleksiyonSutun = 6;
+const int kKoleksiyonKutuSayisi = 60;
+
+Set<String> koleksiyondakiler;      // ürün id'leri (Set: aynı üründen 2. kopya şişirmesin)
+Set<String> koleksiyonOdulAlinan;   // ödülü ödenmiş hedefler
+bool koleksiyonaTasi(GameItem);     // slottan çıkarır, kutuya koyar
+bool koleksiyonaKonabilir(GameItem);
+int  koleksiyonOdulleriTopla();     // tamamlanan hedeflerin ödülünü öder, toplamı döner
+```
+
+- Envanterdeki ürüne dokununca çıkan büyütmede **"📚 Koleksiyona Taşı"**,
+  Çöpe At / Kapat satırının **üstünde**, tam genişlikte.
+- Onay isteniyor — geri dönüşü yok, ürün bir daha satılamaz.
+- Taşıma sonrası `koleksiyonOdulleriTopla()` çağrılıyor; hedef tamamlandıysa
+  para toast'ta duyuruluyor.
+
+> ⚠️ `satilanUrunIdleri` **silinmedi**: "koleksiyoncu" rozeti (10 farklı ürün
+> sat) hâlâ ona bakıyor. Sadece koleksiyon tablosuyla bağı kesildi.
+
+### 🎯 Koleksiyon hedefleri
+`class KoleksiyonHedefi` — 12 hedef, tablonun altında ilerleme çubuğuyla.
+Ödüller 150-6000 lira; her hedef **bir kez** ödenir (`koleksiyonOdulAlinan`).
+İlerleme `int Function(GameState)` ile hesaplanıyor, sayaç tutulmuyor —
+koleksiyon değişince hedefler kendiliğinden güncel.
+
+### ⚠️ `_hedefSekme` widget'ta duramaz
+Browser gövdesi her karede baştan çalışıyor (banka sayfasıyla aynı sebep).
+Sekme durumu `_GameScreenState._hedefSekme`'de; sekme butonu dialogun kendi
+`setDlg`'ini çağırıyor, `setState` değil.
+
+---
+
+## 🩹 v117 — DİĞER DÜZELTMELER
+
+### Süreli bildirim müşteriyi tutuyor
+Seri/hedef toast'ı okunurken müşteri kayıp gidiyordu. Artık çıkış toast'ı
+**bekliyor**; toast kapanır kapanmaz gitmeye başlıyor.
+
+```dart
+VoidCallback? _toastSonrasiIs;
+void _toastBitinceCalistir(VoidCallback is_);   // toast yoksa hemen çalışır
+```
+
+Bağlandığı üç çıkış: anlaşma sonrası (`_pazarlikGoster`), ana ekrandaki
+`_kabulEt`, ve tüm özel müşteriler (`_ozelMusteriGonder`).
+Toast süresi **2400 → 4200 ms** (günün hedefi bildirimi çok kısa kalıyordu).
+
+### Masadaki oynanabilir oyun belli oluyor
+Ürün büyütmesinde (`_urunGorseliBuyut(gorsel, oynanabilir: ...)`) görselin
+altında **"⭐ Oynanabilir Oyun!"** ve *"Bu oyun satın alındığında Oyuncu
+Dükkanı'nda başlatılıp oynanabilir."* Satın almadan önce görünsün diye —
+hem masadaki üründe hem Toptancı Rıza'nın tezgâhında.
+
+### Yeniden Başlat → ANA MENÜ
+Eskiden `pushReplacement` ile doğrudan yeni oyunu açıyordu. Artık
+`pushAndRemoveUntil` ile ana menüye dönülüyor; oyuncu "Başla"ya kendisi
+basıyor. Butonlar da `dialogButonlari()` diline geçti.
+
+### Banka
+- **3. günden önce kilitli** (menüde "3. günde açılır" altyazısı).
+- Max taksit **3/6/9 → 6/8/10** ("3 çok az").
+
+### Browser menü sırası
+Hedefler en üste alındı (altyazısı rozet + koleksiyon sayısını gösteriyor).
+Satılık Dükkanlar ikonu 🔑 → **🏡** (anahtar kiralıkla karışıyordu).
+
+---
+
 ## 👩‍🏫 v114 — REHBER HANDE (açılış tanıtımı)
 
 Oyunun **en başında**, "Müşteri Çağır"a basılmadan kendiliğinden gelen tanıtım
@@ -2118,6 +2202,7 @@ Base ratio hâlâ `_clamp(0.18 - progress * 0.15, 0.02, 0.18)`.
 ## Versiyon Geçmişi (son)
 | Commit | Açıklama |
 |--------|----------|
+| v117 | **📚 Koleksiyon artık kazanılıyor**: satılan ürün otomatik açılmıyor, envanterdeki ürüne dokunup "Koleksiyona Taşı" demek gerekiyor (geri dönüşü yok, ürün bir daha satılamaz). Hedefler sayfası **HEDEFLER / KOLEKSİYON** sekmelerine ayrıldı; tablo 8 değil **6 sütun**, sabit **60 kutu**; altında 12 koleksiyon hedefi ilerleme çubuğuyla, her biri bir kez para ödülü veriyor. **Süreli bildirim müşteriyi tutuyor** — seri/hedef toast'ı okunurken müşteri kayıp gidiyordu, artık toast kapanınca gitmeye başlıyor; toast süresi 2400→4200 ms. **Masadaki oynanabilir oyun belli**: büyütmede "⭐ Oynanabilir Oyun!" + açıklama. **Yeniden Başlat** artık ana menüye dönüyor, doğrudan yeni oyun açmıyor. **Banka** 3. günden önce kilitli, max taksit 3/6/9 → 6/8/10. Browser menüsünde Hedefler en üstte, Satılık Dükkanlar ikonu 🔑 → 🏡 |
 | v115 | **📳 Buton dokunuşunda haptik**: ana ekrandaki bütün önemli butonlar `_oyunButon`'dan geçtiği için haptik tek yerden veriliyor (`SesServisi.dokun()` — ses yok, sadece `selectionClick`). Pasif butonda titreşim yok. Kolonya Tut kendi CustomPaint'ini kullandığından haptiği elle veriliyor. **Titreşim artık ayrı ayar**: `sesAcik`e bağlıydı, kendi anahtarına (`titresimAcik`) alındı — sessiz oynayan biri titreşimi isteyebilir. Hem ana menü hem oyun içi Ayarlar'da Açık/Kapalı switch'i var. **Ayarlar kalıcı**: `AyarServisi` ile SharedPreferences'ta, oyun kaydından ayrı anahtarlarda; oyunu sıfırlamak tercihleri kaybettirmiyor. |
 | v114 | **👩‍🏫 Rehber Hande**: oyunun en başında, "Müşteri Çağır"a basılmadan gelen tanıtım karakteri; dört repliği tek ve geniş "Tamam" butonuyla anlatıp gidiyor. Müşteri sayacını tüketmiyor, rotasyona girmiyor, bir kez geliyor (`handeGosterildi` kayıtta saklanıyor; eski kayıtlarda `true` sayılıyor ki tanıtım açılmasın). **💰 Para sayacı animasyonu**: satış/alımda bakiye kutusu büyüyor, yeşile (giriş) / kırmızıya (çıkış) dönüyor, rakamlar eski değerden yenisine sayarak ilerliyor, sonra normale soluyor (2.2 sn). Animasyon ortasında yeni değişim gelirse ekrandaki değerden devam ediyor, sayı geri sıçramıyor. Tamir Et butonu koyu maviye alındı (gri anahtar emojisi açık mavide kayboluyordu). `test/guvenlik_test.dart` 28 test. |
 | v113 | **🛡️ Yakışıklı Güvenlik**: 3. günde (ve reddedilirse 3'ün katlarında) gelen özel müşteri; günde 50 liraya çalışır, tutulduğu sürece **hırsız hiç gelmez** ve arka plan güvenlikli sürüme geçer. Güvenliğe dokununca müşteri gibi öne gelip "İşi bırakmamı ister misin?" diye sorar — öne gelirken arka plandaki kopyası silinir (`_guvenlikOnde`), yoksa ekranda iki güvenlik olurdu. HAYIR'da sağa kaymaz, yukarı süzülüp kaybolur ve yerine geçmiş gibi görünür. Dokunma katmanı Stack'in EN SONUNDA olmak zorunda (sonra gelen çocuk önce hit-test edilir; masa/SafeArea dokunuşu yutuyordu). **🔑 Satılık Dükkanlar**: 5. günde açılan yeni browser bölümü, 5 dükkan (5000-20000), satın alınınca kira yok; ikinci dükkan kiraya verilip günlük gelir sağlanabilir. Dükkan artık kayıtta İSİMLE saklanıyor. **🏠 Dükkan görselleri dosya adıyla eşleşti** (`dukkan_<ad>.jpg` / `_guv.jpg`, eski `bgbos*` kaldırıldı); Cadde↔AVM sanatı yer değiştirdi, Çarşı ve 5 satılık için kapı camı yeniden ölçüldü. **Diğer**: Toptancı tezgâhı tek renk sarı, envanter turkuaz; çürük ürün ekranı büyütme diline geçti (Çöpe At/Tamir Et + tam genişlik Kapat); İTELE topu %30 hızlandı; 9 yeni ekipman + 4 yeni karakter (3'ü sabit adlı: Recai Carlos, Kahraman Memo, Şakir Oneyıl). `test/guvenlik_test.dart` (21 test). APK 60.9 → 65.8MB |
