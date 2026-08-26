@@ -5245,17 +5245,18 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(etiket, style: const TextStyle(fontSize: 16, color: Colors.white70, fontWeight: FontWeight.bold)),
+        Text(etiket, style: const TextStyle(fontSize: 16, color: Color(0xFFF0DFC4), fontWeight: FontWeight.bold)),
         Container(
           padding: const EdgeInsets.all(3),
           decoration: BoxDecoration(
-            color: const Color(0xFF0d1117),
+            // Switch yuvası: panelden bir ton koyu kahve (lacivert gri değil).
+            color: const Color(0xFF2A2018),
             borderRadius: BorderRadius.circular(9),
-            border: Border.all(color: Colors.white12),
+            border: Border.all(color: Colors.black26),
           ),
           child: Row(mainAxisSize: MainAxisSize.min, children: [
-            segment('Açık', true, const Color(0xFF228B22)),
-            segment('Kapalı', false, const Color(0xFF8B0000)),
+            segment('Açık', true, const Color(0xFF2E9E2E)),
+            segment('Kapalı', false, const Color(0xFFA02020)),
           ]),
         ),
       ],
@@ -5267,13 +5268,17 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
-          backgroundColor: const Color(0xFF1a1008),
+          // Eskiden `0xFF1a1008` idi: neredeyse siyah koyu kahve. Altında açılan
+          // browser laciverte çalan bir panel olduğu için üst üste iki ayrı koyu
+          // ton çakışıyordu. Dükkanın ahşap temasına yakın, açık bir kahve
+          // yüzeye alındı — tan aksanla (0xFFd2a679) da uyumlu.
+          backgroundColor: const Color(0xFF4A3A28),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
             side: const BorderSide(color: Color(0xFFd2a679), width: 1.5),
           ),
           title: const Text('⚙️ Ayarlar', textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFFd2a679), letterSpacing: 1)),
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFFF0DFC4), letterSpacing: 1)),
           // Ses ve Titreşim AYRI ayarlar: sessiz oynayan biri titreşimi
           // isteyebilir. İkisi de aynı iki segmentli switch dilinde.
           content: Column(mainAxisSize: MainAxisSize.min, children: [
@@ -5300,7 +5305,9 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
             Expanded(child: ElevatedButton(
               onPressed: () => Navigator.pop(ctx),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF21262d),
+                // Panel kahveye alındı; slate gri buton üstünde yabancı
+                // duruyordu — kendi zemininden bir ton koyu kahve.
+                backgroundColor: const Color(0xFF33271A),
                 foregroundColor: const Color(0xFFE6A800),
                 minimumSize: const Size(0, 42),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
