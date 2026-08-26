@@ -194,6 +194,88 @@ Sekme durumu `_GameScreenState._hedefSekme`'de; sekme butonu dialogun kendi
 
 ---
 
+## 🚗 v118 — GALERİCİ GÜRBÜZ + ARAÇLAR
+
+Yeni özel müşteri: **Galerici Gürbüz** (`galerici.png`, Gürbüz Oto Galeri).
+**4. günden itibaren 3 günde bir** (4, 7, 10…) günün 2. müşterisi olarak gelir;
+rotasyona GİRMEZ (Rıza gibi kendi programı var).
+
+> "Selamın Aleyküm, ben Gürbüz, Gürbüz Oto Galeri'nin sahibi. Araç lazım mı?
+> Ne verelim abime?"
+
+Alt barda EVET/HAYIR yerine **"Araç Seç" / "Vazgeç"** çıkar. Araç Seç →
+tezgâh popup'ı (5 araç, fiyat + geçiş süresi). Araca tıklanınca
+`GameState.galericiAracSec`: özel müşteri **sıradan bir SATICI müşteriye
+dönüşür** ve normal pazarlık başlar — ayrı satın alma yolu yok. Alınan araç
+envantere girer.
+
+```dart
+class Arac { GameItem item; int gecisSaniye; static List<Arac> tumu; }
+enum ItemCategory { cd, konsol, aksesuar, arac }   // arac EKLENDİ
+```
+
+| id | Ad | Görsel | Fiyat | Geçiş |
+|---|---|---|---|---|
+| arac1 | Kızıl Şimşek | arac_1 (kırmızı hatchback) | 9000 | 35 sn |
+| arac2 | Amiral 500 | arac_2 (lacivert sedan) | 14000 | 30 sn |
+| arac3 | Sarı Melek | arac_3 (bej klasik) | 6000 | 45 sn |
+| arac4 | Vınn Motor | arac_4 (turkuaz scooter) | 3000 | 120 sn |
+| arac5 | Yol Kartalı | arac_5 (touring motosiklet) | 11000 | 75 sn |
+
+- Araçlar `_baslangicUrunler`'de DEĞİL: müşteriler araç almaz/satmaz,
+  toptancı/kutudan çıkmaz, **koleksiyona konamaz** (`koleksiyonaKonabilir`).
+- `_rotasyonDisi` seti: toptanci, guvenlik, galerici, hande — rotasyon
+  migrasyonu artık bu kümeden okunuyor (hande sızması da böylece kapandı).
+- Kırmızı araba beyaz zeminli geldi → `arkaplan_sil.ps1` + köşedeki leke
+  elle temizlendi; 5'i de `ekipman_hat.ps1` (500px, 0.90 doluluk) hattından.
+
+## 🏠 v118 — KONUM DEĞİŞTİR + EV + YAZLIK
+
+Browser menüsünde **"Konum Değiştir"** — envanterde ARAÇ yoksa kilitli
+("Envanterde 1 araç olması gerekmekte."). Market'e **Ev (10000)** ve
+**Yazlık (12000)** kartları eklendi; satın alınca "artık konum
+değiştirebilirsin" bildirimi.
+
+### Geçiş (yolculuk)
+- "Hangi konuma gitmek istersin?" → Ev / Yazlık kutuları (alınmamış pasif).
+- Süre envanterdeki **en hızlı** aracın `gecisSaniye`'si. Toast: "Geçiş başladı..."
+- Sahnenin solunda küçük araç görseli + **saat yönünün TERSİNE** dönen halka
+  (`_GecisHalkaPainter`, negatif açı) + kalan saniye. Halkanın yay uzunluğu
+  ilerlemeyle büyür.
+- Bitince: dükkanda müşteri VARSA popup bekletilir (700ms'de bir yoklanır);
+  boşken "Geçiş işlemleri gerçekleşti. Eve geçmek istiyor musun?" → Evet =
+  konuma geçilir. Evden dükkana dönünce süreç baştan işler.
+- ⚠️ `aktifKonum` kayıtta `dukkan`a ZORLANIR — evde kapatılan oyun dükkanda
+  açılır, yolculuk oturum içi bir durumdur.
+
+### Ev / Yazlık sahnesi
+`_buildEvEkrani()`: header (para+gün animasyonlarıyla) AYNEN korunur, altta
+**Eşya Al / Çıkış**. Eşyalar arka planın `BoxFit.cover` kutusuna oranla
+çizilir (sabit piksel yok).
+
+**İki yerleştirme biçimi** (`EvEsyasi.tamKatman`):
+- **Ev** (`Ev1` klasörü): eşya PNG'leri alfa kutusuna kırpıldı
+  (`tools/kirp.ps1`), konumlar `doluev.png` üzerinden %5 ızgarayla ölçülüp
+  `tools/evkompozit.ps1` ile bosev üstüne çizdirilerek doğrulandı. 9 eşya
+  (vazo, tv, lambader, 2 tekli, orta sehpa, 2 yan sehpa, ikili koltuk;
+  `EvEsyasi.tumu` sırası = ÇİZİM sırası, arkadakiler önce).
+- **Yazlık** (`yazlik_ev_katmanli.ora`): OpenRaster; 13 katman TAM TUVAL
+  (942×1669) → konum hesabı yok, katman arka plana `BoxFit.fill` ile birebir
+  serilir. 12 eşya `yazlik_01..12.png` (719px), tezgâh önizlemesi için ayrıca
+  kırpılmış `yazlik_XX_k.png` kopyaları var (`EvEsyasi.ikon`) — tam tuval
+  küçük kutuda görünmezdi. Sıra stack.xml'in TERSİ (üstteki katman en sonda).
+
+> ⚠️ PowerShell tuzağı: değişken adları büyük/küçük harf DUYARSIZ —
+> `evkompozit.ps1`'de içteki `$w` dıştaki `$W`'yi ezip tüm eşyaları 0
+> boyuta düşürmüştü. İç değişkenler `$px/$py/$pw/$ph` yapıldı.
+
+`test/arac_ev_test.dart` — 20 test (araçlar, Gürbüz dönüşümü, rotasyon
+temizliği, ev/yazlık satın alma, eşya konum aralıkları, kayıt turları).
+Emülatörde uçtan uca doğrulandı (galerici pazarlığı, yolculuk halkası,
+ev + yazlık döşemesi).
+
+---
+
 ## 🩹 v117 — DİĞER DÜZELTMELER
 
 ### Süreli bildirim müşteriyi tutuyor
@@ -2202,6 +2284,7 @@ Base ratio hâlâ `_clamp(0.18 - progress * 0.15, 0.02, 0.18)`.
 ## Versiyon Geçmişi (son)
 | Commit | Açıklama |
 |--------|----------|
+| v118 | **🚗 Galerici Gürbüz + araçlar + 🏠 ev/yazlık**: yeni özel müşteri Gürbüz 4. günden itibaren 3 günde bir gelir, "Araç Seç" tezgâhından seçilen araç normal pazarlığa dönüşür, alınan araç envantere girer (5 araç, 3000-14000). Browser'da **Konum Değiştir** (araç yoksa kilitli); Market'te **Ev (10000)** ve **Yazlık (12000)**. Yolculukta solda araç + saat yönünün tersine dönen halka, süre aracın niteliğine göre (30-120 sn); bitince müşteri yokken "Eve geçmek istiyor musun?" popup'ı. Ev sahnesi: eşyalar doluev.png'den ölçülen oranlarla (9 eşya), Yazlık: .ora tam tuval katmanları birebir bindirme (12 eşya, tezgâh için kırpılmış ikonlar). `test/arac_ev_test.dart` 20 test. Rotasyon migrasyonuna `_rotasyonDisi` seti (hande sızması da kapandı) |
 | v117 | **📚 Koleksiyon artık kazanılıyor**: satılan ürün otomatik açılmıyor, envanterdeki ürüne dokunup "Koleksiyona Taşı" demek gerekiyor (geri dönüşü yok, ürün bir daha satılamaz). Hedefler sayfası **HEDEFLER / KOLEKSİYON** sekmelerine ayrıldı; tablo 8 değil **6 sütun**, sabit **60 kutu**; altında 12 koleksiyon hedefi ilerleme çubuğuyla, her biri bir kez para ödülü veriyor. **Süreli bildirim müşteriyi tutuyor** — seri/hedef toast'ı okunurken müşteri kayıp gidiyordu, artık toast kapanınca gitmeye başlıyor; toast süresi 2400→4200 ms. **Masadaki oynanabilir oyun belli**: büyütmede "⭐ Oynanabilir Oyun!" + açıklama. **Yeniden Başlat** artık ana menüye dönüyor, doğrudan yeni oyun açmıyor. **Banka** 3. günden önce kilitli, max taksit 3/6/9 → 6/8/10. Browser menüsünde Hedefler en üstte, Satılık Dükkanlar ikonu 🔑 → 🏡 |
 | v115 | **📳 Buton dokunuşunda haptik**: ana ekrandaki bütün önemli butonlar `_oyunButon`'dan geçtiği için haptik tek yerden veriliyor (`SesServisi.dokun()` — ses yok, sadece `selectionClick`). Pasif butonda titreşim yok. Kolonya Tut kendi CustomPaint'ini kullandığından haptiği elle veriliyor. **Titreşim artık ayrı ayar**: `sesAcik`e bağlıydı, kendi anahtarına (`titresimAcik`) alındı — sessiz oynayan biri titreşimi isteyebilir. Hem ana menü hem oyun içi Ayarlar'da Açık/Kapalı switch'i var. **Ayarlar kalıcı**: `AyarServisi` ile SharedPreferences'ta, oyun kaydından ayrı anahtarlarda; oyunu sıfırlamak tercihleri kaybettirmiyor. |
 | v114 | **👩‍🏫 Rehber Hande**: oyunun en başında, "Müşteri Çağır"a basılmadan gelen tanıtım karakteri; dört repliği tek ve geniş "Tamam" butonuyla anlatıp gidiyor. Müşteri sayacını tüketmiyor, rotasyona girmiyor, bir kez geliyor (`handeGosterildi` kayıtta saklanıyor; eski kayıtlarda `true` sayılıyor ki tanıtım açılmasın). **💰 Para sayacı animasyonu**: satış/alımda bakiye kutusu büyüyor, yeşile (giriş) / kırmızıya (çıkış) dönüyor, rakamlar eski değerden yenisine sayarak ilerliyor, sonra normale soluyor (2.2 sn). Animasyon ortasında yeni değişim gelirse ekrandaki değerden devam ediyor, sayı geri sıçramıyor. Tamir Et butonu koyu maviye alındı (gri anahtar emojisi açık mavide kayboluyordu). `test/guvenlik_test.dart` 28 test. |

@@ -703,7 +703,7 @@ class MusteriOzellik {
 
 // ─── ÖZEL MÜŞTERİ (HIRSIZ / POLİS / VERGİCİ / KURYE / TOPTANCI / FALCI) ─────
 
-enum OzelMusteriTip { hirsiz, polis, vergici, kurye, toptanci, falci, guvenlik, hande }
+enum OzelMusteriTip { hirsiz, polis, vergici, kurye, toptanci, falci, guvenlik, hande, galerici }
 
 class OzelMusteri {
   final OzelMusteriTip tip;
@@ -750,6 +750,18 @@ class OzelMusteri {
     'Yepyeni ekipmanlar, ilginç müşteriler ve oynanabilir oyun sürprizleri '
         'seni bekliyor. Bol şans!',
   ];
+
+  /// 🚗 Galerici Gürbüz — Gürbüz Oto Galeri'nin sahibi. Alt barda EVET/HAYIR
+  /// yerine "Araç Seç" / "Vazgeç" çıkar; araç seçilirse sıradan bir satıcı
+  /// müşteriye dönüşüp normal pazarlık başlar (`GameState.galericiAracSec`).
+  factory OzelMusteri.galerici() => OzelMusteri(
+        tip: OzelMusteriTip.galerici,
+        gorsel: 'assets/galerici.png',
+        ad: 'Galerici Gürbüz',
+        ilkMiktar: 0,
+        ilkMesaj: 'Selamın Aleyküm, ben Gürbüz, Gürbüz Oto Galeri\'nin sahibi. '
+            'Araç lazım mı? Ne verelim abime?',
+      );
 
   /// Dükkandaki güvenliğe tıklanınca müşteri gibi öne gelir ve istifayı sorar.
   factory OzelMusteri.guvenlikIstifa() => OzelMusteri(
@@ -870,6 +882,8 @@ class OzelMusteri {
           ilkMesaj: 'Merhaba, ben Yakışıklı Güvenlik. Günde '
                     '${GameState.guvenlikGunlukUcret} liraya senin için çalışırsam, '
                     'bu dükkana hırsız giremez. İster misin?');
+      case OzelMusteriTip.galerici:
+        return OzelMusteri.galerici();
     }
   }
 }
@@ -2150,7 +2164,131 @@ class KayitServisi {
 
 // ─── VERİ MODELLERİ ──────────────────────────────────────────────────────────
 
-enum ItemCategory { cd, konsol, aksesuar }
+enum ItemCategory { cd, konsol, aksesuar, arac }
+
+/// Oyuncunun bulunduğu yer.
+enum Konum { dukkan, ev, yazlik }
+
+/// Ev ve yazlığın arka planı + en-boy oranı. Eşyalar bu kutuya oranla
+/// konumlandığı için oran mekân başına verilmeli.
+class Mekan {
+  final String arkaplan;
+  final double oran; // en / boy
+  const Mekan(this.arkaplan, this.oran);
+
+  static const ev     = Mekan('assets/ev_bos.jpg', 719 / 1278);
+  static const yazlik = Mekan('assets/yazlik_bos.jpg', 719 / 1274);
+
+  static Mekan bul(Konum k) => k == Konum.yazlik ? yazlik : ev;
+}
+
+/// 🏠 Ev ve 🏖️ yazlığın satın alınabilir eşyaları.
+///
+/// İki farklı yerleştirme biçimi var:
+/// - **Ev**: eşya PNG'leri alfa kutusuna kırpılmış; konumları `doluev.png`
+///   üzerinden ölçülüp arka planın kutusuna oranlandı (0..1).
+/// - **Yazlık**: kaynak bir OpenRaster (`.ora`) dosyası; her katman TAM TUVAL
+///   boyutunda geldiği için konum hesabına gerek yok — `tamKatman` ile
+///   arka planın üstüne birebir bindirilir.
+class EvEsyasi {
+  final String id, ad, gorsel;
+  final int fiyat;
+  /// Eşyanın arka plan içindeki yeri: sol kenar, ÜST kenar, genişlik (0..1).
+  /// Yükseklik en-boy oranından türetilir (`BoxFit.contain`).
+  final double sol, ust, gen;
+  final Konum konum;
+  /// true → görsel arka planla aynı boyutta, doğrudan üstüne serilir.
+  final bool tamKatman;
+  /// Tezgâhtaki küçük önizleme. Tam tuval katmanlar küçük bir kutuda
+  /// görünmezdi (çoğu şeffaf), onlara ayrı kırpılmış kopya üretildi.
+  final String? ikon;
+  const EvEsyasi(this.id, this.ad, this.gorsel, this.fiyat, this.sol, this.ust, this.gen,
+      {this.konum = Konum.ev, this.tamKatman = false, this.ikon});
+
+  String get onizleme => ikon ?? gorsel;
+
+  /// ⚠️ Sıra ÇİZİM SIRASI: arkadakiler önce. Duvardakiler → yan mobilyalar →
+  /// öndeki kanepe. Listeyi karıştırma, öndeki eşya arkadakinin altında kalır.
+  ///
+  /// Oranlar `doluev.png` üzerinde %5'lik ızgarayla okundu, sonra `bosev`
+  /// üstüne çizdirilip gözle doğrulandı (`tools/evkompozit.ps1`).
+  static const List<EvEsyasi> tumu = [
+    EvEsyasi('vazo',       'Çini Vazo',    'assets/ev_vazo.png',        400, 0.205, 0.235, 0.060),
+    EvEsyasi('tv',         'Televizyon',   'assets/ev_tv.png',         2600, 0.365, 0.255, 0.290),
+    EvEsyasi('lambader',   'Lambader',     'assets/ev_lambader.png',    900, 0.855, 0.295, 0.110),
+    EvEsyasi('teklibir',   'Tekli Koltuk', 'assets/ev_teklibir.png',   1400, 0.030, 0.425, 0.280),
+    EvEsyasi('tekliiki',   'Tekli Berjer', 'assets/ev_tekliiki.png',   1500, 0.725, 0.425, 0.260),
+    EvEsyasi('ortasehpa',  'Orta Sehpa',   'assets/ev_ortasehpa.png',  1100, 0.345, 0.468, 0.330),
+    EvEsyasi('sehpa2',     'Yan Sehpa',    'assets/ev_sehpa2.png',      700, 0.005, 0.535, 0.130),
+    EvEsyasi('sehpa1',     'Zigon Sehpa',  'assets/ev_sehpa1.png',      600, 0.865, 0.530, 0.130),
+    EvEsyasi('ikilikoltuk','İkili Koltuk', 'assets/ev_ikilikoltuk.png',2400, 0.105, 0.545, 0.790),
+
+    // ── 🏖️ YAZLIK ──
+    // Katmanlar `yazlik_ev_katmanli.ora`'dan geliyor; sıra stack.xml'in
+    // TERSİ (XML'de üstteki katman en önde, burada en sonda çizilmeli).
+    EvEsyasi('y_buzdolabi',  'Buzdolabı',           'assets/yazlik_01.png', 3500, 0, 0, 1,
+      konum: Konum.yazlik, tamKatman: true, ikon: 'assets/yazlik_01_k.png'),
+    EvEsyasi('y_bulasik',    'Bulaşık Makinesi',    'assets/yazlik_02.png', 2800, 0, 0, 1,
+      konum: Konum.yazlik, tamKatman: true, ikon: 'assets/yazlik_02_k.png'),
+    EvEsyasi('y_kahve',      'Kahve Makinesi',      'assets/yazlik_03.png',  900, 0, 0, 1,
+      konum: Konum.yazlik, tamKatman: true, ikon: 'assets/yazlik_03_k.png'),
+    EvEsyasi('y_mikrodalga', 'Mikrodalga Fırın',    'assets/yazlik_04.png', 1200, 0, 0, 1,
+      konum: Konum.yazlik, tamKatman: true, ikon: 'assets/yazlik_04_k.png'),
+    EvEsyasi('y_bardaklar',  'Bardaklar',           'assets/yazlik_05.png',  300, 0, 0, 1,
+      konum: Konum.yazlik, tamKatman: true, ikon: 'assets/yazlik_05_k.png'),
+    EvEsyasi('y_tabaklar',   'Tabaklar',            'assets/yazlik_06.png',  350, 0, 0, 1,
+      konum: Konum.yazlik, tamKatman: true, ikon: 'assets/yazlik_06_k.png'),
+    EvEsyasi('y_sandalye',   'Sandalyeler',         'assets/yazlik_07.png', 1800, 0, 0, 1,
+      konum: Konum.yazlik, tamKatman: true, ikon: 'assets/yazlik_07_k.png'),
+    EvEsyasi('y_masa',       'Yemek Masası',        'assets/yazlik_08.png', 2600, 0, 0, 1,
+      konum: Konum.yazlik, tamKatman: true, ikon: 'assets/yazlik_08_k.png'),
+    EvEsyasi('y_tv',         'Ayaklı TV',           'assets/yazlik_09.png', 3200, 0, 0, 1,
+      konum: Konum.yazlik, tamKatman: true, ikon: 'assets/yazlik_09_k.png'),
+    EvEsyasi('y_sezlong',    'İki Şezlong',         'assets/yazlik_10.png', 2200, 0, 0, 1,
+      konum: Konum.yazlik, tamKatman: true, ikon: 'assets/yazlik_10_k.png'),
+    EvEsyasi('y_saksi',      'Büyük Çiçekli Saksı', 'assets/yazlik_11.png',  700, 0, 0, 1,
+      konum: Konum.yazlik, tamKatman: true, ikon: 'assets/yazlik_11_k.png'),
+    EvEsyasi('y_simit',      'Pembe Şişme Simit',   'assets/yazlik_12.png',  250, 0, 0, 1,
+      konum: Konum.yazlik, tamKatman: true, ikon: 'assets/yazlik_12_k.png'),
+  ];
+
+  static List<EvEsyasi> konumun(Konum k) => tumu.where((e) => e.konum == k).toList();
+
+  /// Ev ve yazlığın kendi bedelleri (Market'ten alınır).
+  static const int evFiyati = 10000;
+  static const int yazlikFiyati = 12000;
+}
+
+/// 🚗 Gürbüz Oto Galeri'nin stoğu.
+///
+/// Araçlar `_baslangicUrunler`'de DEĞİL: normal müşteriler araç satmaz/almaz,
+/// toptancıdan ya da kapalı kutudan çıkmaz, koleksiyona da girmez. Tek
+/// kaynakları Galerici Gürbüz.
+///
+/// [gecisSaniye] "Konum Değiştir"deki yolculuk süresi. Motosiklet uzun,
+/// otomobil kısa — aracın niteliği geçişe yansısın.
+class Arac {
+  final GameItem item;
+  final int gecisSaniye;
+  const Arac(this.item, this.gecisSaniye);
+
+  static final List<Arac> tumu = [
+    Arac(GameItem(id: 'arac1', name: 'Kızıl Şimşek', gorsel: 'assets/arac_1.png',
+      category: ItemCategory.arac, basePrice: 9000, kondisyon: 4), 35),
+    Arac(GameItem(id: 'arac2', name: 'Amiral 500', gorsel: 'assets/arac_2.png',
+      category: ItemCategory.arac, basePrice: 14000, kondisyon: 5), 30),
+    Arac(GameItem(id: 'arac3', name: 'Sarı Melek', gorsel: 'assets/arac_3.png',
+      category: ItemCategory.arac, basePrice: 6000, kondisyon: 3), 45),
+    Arac(GameItem(id: 'arac4', name: 'Vınn Motor', gorsel: 'assets/arac_4.png',
+      category: ItemCategory.arac, basePrice: 3000, kondisyon: 4), 120),
+    Arac(GameItem(id: 'arac5', name: 'Yol Kartalı', gorsel: 'assets/arac_5.png',
+      category: ItemCategory.arac, basePrice: 11000, kondisyon: 5), 75),
+  ];
+
+  /// Bir ürün id'sinin geçiş süresi. Araç değilse null.
+  static int? gecisSuresi(String id) =>
+      tumu.where((a) => a.item.id == id).map((a) => a.gecisSaniye).firstOrNull;
+}
 
 class GameItem {
   final String id;
@@ -2593,6 +2731,104 @@ class GameState extends ChangeNotifier {
     _rizaBugunGeldi = false;
     final ust = gunlukMusteriLimiti - 3;
     _rizaZiyaretSirasi = 2 + (ust > 1 ? Random().nextInt(ust) : 0);
+    _galericiBugunGeldi = false;
+  }
+
+  // ── Galerici Gürbüz: Rıza gibi kendi programı var, rotasyona girmez.
+  //    4. günden itibaren ÜÇ GÜNDE BİR (4, 7, 10…) günün 2. müşterisi olarak
+  //    uğrar. Her gün gelmesi araç almayı sıradanlaştırırdı.
+  bool _galericiBugunGeldi = false;
+  bool get _galericiZamani =>
+      !_galericiBugunGeldi && gun >= 4 && (gun - 4) % 3 == 0;
+
+  /// Özel müşteri ROTASYONUNA hiç girmeyen tipler — her birinin kendi
+  /// programı var, rotasyondan da gelirlerse iki kez gelmiş olurlar.
+  static const Set<OzelMusteriTip> _rotasyonDisi = {
+    OzelMusteriTip.toptanci,
+    OzelMusteriTip.guvenlik,
+    OzelMusteriTip.galerici,
+    OzelMusteriTip.hande,
+  };
+
+  // ── 🚗 ARAÇ / 🏠 KONUM ────────────────────────────────────────────────────
+
+  /// Envanterdeki araçlar. "Konum Değiştir" bunlardan birini ister.
+  List<GameItem> get sahipAraclar =>
+      slotlar.whereType<GameItem>().where((u) => u.category == ItemCategory.arac).toList();
+  bool get aracVar => sahipAraclar.isNotEmpty;
+
+  /// Ev / yazlık satın alındı mı (Market'ten) ve içlerine hangi eşyalar
+  /// konuldu. Eşya id'leri iki mekân arasında benzersiz (yazlıkta `y_` ön eki),
+  /// bu yüzden tek küme yetiyor.
+  bool evSahibi = false;
+  bool yazlikSahibi = false;
+  Set<String> evEsyalari = {};
+
+  bool konumSahibi(Konum k) => k == Konum.yazlik ? yazlikSahibi : evSahibi;
+
+  /// Oyuncu şu an nerede? Yolculuk bittikten sonra `ev` olabilir.
+  Konum aktifKonum = Konum.dukkan;
+
+  /// Galerici'nin tezgâhından bir araç seçildi: özel müşteri artık sıradan bir
+  /// SATICI müşteriye dönüşür ve normal pazarlık başlar.
+  ///
+  /// ⚠️ Ekranda karakter zaten duruyor; `_slideController` 1.0'da olduğu için
+  /// yeniden içeri girmez, sadece widget'ı değişir (özel → normal müşteri).
+  void galericiAracSec(GameItem arac) {
+    final ozellik = MusteriOzellik.random();
+    final fiyat = arac.etkinFiyat;
+    final pv = ozellik.perceivedValue(arac.kondisyon, fiyat);
+    final reserv = _piyasaEtkisi(ozellik.reservationPrice(pv, fiyat, true), true);
+    final ilkTeklif = ozellik.openingOffer(reserv, fiyat, true).round();
+
+    aktifOzelMusteri = null;
+    ozelMusteriGorunuyor = false;
+    aktifMusteri = Customer(
+      name: 'Galerici Gürbüz', gorsel: 'assets/galerici.png',
+      musteriSatiyor: true, item: arac, ilkTeklif: ilkTeklif,
+      ozellik: ozellik, yas: YasGrubu.yetiskin, cinsiyet: 'E');
+    musteriGorunuyor = true;
+    musteriKabulBekliyor = false;
+
+    aktifPazarlik = PazarlikSeans(
+      musteriSatiyor: true,
+      piyasaFiyati: fiyat,
+      musteriTeklif: ilkTeklif,
+      oyuncuTeklif: (fiyat * 0.65).round(),
+      maxTur: ozellik.maxTur,
+      ozellik: ozellik,
+      reservationPrice: reserv,
+      yas: YasGrubu.yetiskin,
+      cinsiyet: 'E',
+    );
+    mesaj = 'Bu araca $ilkTeklif lira. Hesaplı iş abi, kaçırma!';
+    notifyListeners();
+  }
+
+  /// Market'ten ev ya da yazlık alınır. Yetersiz parada false döner.
+  bool mekanSatinAl(Konum k) {
+    final fiyat = k == Konum.yazlik ? EvEsyasi.yazlikFiyati : EvEsyasi.evFiyati;
+    if (konumSahibi(k) || para < fiyat) return false;
+    para -= fiyat;
+    if (k == Konum.yazlik) { yazlikSahibi = true; } else { evSahibi = true; }
+    SesServisi.paraGirdi();
+    notifyListeners();
+    return true;
+  }
+
+  /// Evdeki "Eşya Al" tezgâhından bir mobilya alınır.
+  bool evEsyasiAl(EvEsyasi e) {
+    if (evEsyalari.contains(e.id) || para < e.fiyat) return false;
+    para -= e.fiyat;
+    evEsyalari.add(e.id);
+    SesServisi.paraGirdi();
+    notifyListeners();
+    return true;
+  }
+
+  void konumaGec(Konum k) {
+    aktifKonum = k;
+    notifyListeners();
   }
   int toplamTeklifSayisi = 0;
   int krediKalanTaksit = 0;
@@ -2713,7 +2949,13 @@ class GameState extends ChangeNotifier {
   }
 
   /// Bu ürün koleksiyona konabilir mi? (zaten varsa ya da yer yoksa hayır)
+  ///
+  /// ⚠️ Araçlar koleksiyona GİRMEZ: koleksiyon kutuları `koleksiyonUrunleri`
+  /// üzerinden çözülüyor, araçlar o listede değil — konsaydı id sette kalır
+  /// ama kutuda hiçbir şey görünmezdi.
   bool koleksiyonaKonabilir(GameItem item) =>
+      item.category != ItemCategory.arac &&
+      !item.kapaliKutu &&
       !koleksiyondakiler.contains(item.id) &&
       koleksiyondakiler.length < kKoleksiyonKutuSayisi;
 
@@ -3380,14 +3622,14 @@ class GameState extends ChangeNotifier {
     }
     // Eski kayıt migrasyonu: eksik "olay" tipleri sıraya ekle
     for (final tip in OzelMusteriTip.values) {
-      // Rıza ve Güvenlik rotasyonda DEĞİL — ikisinin de kendi programı var
-      // (Rıza gün bazlı ziyaret, Güvenlik 3'ün katlarında tek teklif).
-      if (tip == OzelMusteriTip.toptanci || tip == OzelMusteriTip.guvenlik) continue;
+      // Rıza, Güvenlik, Gürbüz ve Hande rotasyonda DEĞİL — hepsinin kendi
+      // programı var (Rıza gün bazlı, Güvenlik 3'ün katlarında tek teklif,
+      // Gürbüz 3 günde bir, Hande yalnız oyunun başında bir kez).
+      if (_rotasyonDisi.contains(tip)) continue;
       if (!_ozelTipSirasi.contains(tip)) _ozelTipSirasi.add(tip);
     }
     // Rotasyona sızmışlarsa çıkar (ara sürüm kayıtları için)
-    _ozelTipSirasi.removeWhere((t) =>
-        t == OzelMusteriTip.toptanci || t == OzelMusteriTip.guvenlik);
+    _ozelTipSirasi.removeWhere(_rotasyonDisi.contains);
     _ozelTipIndex = j['ozelTipIndex'] as int;
     // Falcı kehaneti kayıtta bekliyor olabilir (fal bakıldı, müşteri gelmedi)
     final zorunlu = j['zorunluOzelTip'] as String?;
@@ -3432,6 +3674,13 @@ class GameState extends ChangeNotifier {
     koleksiyonOdulAlinan   = ((j['koleksiyonOdulAlinan'] as List?) ?? []).map((e) => e as String).toSet();
     kazanilanRozetler      = ((j['kazanilanRozetler'] as List?) ?? []).map((e) => e as String).toSet();
     _rizaBugunGeldi        = (j['rizaBugunGeldi'] as bool?) ?? false;
+    _galericiBugunGeldi    = (j['galericiBugunGeldi'] as bool?) ?? false;
+    evSahibi               = (j['evSahibi'] as bool?) ?? false;
+    yazlikSahibi           = (j['yazlikSahibi'] as bool?) ?? false;
+    evEsyalari             = ((j['evEsyalari'] as List?) ?? []).map((e) => e as String).toSet();
+    // ⚠️ Kayıt her zaman DÜKKANDA açılır: geçiş yolculuğu oturum içi bir
+    // durum, oyunu evde kapatıp açan biri dükkanına dönmüş sayılır.
+    aktifKonum = Konum.dukkan;
     _rizaZiyaretSirasi     = (j['rizaZiyaretSirasi'] as int?) ?? 2;
     yarinkiOlayId          = j['yarinkiOlayId'] as String?;
     kombo                  = (j['kombo'] as int?) ?? 0;
@@ -3486,6 +3735,11 @@ class GameState extends ChangeNotifier {
     'koleksiyonOdulAlinan': koleksiyonOdulAlinan.toList(),
     'kazanilanRozetler': kazanilanRozetler.toList(),
     'rizaBugunGeldi': _rizaBugunGeldi,
+    'galericiBugunGeldi': _galericiBugunGeldi,
+    'evSahibi': evSahibi,
+    'yazlikSahibi': yazlikSahibi,
+    'evEsyalari': evEsyalari.toList(),
+    'aktifKonum': aktifKonum.name,
     'rizaZiyaretSirasi': _rizaZiyaretSirasi,
     'yarinkiOlayId': yarinkiOlayId,
     'kombo': kombo,
@@ -3662,6 +3916,18 @@ class GameState extends ChangeNotifier {
     if (_guvenlikTeklifiZamani && gunlukMusteriSayisi >= 2) {
       guvenlikSonTeklifGunu = gun;
       aktifOzelMusteri = OzelMusteri.olustur(OzelMusteriTip.guvenlik);
+      ozelMusteriGorunuyor = true;
+      musteriKabulBekliyor = true;
+      musteriSayisi++;
+      gunlukMusteriSayisi++;
+      mesaj = aktifOzelMusteri!.ilkMesaj;
+      notifyListeners();
+      return;
+    }
+    // 🚗 Galerici Gürbüz — 3 günde bir, günün 2. müşterisi.
+    if (_galericiZamani && gunlukMusteriSayisi >= 2) {
+      _galericiBugunGeldi = true;
+      aktifOzelMusteri = OzelMusteri.galerici();
       ozelMusteriGorunuyor = true;
       musteriKabulBekliyor = true;
       musteriSayisi++;
@@ -4103,6 +4369,9 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   ///
   /// 0 = kapıdaki yerinde (görünmez), 1 = tezgâhta (tam görünür).
   late AnimationController _guvenlikBelirmeController;
+  /// Geçiş halkasının sürekli dönüşü (saat yönünün TERSİNE — ters yönde
+  /// dönen bir halka "işlem sürüyor" hissini daha net veriyor).
+  late AnimationController _gecisController;
 
   // ── 💰 PARA SAYACI ANİMASYONU ─────────────────────────────────────────────
   // Para değişince bakiye kutusu büyür, yeşile (giriş) ya da kırmızıya (çıkış)
@@ -4157,6 +4426,30 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   /// Toptanci ekraninda envanter sekmesi acik mi (tek yonlu gecis)
   bool _toptanciEnvanterSekmesi = false;
 
+  // ── 🚗 KONUM GEÇİŞİ ───────────────────────────────────────────────────────
+  // Yolculuk gerçek zamanda ilerler: sahnede solda küçük araç görseli ve
+  // çevresinde SAAT YÖNÜNÜN TERSİNE dönen bir halka. Süre aracın niteliğinden
+  // gelir (motosiklet uzun, otomobil kısa) — `Arac.gecisSaniye`.
+  bool _gecisAktif = false;
+  Konum _gecisHedef = Konum.ev;
+  String? _gecisAracGorsel;
+  int _gecisToplamSn = 0;
+  DateTime? _gecisBaslangic;
+  Timer? _gecisTimer;
+
+  /// 0..1 arası ilerleme. Timer her saniye tetiklendiği için yeterince akıcı
+  /// değil; halka `_gecisController` ile ayrıca sürekli dönüyor.
+  double get _gecisOran {
+    if (!_gecisAktif || _gecisBaslangic == null || _gecisToplamSn <= 0) return 0;
+    final gecen = DateTime.now().difference(_gecisBaslangic!).inMilliseconds / 1000.0;
+    return (gecen / _gecisToplamSn).clamp(0.0, 1.0);
+  }
+
+  int get _gecisKalanSn {
+    if (!_gecisAktif) return 0;
+    return (_gecisToplamSn * (1 - _gecisOran)).ceil();
+  }
+
   /// Hedefler sayfasındaki sekme: 0 = HEDEFLER, 1 = KOLEKSİYON.
   /// ⚠️ Browser gövdesi her karede baştan çalıştığı için widget içinde
   /// tutulamaz — banka sayfasının tutar/taksit seçimiyle aynı sebep.
@@ -4203,6 +4496,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     _slideAnim = Tween<double>(begin: 1.0, end: 0.0).animate(CurvedAnimation(parent: _slideController, curve: Curves.easeOutCubic));
     _urunKayipController = AnimationController(vsync: this, duration: const Duration(milliseconds: 650));
     _guvenlikBelirmeController = AnimationController(vsync: this, duration: const Duration(milliseconds: 480));
+    _gecisController = AnimationController(vsync: this, duration: const Duration(milliseconds: 2600))..repeat();
     // 💰 Para sayacı: toplam ~2.2 sn (sayım + normale dönüş)
     _paraController = AnimationController(vsync: this, duration: const Duration(milliseconds: 2200));
     _paraBaslangic = _paraHedef = _state.para;
@@ -4270,6 +4564,8 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     _slideController.dispose();
     _urunKayipController.dispose();
     _guvenlikBelirmeController.dispose();
+    _gecisController.dispose();
+    _gecisTimer?.cancel();
     _paraController.dispose();
     _gunController.dispose();
     super.dispose();
@@ -4853,6 +5149,20 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
               satinAlindi: _state.imacSatinAlindi,
               onTap: () { Navigator.pop(ctx); _imacDetayPopup(); },
             ),
+            _marketUrunKart(
+              ikon: '🏠',
+              isim: 'Ev',
+              fiyat: EvEsyasi.evFiyati,
+              satinAlindi: _state.evSahibi,
+              onTap: () { Navigator.pop(ctx); _mekanSatinAlPopup(Konum.ev); },
+            ),
+            _marketUrunKart(
+              ikon: '🏖️',
+              isim: 'Yazlık',
+              fiyat: EvEsyasi.yazlikFiyati,
+              satinAlindi: _state.yazlikSahibi,
+              onTap: () { Navigator.pop(ctx); _mekanSatinAlPopup(Konum.yazlik); },
+            ),
           ],
         ),
       ],
@@ -4865,32 +5175,39 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     required int fiyat,
     required bool satinAlindi,
     required VoidCallback onTap,
+    bool kilitli = false,
+    String kilitYazi = '',
   }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        decoration: BoxDecoration(
-          color: const Color(0xFF161b22),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: satinAlindi
-                ? const Color(0xFF3fb950).withValues(alpha: 0.6)
-                : const Color(0xFFf78166).withValues(alpha: 0.35),
-            width: satinAlindi ? 1.5 : 1,
+    return Opacity(
+      opacity: kilitli ? 0.45 : 1.0,
+      child: GestureDetector(
+        onTap: kilitli ? null : onTap,
+        child: Container(
+          decoration: BoxDecoration(
+            color: const Color(0xFF161b22),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: satinAlindi
+                  ? const Color(0xFF3fb950).withValues(alpha: 0.6)
+                  : const Color(0xFFf78166).withValues(alpha: 0.35),
+              width: satinAlindi ? 1.5 : 1,
+            ),
           ),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(ikon, style: const TextStyle(fontSize: 32)),
-            const SizedBox(height: 6),
-            Text(isim, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white70), textAlign: TextAlign.center),
-            const SizedBox(height: 4),
-            if (satinAlindi)
-              const Text('✅ Alındı', style: TextStyle(fontSize: 10, color: Color(0xFF3fb950), fontWeight: FontWeight.bold))
-            else
-              Text('$fiyat', style: const TextStyle(fontSize: 11, color: Color(0xFFf78166), fontWeight: FontWeight.bold)),
-          ],
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(ikon, style: const TextStyle(fontSize: 32)),
+              const SizedBox(height: 6),
+              Text(isim, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white70), textAlign: TextAlign.center),
+              const SizedBox(height: 4),
+              if (kilitli)
+                Text('🔒 $kilitYazi', style: const TextStyle(fontSize: 10, color: Colors.white38, fontWeight: FontWeight.bold))
+              else if (satinAlindi)
+                const Text('✅ Alındı', style: TextStyle(fontSize: 10, color: Color(0xFF3fb950), fontWeight: FontWeight.bold))
+              else
+                Text('$fiyat', style: const TextStyle(fontSize: 11, color: Color(0xFFf78166), fontWeight: FontWeight.bold)),
+            ],
+          ),
         ),
       ),
     );
@@ -5856,6 +6173,18 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
           onTap: () => git(_BrowserSayfa.market),
         ),
         const SizedBox(height: 10),
+        // 🚗 Konum Değiştir — envanterde araç YOKSA tıklanamaz.
+        _browserMenuItem(
+          ikon: '🚗',
+          baslik: 'Konum Değiştir',
+          altyazi: _state.aracVar
+              ? (_gecisAktif ? 'Geçiş sürüyor...' : 'Aracınla başka bir yere git')
+              : 'Envanterde 1 araç olması gerekmekte.',
+          renk: const Color(0xFF4f8bd6),
+          kilitli: !_state.aracVar || _gecisAktif,
+          onTap: () { Navigator.pop(ctx); _konumSecPopup(); },
+        ),
+        const SizedBox(height: 10),
         _browserMenuItem(
           ikon: '⚙️',
           baslik: 'Ayarlar',
@@ -6677,6 +7006,9 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       listenable: _state,
       builder: (context, _) {
         _gunBitiKontrol();
+        // 🏠 Oyuncu evdeyse dükkan sahnesi hiç çizilmez — header aynı kalır,
+        // gövde ve alt bar evin kendi düzenine geçer.
+        if (_state.aktifKonum != Konum.dukkan) return _buildEvEkrani();
         return Scaffold(
           body: Stack(
             children: [
@@ -6819,6 +7151,8 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                 ),
               ),
               if (_envanterAcik) _buildEnvanterOverlay(),
+              // 🚗 Yolculuk göstergesi — sahnenin solunda, dokunuşu yutmaz.
+              _buildGecisGostergesi(),
               if (_toastMetin != null) _buildToast(),
               // 🛡️ Güvenliğe dokunma alanı — Stack'in EN SONUNDA.
               //
@@ -6868,6 +7202,231 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
               offset: Offset(0, yuk * (1 - d)),
               child: Text('$_gunYeni. GÜN', style: stil()),
             ),
+          ),
+        ]),
+      ),
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  //  🏠 EV EKRANI
+  // ═══════════════════════════════════════════════════════════════════════════
+  /// Evin sahnesi. Header (para + gün) dükkandakinin AYNISI — para animasyonu
+  /// da olduğu gibi çalışsın diye `_buildHeader()` yeniden kullanılıyor.
+  ///
+  /// Eşyalar arka planın ekrandaki `BoxFit.cover` kutusuna göre konumlanır;
+  /// sabit piksel yok (sahne metriğiyle aynı felsefe).
+  Widget _buildEvEkrani() {
+    final mekan = Mekan.bul(_state.aktifKonum);
+    return Scaffold(
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: Image.asset(mekan.arkaplan,
+              fit: BoxFit.cover, alignment: Alignment.center),
+          ),
+          Positioned.fill(child: _buildEvEsyalari(mekan)),
+          SafeArea(
+            child: Column(children: [
+              _buildHeader(),
+              const Spacer(),
+              _buildEvAltBar(),
+            ]),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Satın alınmış eşyaları arka planın cover kutusuna oranlayarak çizer.
+  /// Liste sırası çizim sırası — `EvEsyasi.tumu` arkadan öne dizili.
+  Widget _buildEvEsyalari(Mekan mekan) {
+    return LayoutBuilder(builder: (context, kis) {
+      final oran = mekan.oran;
+      final ekranOrani = kis.maxWidth / kis.maxHeight;
+      // BoxFit.cover: hangi kenar taşıyorsa ona göre ölçeklenir.
+      final double bgW, bgH;
+      if (ekranOrani > oran) { bgW = kis.maxWidth; bgH = bgW / oran; }
+      else { bgH = kis.maxHeight; bgW = bgH * oran; }
+      final ofsX = (kis.maxWidth - bgW) / 2;
+      final ofsY = (kis.maxHeight - bgH) / 2;
+      return Stack(children: [
+        for (final e in EvEsyasi.konumun(_state.aktifKonum))
+          if (_state.evEsyalari.contains(e.id))
+            // Tam tuval katmanlar (yazlık) arka planın kutusuna birebir
+            // oturur — konum hesabı yok, sadece aynı kutuya serilir.
+            Positioned(
+              left: ofsX + e.sol * bgW,
+              top: ofsY + e.ust * bgH,
+              width: e.gen * bgW,
+              height: e.tamKatman ? bgH : null,
+              child: Image.asset(e.gorsel,
+                fit: e.tamKatman ? BoxFit.fill : BoxFit.contain),
+            ),
+      ]);
+    });
+  }
+
+  Widget _buildEvAltBar() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 6, 12, 10),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Colors.black.withValues(alpha: 0.0), Colors.black.withValues(alpha: 0.70)],
+          begin: Alignment.topCenter, end: Alignment.bottomCenter,
+        ),
+      ),
+      child: Row(children: [
+        Expanded(child: _oyunButon(
+          emoji: '🛋️', label: 'Eşya Al',
+          onTap: _evEsyaTezgahi,
+          gradyan: const [Color(0xFFffd740), Color(0xFF9a6f00)],
+          kenar: const Color(0xFFFFD700),
+          yaziRenk: Colors.black,
+        )),
+        const SizedBox(width: 12),
+        Expanded(child: _oyunButon(
+          emoji: '🚪', label: 'Çıkış',
+          onTap: () => _state.konumaGec(Konum.dukkan),
+          gradyan: const [Color(0xFFe53935), Color(0xFF7f0000)],
+          kenar: const Color(0xFFef9a9a),
+        )),
+      ]),
+    );
+  }
+
+  /// Evin eşya tezgâhı — her eşya adı, görseli ve fiyatıyla listelenir.
+  /// Alınan eşya "Evde" olarak işaretlenir, tekrar alınamaz.
+  void _evEsyaTezgahi() {
+    showDialog(
+      context: context,
+      builder: (ctx) => ListenableBuilder(
+        listenable: _state,
+        builder: (c, __) => Dialog(
+          backgroundColor: Panel.zemin,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 40),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: const BorderSide(color: Color(0xFFd29922), width: 1.5),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(14, 16, 14, 14),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              Text(_state.aktifKonum == Konum.yazlik
+                    ? '🏖️ YAZLIK EŞYALARI' : '🛋️ EV EŞYALARI',
+                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold,
+                  color: Color(0xFFd29922), letterSpacing: 1)),
+              const SizedBox(height: 3),
+              Text('Kasanda ${_state.para} lira var',
+                style: const TextStyle(fontSize: 11, color: Panel.yaziSoluk)),
+              const SizedBox(height: 12),
+              Flexible(
+                child: SingleChildScrollView(
+                  child: Column(children: EvEsyasi.konumun(_state.aktifKonum).map((e) {
+                    final alindi = _state.evEsyalari.contains(e.id);
+                    final parayeter = _state.para >= e.fiyat;
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Opacity(
+                        opacity: alindi ? 0.5 : 1.0,
+                        child: GestureDetector(
+                          onTap: (alindi || !parayeter) ? null : () {
+                            SesServisi.dokun();
+                            _state.evEsyasiAl(e);
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.all(9),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF1f1710),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: alindi
+                                  ? const Color(0xFF3fb950).withValues(alpha: 0.7)
+                                  : const Color(0xFFd29922).withValues(alpha: 0.55)),
+                            ),
+                            child: Row(children: [
+                              SizedBox(width: 56, height: 48,
+                                child: Image.asset(e.onizleme, fit: BoxFit.contain)),
+                              const SizedBox(width: 10),
+                              Expanded(child: Text(e.ad,
+                                style: const TextStyle(fontSize: 13,
+                                  fontWeight: FontWeight.bold, color: Panel.yazi))),
+                              Text(alindi ? '✅ Evde' : '${e.fiyat}',
+                                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold,
+                                  color: alindi
+                                    ? const Color(0xFF3fb950)
+                                    : (parayeter ? const Color(0xFFd29922) : Colors.white24))),
+                            ]),
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList()),
+                ),
+              ),
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Panel.ikincilZemin,
+                    foregroundColor: Colors.white70,
+                    minimumSize: const Size(0, 44),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      side: const BorderSide(color: Panel.ikincilKenar)),
+                  ),
+                  child: const Text('Kapat',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                ),
+              ),
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// 🚗 Sahnenin SOL tarafında, yolculuk sürerken görünen küçük gösterge:
+  /// aracın minik görseli ve çevresinde saat yönünün TERSİNE dönen halka.
+  Widget _buildGecisGostergesi() {
+    final gorsel = _gecisAracGorsel;
+    if (!_gecisAktif || gorsel == null) return const SizedBox.shrink();
+    return Positioned(
+      left: 10,
+      top: MediaQuery.of(context).size.height * 0.30,
+      child: IgnorePointer(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          SizedBox(
+            width: 74, height: 74,
+            child: Stack(alignment: Alignment.center, children: [
+              AnimatedBuilder(
+                animation: _gecisController,
+                builder: (c, __) => CustomPaint(
+                  size: const Size(74, 74),
+                  // Negatif açı → saat yönünün tersi.
+                  painter: _GecisHalkaPainter(
+                    donus: -_gecisController.value * 2 * pi,
+                    oran: _gecisOran),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(15),
+                child: Image.asset(gorsel, fit: BoxFit.contain),
+              ),
+            ]),
+          ),
+          const SizedBox(height: 3),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.55),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Text('$_gecisKalanSn sn',
+              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold,
+                color: Color(0xFF4FC3F7))),
           ),
         ]),
       ),
@@ -7246,6 +7805,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       case OzelMusteriTip.falci:    return const Color(0xFFB967FF); // falcı moru
       case OzelMusteriTip.guvenlik: return const Color(0xFF4FC3F7); // güvenlik mavisi
       case OzelMusteriTip.hande:    return const Color(0xFF7fdfff); // rehber camgöbeği
+      case OzelMusteriTip.galerici: return const Color(0xFF90caf9); // galerici mavisi
     }
   }
 
@@ -7380,8 +7940,26 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
           ]
           // Özel müşteriye kolonya ikram edilmişse EVET/HAYIR gizlenir (3 sn sonra gider)
           else if (_state.musteriKabulBekliyor && _kolonyaGeciciMesaj == null) ...[
+            // 🚗 Galerici Gürbüz: EVET/HAYIR yerine "Araç Seç" / "Vazgeç"
+            if (_state.aktifOzelMusteri?.tip == OzelMusteriTip.galerici) ...[
+              Row(children: [
+                Expanded(child: _oyunButon(
+                  emoji: '🚗', label: 'Araç Seç',
+                  onTap: _galericiTezgahi,
+                  gradyan: const [Color(0xFF4f8bd6), Color(0xFF16324f)],
+                  kenar: const Color(0xFF90caf9),
+                )),
+                const SizedBox(width: 12),
+                Expanded(child: _oyunButon(
+                  emoji: '❌', label: 'Vazgeç',
+                  onTap: _musteriHayir,
+                  gradyan: const [Color(0xFFe53935), Color(0xFF7f0000)],
+                  kenar: const Color(0xFFef9a9a),
+                )),
+              ]),
+            ]
             // Alkol testi yapan polis: EVET/HAYIR yerine iki sayı şıkkı
-            if (_state.aktifOzelMusteri?.alkolTesti == true) ...[
+            else if (_state.aktifOzelMusteri?.alkolTesti == true) ...[
               Builder(builder: (_) {
                 final om = _state.aktifOzelMusteri!;
                 return Row(children: [
@@ -8702,6 +9280,303 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     }
   }
 
+  /// 🚗 "Hangi konuma gitmek istersin?" — Ev ve Yazlık kutuları.
+  /// Satın alınmamış mekân pasif kalır.
+  void _konumSecPopup() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Panel.zemin,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: Color(0xFF4f8bd6), width: 1.5),
+        ),
+        title: const Text('🚗 Hangi konuma gitmek istersin?',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: Color(0xFF90caf9), fontSize: 16, fontWeight: FontWeight.bold)),
+        content: Row(mainAxisSize: MainAxisSize.min, children: [
+          Expanded(child: _konumKutusu(
+            ikon: '🏠', ad: 'Ev',
+            aciklama: _state.evSahibi ? 'Senin evin' : 'Önce Market\'ten al',
+            aktif: _state.evSahibi,
+            onTap: () { Navigator.pop(ctx); _gecisBaslat(Konum.ev); },
+          )),
+          const SizedBox(width: 10),
+          Expanded(child: _konumKutusu(
+            ikon: '🏖️', ad: 'Yazlık',
+            aciklama: _state.yazlikSahibi ? 'Senin yazlığın' : 'Önce Market\'ten al',
+            aktif: _state.yazlikSahibi,
+            onTap: () { Navigator.pop(ctx); _gecisBaslat(Konum.yazlik); },
+          )),
+        ]),
+        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+        actions: [Center(child: ElevatedButton(
+          onPressed: () => Navigator.pop(ctx),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Panel.ikincilZemin, foregroundColor: Colors.white70,
+            minimumSize: const Size(140, 44),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+              side: const BorderSide(color: Panel.ikincilKenar)),
+          ),
+          child: const Text('Vazgeç', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+        ))],
+      ),
+    );
+  }
+
+  Widget _konumKutusu({
+    required String ikon, required String ad, required String aciklama,
+    required bool aktif, required VoidCallback onTap,
+  }) {
+    return Opacity(
+      opacity: aktif ? 1.0 : 0.42,
+      child: GestureDetector(
+        onTap: aktif ? () { SesServisi.dokun(); onTap(); } : null,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+          decoration: BoxDecoration(
+            color: const Color(0xFF11202f),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: aktif ? const Color(0xFF4f8bd6) : Colors.white24,
+              width: aktif ? 1.5 : 1),
+          ),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Text(aktif ? ikon : '🔒', style: const TextStyle(fontSize: 30)),
+            const SizedBox(height: 6),
+            Text(ad, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Panel.yazi)),
+            const SizedBox(height: 2),
+            Text(aciklama, textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 10, color: Panel.yaziSoluk)),
+          ]),
+        ),
+      ),
+    );
+  }
+
+  /// Yolculuğu başlatır. Süre envanterdeki EN HIZLI aracın süresidir —
+  /// birden fazla araç varsa oyuncu doğal olarak iyi olanla gider.
+  void _gecisBaslat(Konum hedef) {
+    final araclar = _state.sahipAraclar;
+    if (araclar.isEmpty) return;
+    int enIyiSn = 1 << 30;
+    String gorsel = araclar.first.gorsel;
+    for (final a in araclar) {
+      final sn = Arac.gecisSuresi(a.id) ?? 60;
+      if (sn < enIyiSn) { enIyiSn = sn; gorsel = a.gorsel; }
+    }
+    setState(() {
+      _gecisAktif = true;
+      _gecisHedef = hedef;
+      _gecisAracGorsel = gorsel;
+      _gecisToplamSn = enIyiSn;
+      _gecisBaslangic = DateTime.now();
+    });
+    _toastGoster('Geçiş başladı...', altYazi: '$enIyiSn saniye sürecek',
+      emoji: '🚗', renk: const Color(0xFF4f8bd6));
+    _gecisTimer?.cancel();
+    _gecisTimer = Timer.periodic(const Duration(milliseconds: 500), (t) {
+      if (!mounted) { t.cancel(); return; }
+      if (_gecisOran >= 1.0) {
+        t.cancel();
+        _gecisTamamlandi();
+      } else {
+        setState(() {}); // kalan süre yazısı tazelensin
+      }
+    });
+  }
+
+  /// Yolculuk bitti. ⚠️ Dükkanda müşteri varken popup AÇILMAZ — pazarlığın
+  /// ortasına girmek haksızlık olur; müşteri gidince tekrar denenir.
+  void _gecisTamamlandi() {
+    if (!mounted) return;
+    final mesgul = _state.aktifMusteri != null ||
+        _state.aktifOzelMusteri != null ||
+        _state.aktifPazarlik != null ||
+        _state.musteriKabulBekliyor;
+    if (mesgul) {
+      // Müşteri gidince yeniden denenmesi için kısa aralıklı bekleme.
+      _gecisTimer?.cancel();
+      _gecisTimer = Timer.periodic(const Duration(milliseconds: 700), (t) {
+        if (!mounted) { t.cancel(); return; }
+        final hala = _state.aktifMusteri != null ||
+            _state.aktifOzelMusteri != null ||
+            _state.aktifPazarlik != null ||
+            _state.musteriKabulBekliyor;
+        if (!hala) { t.cancel(); _gecisSorusuGoster(); }
+      });
+      return;
+    }
+    _gecisSorusuGoster();
+  }
+
+  void _gecisSorusuGoster() {
+    final hedef = _gecisHedef;
+    setState(() { _gecisAktif = false; _gecisAracGorsel = null; });
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Panel.zemin,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: Color(0xFF4f8bd6), width: 1.5),
+        ),
+        title: const Text('🚗 Yolculuk tamam', textAlign: TextAlign.center,
+          style: TextStyle(color: Color(0xFF90caf9), fontSize: 17, fontWeight: FontWeight.bold)),
+        content: const Text('Geçiş işlemleri gerçekleşti. Eve geçmek istiyor musun?',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: Panel.yazi, fontSize: 14, height: 1.3)),
+        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+        actions: [
+          dialogButonlari(
+            anaEtiket: 'Evet',
+            anaRenk: const Color(0xFF4f8bd6),
+            anaYazi: Colors.white,
+            anaOnTap: () { Navigator.pop(ctx); _state.konumaGec(hedef); },
+            ikincilEtiket: 'Hayır',
+            ikincilOnTap: () => Navigator.pop(ctx),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 🏠 / 🏖️ Market'teki ev ya da yazlık kartına dokununca çıkan satın alma onayı.
+  void _mekanSatinAlPopup(Konum k) {
+    final yazlik = k == Konum.yazlik;
+    final ad = yazlik ? 'Yazlık' : 'Ev';
+    final ikon = yazlik ? '🏖️' : '🏠';
+    final fiyat = yazlik ? EvEsyasi.yazlikFiyati : EvEsyasi.evFiyati;
+    final sahip = _state.konumSahibi(k);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Panel.zemin,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: Color(0xFFf78166), width: 1.5),
+        ),
+        title: Text('$ikon $ad', textAlign: TextAlign.center,
+          style: const TextStyle(color: Color(0xFFf78166), fontSize: 18, fontWeight: FontWeight.bold)),
+        content: Column(mainAxisSize: MainAxisSize.min, children: [
+          Image.asset(Mekan.bul(k).arkaplan, height: 150, fit: BoxFit.cover),
+          const SizedBox(height: 12),
+          Text(
+            sahip
+              ? 'Bura zaten senin. Araç aldıysan "Konum Değiştir" ile gidebilirsin.'
+              : 'Kendine ait bir $ad. $fiyat lira.\n'
+                'Aldıktan sonra bir araçla gidip eşya alabilirsin.',
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Panel.yazi, fontSize: 13, height: 1.3)),
+        ]),
+        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+        actions: [
+          dialogButonlari(
+            anaEtiket: 'Satın Al',
+            anaRenk: const Color(0xFFf78166),
+            anaOnTap: (sahip || _state.para < fiyat)
+              ? null
+              : () {
+                  Navigator.pop(ctx);
+                  if (_state.mekanSatinAl(k)) {
+                    _dialogBildirim(context, '$ikon $ad aldın, artık konum değiştirebilirsin!');
+                  }
+                },
+            ikincilEtiket: 'Kapat',
+            ikincilOnTap: () => Navigator.pop(ctx),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 🚗 Gürbüz Oto Galeri'nin tezgâhı. Bir araç seçilirse galerici sıradan bir
+  /// satıcı müşteriye dönüşür ve NORMAL pazarlık başlar — ekipmandaki akışın
+  /// aynısı, ayrı bir satın alma yolu yok.
+  void _galericiTezgahi() {
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: Panel.zemin,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 40),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: Color(0xFF4f8bd6), width: 1.5),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(14, 16, 14, 14),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            const Text('🚗 GÜRBÜZ OTO GALERİ',
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold,
+                color: Color(0xFF90caf9), letterSpacing: 1)),
+            const SizedBox(height: 3),
+            const Text('Beğendiğin araca tıkla, pazarlığa oturalım.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 11, color: Panel.yaziSoluk)),
+            const SizedBox(height: 12),
+            Flexible(
+              child: SingleChildScrollView(
+                child: Column(children: Arac.tumu.map((a) => Padding(
+                  padding: const EdgeInsets.only(bottom: 9),
+                  child: GestureDetector(
+                    onTap: () {
+                      SesServisi.dokun();
+                      Navigator.pop(ctx);
+                      _state.galericiAracSec(a.item);
+                      setState(() => _pazarlikBekleniyor = true);
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(9),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF11202f),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: const Color(0xFF4f8bd6).withValues(alpha: 0.55)),
+                      ),
+                      child: Row(children: [
+                        Image.asset(a.item.gorsel, width: 72, height: 54, fit: BoxFit.contain),
+                        const SizedBox(width: 10),
+                        Expanded(child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(a.item.name, style: const TextStyle(fontSize: 13,
+                              fontWeight: FontWeight.bold, color: Panel.yazi)),
+                            const SizedBox(height: 2),
+                            Text('Geçiş süresi: ${a.gecisSaniye} sn',
+                              style: const TextStyle(fontSize: 10, color: Panel.yaziSoluk)),
+                          ])),
+                        Text('${a.item.basePrice}',
+                          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold,
+                            color: Color(0xFF90caf9))),
+                      ]),
+                    ),
+                  ),
+                )).toList()),
+              ),
+            ),
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => Navigator.pop(ctx),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Panel.ikincilZemin,
+                  foregroundColor: Colors.white70,
+                  minimumSize: const Size(0, 44),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    side: const BorderSide(color: Panel.ikincilKenar),
+                  ),
+                ),
+                child: const Text('Kapat', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+              ),
+            ),
+          ]),
+        ),
+      ),
+    );
+  }
+
   void _ozelMusteriHayirPopup(OzelMusteri om) {
     final rng = Random();
     String mesaj = '';
@@ -8719,6 +9594,14 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       }
       // İşe alma teklifine HAYIR → küsmeden gider, 3'ün katlarında tekrar dener.
       _state.mesaj = 'Peki, fikrini değiştirirsen buralardayım.';
+      _state.notifyListeners();
+      _ozelMusteriGonder();
+      return;
+    }
+
+    // 🚗 Galerici Gürbüz küsmez, kapıdan çıkar gider — kesinti yok.
+    if (om.tip == OzelMusteriTip.galerici) {
+      _state.mesaj = 'Olsun abi, canın sağ olsun. Yolun düşerse galeriye bekleriz!';
       _state.notifyListeners();
       _ozelMusteriGonder();
       return;
@@ -9318,6 +10201,40 @@ class _PixelButonPainter extends CustomPainter {
 }
 
 // ─── DAİRE GERİ SAYIM ────────────────────────────────────────────────────────
+
+/// 🚗 Geçiş göstergesinin halkası: soluk taban çember + üstünde dönen bir yay.
+/// [donus] negatif verilir → saat yönünün TERSİNE döner.
+/// [oran] 0..1 tamamlanma; yayın uzunluğu buna göre büyür, oyuncu ne kadar
+/// kaldığını bir bakışta görür.
+class _GecisHalkaPainter extends CustomPainter {
+  final double donus;
+  final double oran;
+  const _GecisHalkaPainter({required this.donus, required this.oran});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final merkez = Offset(size.width / 2, size.height / 2);
+    final r = size.width / 2 - 4;
+    final rect = Rect.fromCircle(center: merkez, radius: r);
+
+    canvas.drawCircle(merkez, r, Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 4
+      ..color = Colors.black.withValues(alpha: 0.45));
+
+    // Tamamlanma yayı — en az bir dilim hep görünsün ki halka "ölü" durmasın.
+    final tarama = (0.18 + 0.72 * oran.clamp(0.0, 1.0)) * 2 * pi;
+    canvas.drawArc(rect, donus, tarama, false, Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 4
+      ..strokeCap = StrokeCap.round
+      ..color = const Color(0xFF4FC3F7));
+  }
+
+  @override
+  bool shouldRepaint(_GecisHalkaPainter old) =>
+      old.donus != donus || old.oran != oran;
+}
 
 class _DairePainter extends CustomPainter {
   final double progress; // 0.0 (boş) → 1.0 (tam dolu)
