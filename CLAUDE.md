@@ -1076,6 +1076,68 @@ C:\src\flutter\bin\flutter.bat test test/yas_replik_test.dart
 
 ---
 
+## 🎨 POPUP TASARIM DİLİ (v116) — TEK KAYNAK
+
+Popup renkleri dağılmıştı: **6 farklı panel zemini**, kimi butonda çerçeve var
+kimide yok, ana eylem bazen solda bazen sağda. Artık tek kaynak var — yeni bir
+popup yazarken `Panel` sabitlerini ve `dialogButonlari()` yardımcısını kullan,
+**elle renk verme**.
+
+```dart
+class Panel {
+  static const zemin        = Color(0xFF1a1008); // TÜM popup gövdeleri
+  static const yazi         = Color(0xFFF0DFC4);
+  static const yaziSoluk    = Color(0xFFB9A88E);
+  static const ikincilZemin = Color(0xFF33271A); // Vazgeç/Kapat/Dursun
+  static const ikincilKenar = Color(0xFF6B5540);
+}
+```
+
+### Buton kuralı
+**Ana eylem SOLDA, vazgeçme SAĞDA.** İkisi de dolu zeminli, çerçeveli ve eşit
+genişlikte — biri düz metin biri dolu buton olduğunda hangisinin tıklanabilir
+olduğu belirsiz kalıyordu.
+
+```dart
+dialogButonlari(
+  anaEtiket: 'Aç!', anaRenk: ..., anaOnTap: ...,
+  ikincilEtiket: 'Dursun', ikincilOnTap: ...,
+  // ikincil YIKICI bir alternatifse (ör. "Çöpe At") kendi kimliğini korur:
+  ikincilZemin: ..., ikincilKenar: ..., ikincilYazi: ...,
+)
+```
+
+> `anaOnTap: null` verilirse ana buton pasifleşir (ör. tamir seti yokken
+> "Tamir Et").
+
+---
+
+## 🐛 v116 — BALONDAKİ YAZI İKİ KEZ YAZILIYORDU
+
+**Belirti:** Satış/işlem popup'ı kapanır kapanmaz balondaki yazı bir kez
+yazılıyor, sonra AYNI yazı baştan bir daha yazılıyordu.
+
+**İki ayrı sebep vardı, ikisi de düzeltildi:**
+
+1. **İki ayrı `TypewriterText`**: alıcı müşteri için Row'lu, diğer hallerde düz
+   bir dal vardı ve her dalın kendi TypewriterText'i bulunuyordu. Müşteri
+   gidince (`aktifMusteri` null) dal değişiyor, Flutter widget'ı atıp yenisini
+   yaratıyor, State sıfırlanıyor ve yazı baştan oynuyordu.
+   → Tek TypewriterText'e indirildi. Ürün görseli ayrı dal değil: yeri hep
+   duruyor, gösterilmeyeceği zaman genişliği 0'a iniyor. Böylece widget ağaçta
+   hep aynı konumda kalıyor.
+
+2. **`mesajSayaci` aynı metinde de artıyordu**: sayaç balonun `key`'i; artınca
+   State sıfırlanıp yazı baştan yazılıyor. Bazı akışlarda mesaj aynı içerikle
+   iki kez atanıyordu.
+   → Setter artık `if (v == _mesaj) return;` ile GERÇEK değişimi sayıyor.
+
+> `TypewriterText` zaten `didUpdateWidget`'te metin değişince kendini yeniden
+> başlatıyor; `key` sadece "aynı metin YENİ bir müşteriden gelirse tekrar
+> oynasın" içindi. O nadir incelik, üst üste yazma hatasına değmiyordu.
+
+---
+
 ## 🔊 SES SİSTEMİ (v101)
 
 ### Dosya ekleme — pubspec'e DOKUNMA

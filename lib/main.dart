@@ -1944,6 +1944,85 @@ class AyarServisi {
   }
 }
 
+// ─── POPUP TASARIM DİLİ ──────────────────────────────────────────────────────
+//
+// ⚠️ Uygulamada popup renkleri dağılmıştı: her pencere kendi zeminini ve
+// butonlarını uyduruyordu (6 farklı panel rengi, kimi butonda çerçeve var
+// kimide yok, ana eylem bazen solda bazen sağda). Artık TEK kaynak burası —
+// yeni bir popup yazarken `Panel` sabitlerini ve `dialogButonlari()` yardımcısını
+// kullan, elle renk verme.
+
+class Panel {
+  /// Tüm popup gövdelerinin zemini.
+  static const zemin = Color(0xFF1a1008);
+  /// Başlık ve gövde yazısı.
+  static const yazi = Color(0xFFF0DFC4);
+  /// İkincil / açıklama yazısı.
+  static const yaziSoluk = Color(0xFFB9A88E);
+  /// "Vazgeç / Kapat / Dursun" gibi ikincil butonun zemini ve çerçevesi.
+  static const ikincilZemin = Color(0xFF33271A);
+  static const ikincilKenar = Color(0xFF6B5540);
+}
+
+/// Standart popup buton çifti.
+///
+/// KURAL: **ana eylem SOLDA**, vazgeçme SAĞDA. İkisi de dolu zeminli, çerçeveli
+/// ve eşit genişlikte — biri düz metin biri dolu buton olduğunda hangisinin
+/// tıklanabilir olduğu belirsiz kalıyordu.
+Widget dialogButonlari({
+  required String anaEtiket,
+  required VoidCallback? anaOnTap,
+  required Color anaRenk,
+  required String ikincilEtiket,
+  required VoidCallback ikincilOnTap,
+  Color anaYazi = Colors.black,
+  /// İkincil buton yıkıcı bir alternatifse (ör. "Çöpe At") kendi kimliğini
+  /// koruyabilsin diye; verilmezse nötr Panel rengi kullanılır.
+  Color? ikincilZemin,
+  Color? ikincilKenar,
+  Color? ikincilYazi,
+}) {
+  return Row(children: [
+    Expanded(child: ElevatedButton(
+      onPressed: anaOnTap,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: anaRenk,
+        foregroundColor: anaYazi,
+        disabledBackgroundColor: const Color(0xFF2a2a2a),
+        disabledForegroundColor: Colors.white24,
+        minimumSize: const Size(0, 44),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+          side: BorderSide(color: anaRenk.withValues(alpha: 0.9)),
+        ),
+      ),
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Text(anaEtiket, maxLines: 1,
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+      ),
+    )),
+    const SizedBox(width: 10),
+    Expanded(child: ElevatedButton(
+      onPressed: ikincilOnTap,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: ikincilZemin ?? Panel.ikincilZemin,
+        foregroundColor: ikincilYazi ?? Panel.yazi,
+        minimumSize: const Size(0, 44),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+          side: BorderSide(color: ikincilKenar ?? Panel.ikincilKenar),
+        ),
+      ),
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Text(ikincilEtiket, maxLines: 1,
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+      ),
+    )),
+  ]);
+}
+
 class KayitServisi {
   static const _key = 'oyun_kayit';
   static const _enYuksekGunKey = 'en_yuksek_gun';
@@ -2597,6 +2676,13 @@ class GameState extends ChangeNotifier {
   int mesajSayaci = 0;
   String get mesaj => _mesaj;
   set mesaj(String v) {
+    // ⚠️ 🐛 AYNI metin tekrar atanırsa sayaç ARTMAZ.
+    // `mesajSayaci` balondaki TypewriterText'in key'i; artınca State sıfırlanıp
+    // yazı baştan yazılıyor. Bazı akışlarda (müşteri reddedilip çıkarken)
+    // mesaj aynı içerikle iki kez atanıyor ve yazı üst üste iki kez
+    // yazılıyordu. TypewriterText zaten `didUpdateWidget`te metin değişince
+    // kendini yeniden başlatıyor; buradaki tek iş GERÇEK değişimi saymak.
+    if (v == _mesaj) return;
     _mesaj = v;
     mesajSayaci++;
   }
@@ -4111,7 +4197,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
               style: TextStyle(color: Colors.orangeAccent, fontSize: 18)),
             content: const Text('Daha geniş bir dükkana geç.',
               textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.white70, fontSize: 15)),
+              style: TextStyle(color: Panel.yazi, fontSize: 15)),
             actions: [Center(child: ElevatedButton(
               onPressed: () {
                 Navigator.pop(ctx);
@@ -4159,7 +4245,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF120e18),
+        backgroundColor: const Color(0xFF1a1008),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: const BorderSide(color: Color(0xFFa371f7), width: 2)),
         title: Column(mainAxisSize: MainAxisSize.min, children: [
           Text(r.emoji, style: const TextStyle(fontSize: 52)),
@@ -4731,7 +4817,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
               constraints: BoxConstraints(maxHeight: MediaQuery.of(ctx).size.height * 0.82),
               child: Container(
                 decoration: BoxDecoration(
-                  color: const Color(0xFF14100a),
+                  color: const Color(0xFF1a1008),
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(color: const Color(0xFFd29922).withValues(alpha: 0.6), width: 1.5),
                   boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.6), blurRadius: 20, offset: const Offset(0, 8))],
@@ -4824,17 +4910,17 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                     Container(
                       padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF14100a),
+                        color: const Color(0xFF1a1008),
                         borderRadius: const BorderRadius.vertical(bottom: Radius.circular(12)),
                         border: Border(top: BorderSide(color: const Color(0xFFd29922).withValues(alpha: 0.25))),
                       ),
                       child: ElevatedButton(
                         onPressed: () => Navigator.pop(ctx),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF21262d), foregroundColor: Colors.white70,
+                          backgroundColor: Panel.ikincilZemin, foregroundColor: Panel.yazi,
                           minimumSize: const Size(double.infinity, 42),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                          side: const BorderSide(color: Color(0xFF30363d)),
+                          side: const BorderSide(color: Panel.ikincilKenar),
                         ),
                         child: const Text('Kapat', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
                       ),
@@ -5183,9 +5269,9 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                 Expanded(child: ElevatedButton(
                   onPressed: () => Navigator.pop(ctx),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF21262d),
+                    backgroundColor: Panel.ikincilZemin,
                     foregroundColor: Colors.white70,
-                    side: const BorderSide(color: Color(0xFF30363d)),
+                    side: const BorderSide(color: Panel.ikincilKenar),
                   ),
                   child: const Text('Çıkış', style: TextStyle(fontWeight: FontWeight.bold)),
                 )),
@@ -5288,11 +5374,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
-          // Eskiden `0xFF1a1008` idi: neredeyse siyah koyu kahve. Altında açılan
-          // browser laciverte çalan bir panel olduğu için üst üste iki ayrı koyu
-          // ton çakışıyordu. Dükkanın ahşap temasına yakın, açık bir kahve
-          // yüzeye alındı — tan aksanla (0xFFd2a679) da uyumlu.
-          backgroundColor: const Color(0xFF4A3A28),
+          backgroundColor: Panel.zemin,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
             side: const BorderSide(color: Color(0xFFd2a679), width: 1.5),
@@ -5320,37 +5402,16 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
             ),
           ]),
           actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-          actions: [Row(children: [
-            // Geri: sadece Ayarlar'ı kapatır, browser menüsü altta açık kalır.
-            Expanded(child: ElevatedButton(
-              onPressed: () => Navigator.pop(ctx),
-              style: ElevatedButton.styleFrom(
-                // Panel kahveye alındı; slate gri buton üstünde yabancı
-                // duruyordu — kendi zemininden bir ton koyu kahve.
-                backgroundColor: const Color(0xFF33271A),
-                foregroundColor: const Color(0xFFE6A800),
-                minimumSize: const Size(0, 42),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                side: const BorderSide(color: Color(0xFFE6A800)),
-              ),
-              child: const Text('Geri', style: TextStyle(fontWeight: FontWeight.bold)),
-            )),
-            const SizedBox(width: 10),
-            // Kapat: Ayarlar'ı VE altındaki browser'ı birlikte kapatır.
-            Expanded(child: ElevatedButton(
-              onPressed: () {
-                Navigator.pop(ctx);
-                Navigator.pop(context);
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFd2a679),
-                foregroundColor: Colors.black,
-                minimumSize: const Size(0, 42),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-              ),
-              child: const Text('Kapat', style: TextStyle(fontWeight: FontWeight.bold)),
-            )),
-          ])],
+          // Ana eylem SOLDA: buradaki asıl çıkış "Kapat" (Ayarlar'ı VE altındaki
+          // browser'ı birlikte kapatır); "Geri" sadece Ayarlar'ı kapatıp
+          // browser menüsüne döner.
+          actions: [dialogButonlari(
+            anaEtiket: 'Kapat',
+            anaRenk: const Color(0xFFd2a679),
+            anaOnTap: () { Navigator.pop(ctx); Navigator.pop(context); },
+            ikincilEtiket: 'Geri',
+            ikincilOnTap: () => Navigator.pop(ctx),
+          )],
         ),
       ),
     );
@@ -5471,7 +5532,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                           Expanded(child: ElevatedButton(
                             onPressed: () => git(_BrowserSayfa.menu),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF21262d),
+                              backgroundColor: Panel.ikincilZemin,
                               foregroundColor: const Color(0xFFE6A800),
                               minimumSize: const Size(0, 42),
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -5484,11 +5545,11 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                         Expanded(child: ElevatedButton(
                           onPressed: () => Navigator.pop(ctx),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF21262d),
+                            backgroundColor: Panel.ikincilZemin,
                             foregroundColor: Colors.white70,
                             minimumSize: const Size(0, 42),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                            side: const BorderSide(color: Color(0xFF30363d)),
+                            side: const BorderSide(color: Panel.ikincilKenar),
                           ),
                           child: const Text('Kapat', style: TextStyle(fontWeight: FontWeight.bold)),
                         )),
@@ -5611,17 +5672,17 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
         content: const Text(
           'Her şey kaybolacak!\nOyun baştan başlatılsın mı?',
           textAlign: TextAlign.center,
-          style: TextStyle(color: Colors.white70, fontSize: 15),
+          style: TextStyle(color: Panel.yazi, fontSize: 15),
         ),
         actionsAlignment: MainAxisAlignment.center,
         actions: [
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx),
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF21262d),
+              backgroundColor: Panel.ikincilZemin,
               foregroundColor: Colors.white70,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-              side: const BorderSide(color: Color(0xFF30363d)),
+              side: const BorderSide(color: Panel.ikincilKenar),
             ),
             child: const Text('Hayır', style: TextStyle(fontWeight: FontWeight.bold)),
           ),
@@ -6048,7 +6109,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     showDialog(
       context: context,
       builder: (c2) => AlertDialog(
-        backgroundColor: const Color(0xFF0d1117),
+        backgroundColor: const Color(0xFF1a1008),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
           side: const BorderSide(color: Color(0xFF3fb950), width: 1.5),
@@ -6093,10 +6154,10 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
           Expanded(child: ElevatedButton(
             onPressed: () => Navigator.pop(c2),
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF21262d), foregroundColor: Colors.white70,
+              backgroundColor: Panel.ikincilZemin, foregroundColor: Panel.yazi,
               minimumSize: const Size(0, 44),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-              side: const BorderSide(color: Color(0xFF30363d))),
+              side: const BorderSide(color: Panel.ikincilKenar)),
             child: const Text('Vazgeç', style: TextStyle(fontWeight: FontWeight.bold)),
           )),
         ])],
@@ -6111,7 +6172,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     showDialog(
       context: context,
       builder: (c2) => AlertDialog(
-        backgroundColor: const Color(0xFF0d1117),
+        backgroundColor: const Color(0xFF1a1008),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
           side: const BorderSide(color: Color(0xFF3fb950), width: 1.5),
@@ -6134,7 +6195,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
             Center(child: ElevatedButton(
               onPressed: () => Navigator.pop(c2),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF21262d), foregroundColor: Colors.white70,
+                backgroundColor: Panel.ikincilZemin, foregroundColor: Panel.yazi,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
               child: const Text('Tamam', style: TextStyle(fontWeight: FontWeight.bold)),
             ))
@@ -6885,44 +6946,58 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                 ? _ozelMusteriRengi(_state.aktifOzelMusteri!.tip).withValues(alpha: 0.7)
                 : const Color(0xFFFFD700).withValues(alpha: 0.4)),
             ),
-            child: _state.aktifMusteri != null && !_state.aktifMusteri!.musteriSatiyor &&
-                   (_state.musteriKabulBekliyor || (_state.aktifPazarlik != null && _state.aktifPazarlik!.turSayisi == 0))
-              ? Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Builder(builder: (_) {
-                      final urunGorsel = _state.aktifMusteri!.item.gorsel;
-                      // Sarı mouse (oyuncumausu.png) balonda orantısız büyük
-                      // duruyordu — %30 küçültüldü. Diğer ürünler etkilenmez.
-                      final balonBoy = urunGorsel == 'assets/oyuncumausu.png' ? 70.0 : 100.0;
-                      return Image.asset(urunGorsel, width: balonBoy, height: balonBoy, fit: BoxFit.contain);
-                    }),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Transform.translate(
-                        offset: const Offset(-15, 0),
-                        child: Center(
-                          child: TypewriterText(
-                            // key: ayni metin tekrar gelse de animasyon bastan oynasin
-                            key: ValueKey(_state.mesajSayaci),
-                            text: _kolonyaGeciciMesaj ?? _state.mesaj,
-                            style: TextStyle(fontSize: 14, color: const Color(0xFFFFD700)),
-                            textAlign: TextAlign.center,
-                          ),
+            // ⚠️ 🐛 TEK TypewriterText — İKİ AYRI DAL YAZMA.
+            // Eskiden alıcı müşteri için Row'lu, diğer hallerde düz bir dal
+            // vardı ve her dalın KENDİ TypewriterText'i bulunuyordu. Müşteri
+            // gidince (`aktifMusteri` null olunca) dal değişiyor, Flutter eski
+            // widget'ı atıp yenisini yaratıyor ve State sıfırlandığı için AYNI
+            // yazı bir daha baştan yazılıyordu — "yazı üst üste iki kere
+            // yazılıyor" hatası buydu.
+            //
+            // Ürün görseli artık ayrı bir dal değil: yer her zaman duruyor,
+            // gösterilmeyeceği zaman genişliği 0'a iniyor. Böylece
+            // TypewriterText ağaçta hep AYNI konumda kalıyor, State korunuyor.
+            child: Builder(builder: (_) {
+              final m = _state.aktifMusteri;
+              final urunGoster = m != null && !m.musteriSatiyor &&
+                  (_state.musteriKabulBekliyor ||
+                   (_state.aktifPazarlik != null && _state.aktifPazarlik!.turSayisi == 0));
+              // Sarı mouse (oyuncumausu.png) balonda orantısız büyük duruyordu
+              // — %30 küçültüldü. Diğer ürünler etkilenmez.
+              final urunGorsel = m?.item.gorsel;
+              final balonBoy = urunGorsel == 'assets/oyuncumausu.png' ? 70.0 : 100.0;
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  SizedBox(
+                    width: urunGoster ? balonBoy : 0,
+                    height: urunGoster ? balonBoy : 0,
+                    child: urunGoster
+                        ? Image.asset(urunGorsel!, fit: BoxFit.contain)
+                        : null,
+                  ),
+                  SizedBox(width: urunGoster ? 8 : 0),
+                  Expanded(
+                    child: Transform.translate(
+                      // Görsel varken metni hafif sola çek ki balonda ortalı dursun
+                      offset: urunGoster ? const Offset(-15, 0) : Offset.zero,
+                      child: Center(
+                        child: TypewriterText(
+                          // key: ayni metin tekrar gelse de animasyon bastan oynasin
+                          key: ValueKey(_state.mesajSayaci),
+                          text: _kolonyaGeciciMesaj ?? _state.mesaj,
+                          style: TextStyle(fontSize: 14,
+                            color: _state.aktifOzelMusteri != null
+                              ? _ozelMusteriRengi(_state.aktifOzelMusteri!.tip)
+                              : const Color(0xFFFFD700)),
+                          textAlign: TextAlign.center,
                         ),
                       ),
                     ),
-                  ],
-                )
-              : TypewriterText(
-                  key: ValueKey(_state.mesajSayaci),
-                  text: _kolonyaGeciciMesaj ?? _state.mesaj,
-                  style: TextStyle(fontSize: 14,
-                    color: _state.aktifOzelMusteri != null
-                      ? _ozelMusteriRengi(_state.aktifOzelMusteri!.tip)
-                      : const Color(0xFFFFD700)),
-                  textAlign: TextAlign.center,
-                ),
+                  ),
+                ],
+              );
+            }),
           ),
         ),
       ],
@@ -7375,12 +7450,12 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                       Expanded(child: ElevatedButton(
                         onPressed: () => Navigator.pop(ctx),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF21262d),
+                          backgroundColor: Panel.ikincilZemin,
                           foregroundColor: Colors.white70,
                           minimumSize: const Size(0, 44),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
-                            side: const BorderSide(color: Color(0xFF30363d)),
+                            side: const BorderSide(color: Panel.ikincilKenar),
                           ),
                         ),
                         child: const Text('Kapat', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
@@ -7402,7 +7477,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1a0f0a),
+        backgroundColor: const Color(0xFF1a1008),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
           side: const BorderSide(color: Color(0xFFcc3311), width: 1.5),
@@ -7412,29 +7487,21 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
         content: const Text(
           'Bu oyunu envanterinden çıkarıp çöpe atmak istediğine emin misin?',
           textAlign: TextAlign.center,
-          style: TextStyle(color: Colors.white70, fontSize: 14),
+          style: TextStyle(color: Panel.yazi, fontSize: 14),
         ),
-        actionsAlignment: MainAxisAlignment.center,
-        actions: [
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF21262d), foregroundColor: Colors.white70,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-              side: const BorderSide(color: Color(0xFF30363d)),
-            ),
-            child: const Text('Vazgeç', style: TextStyle(fontWeight: FontWeight.bold)),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(ctx);            // onay penceresi
-              Navigator.pop(buyutmeCtx);     // büyütme penceresi
-              _state.urunCikarOrnek(item);
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFcc3311), foregroundColor: Colors.white),
-            child: const Text('Çöpe At', style: TextStyle(fontWeight: FontWeight.bold)),
-          ),
-        ],
+        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        actions: [dialogButonlari(
+          anaEtiket: 'Çöpe At',
+          anaRenk: const Color(0xFFcc3311),
+          anaYazi: Colors.white,
+          anaOnTap: () {
+            Navigator.pop(ctx);            // onay penceresi
+            Navigator.pop(buyutmeCtx);     // büyütme penceresi
+            _state.urunCikarOrnek(item);
+          },
+          ikincilEtiket: 'Vazgeç',
+          ikincilOnTap: () => Navigator.pop(ctx),
+        )],
       ),
     );
   }
@@ -7497,7 +7564,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                 constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.82),
                 child: Container(
                   decoration: BoxDecoration(
-                    color: const Color(0xFF14100a),
+                    color: const Color(0xFF1a1008),
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(color: const Color(0xFFFFD700).withValues(alpha: 0.6), width: 1.5),
                     boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.6), blurRadius: 20, offset: const Offset(0, 8))],
@@ -7514,10 +7581,10 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                       child: ElevatedButton(
                         onPressed: () => setState(() => _envanterAcik = false),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF21262d), foregroundColor: Colors.white70,
+                          backgroundColor: Panel.ikincilZemin, foregroundColor: Panel.yazi,
                           minimumSize: const Size(double.infinity, 42),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                          side: const BorderSide(color: Color(0xFF30363d)),
+                          side: const BorderSide(color: Panel.ikincilKenar),
                         ),
                         child: const Text('Kapat', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
                       ),
@@ -7758,7 +7825,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       showDialog(
         context: context,
         builder: (ctx) => AlertDialog(
-          backgroundColor: const Color(0xFF0d0a18),
+          backgroundColor: const Color(0xFF1a1008),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
             side: const BorderSide(color: Color(0xFF6b7280), width: 2),
@@ -7788,7 +7855,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF0d0a18),
+        backgroundColor: const Color(0xFF1a1008),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
           side: const BorderSide(color: Color(0xFF00e5ff), width: 2),
@@ -7867,7 +7934,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF0d0a18),
+        backgroundColor: const Color(0xFF1a1008),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
           side: const BorderSide(color: Color(0xFF00e5ff), width: 2),
@@ -7901,7 +7968,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF120e18),
+        backgroundColor: const Color(0xFF1a1008),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: const BorderSide(color: Color(0xFFa371f7), width: 2)),
         title: const Column(mainAxisSize: MainAxisSize.min, children: [
           Text('🎁', style: TextStyle(fontSize: 44)),
@@ -7909,23 +7976,20 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
           Text('Kapalı Kutu', textAlign: TextAlign.center, style: TextStyle(color: Color(0xFFa371f7), fontSize: 19)),
         ]),
         content: const Text('İçinde ne olduğu belli değil. Sağlam bir şey de çıkabilir, çürük bir şey de...\n\nAçmak istiyor musun?',
-          textAlign: TextAlign.center, style: TextStyle(color: Colors.white70, fontSize: 14)),
-        actions: [Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Dursun', style: TextStyle(color: Colors.white38)),
-          ),
-          const SizedBox(width: 8),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              final cikan = _state.kutuAc(slotIndex);
-              if (cikan != null) _kutuSonucPopup(cikan);
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFa371f7), foregroundColor: Colors.white),
-            child: const Text('AÇ!', style: TextStyle(fontWeight: FontWeight.bold)),
-          ),
-        ])],
+          textAlign: TextAlign.center, style: TextStyle(color: Panel.yazi, fontSize: 14)),
+        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        actions: [dialogButonlari(
+          anaEtiket: 'Aç!',
+          anaRenk: const Color(0xFFa371f7),
+          anaYazi: Colors.white,
+          anaOnTap: () {
+            Navigator.pop(ctx);
+            final cikan = _state.kutuAc(slotIndex);
+            if (cikan != null) _kutuSonucPopup(cikan);
+          },
+          ikincilEtiket: 'Dursun',
+          ikincilOnTap: () => Navigator.pop(ctx),
+        )],
       ),
     );
   }
@@ -7935,7 +7999,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF120e18),
+        backgroundColor: const Color(0xFF1a1008),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16),
           side: BorderSide(color: iyi ? const Color(0xFF3fb950) : const Color(0xFFcc3311), width: 2)),
         title: Text(iyi ? '✨ Kutudan çıktı!' : '😞 Eh işte...', textAlign: TextAlign.center,
@@ -8039,45 +8103,28 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                       style: TextStyle(
                         color: setVar ? Colors.white60 : const Color(0xFFff7043), fontSize: 12)),
                     const SizedBox(height: 16),
-                    // ── Üst satır: Çöpe At / Tamir Et ──
+                    // ── Üst satır: ana eylem (Tamir Et) SOLDA ──
+                    // Çöpe At yıkıcı bir alternatif; nötr değil, kendi kırmızı
+                    // kimliğini koruyor ama aynı dolu+çerçeveli dilde.
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 24),
-                      child: Row(children: [
-                        Expanded(child: ElevatedButton(
-                          onPressed: () => _envanterUrunCopeAtOnay(item, ctx),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF3a1010),
-                            foregroundColor: const Color(0xFFff7043),
-                            minimumSize: const Size(0, 44),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              side: const BorderSide(color: Color(0xFFcc3311)),
-                            ),
-                          ),
-                          child: const Text('🗑️ Çöpe At',
-                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                        )),
-                        const SizedBox(width: 10),
-                        Expanded(child: ElevatedButton(
-                          onPressed: setVar ? () {
-                            Navigator.pop(ctx);
-                            if (_state.tamirEt(slotIndex)) {
-                              _dialogBildirim(context, '🔧 Ürün tamir edildi!');
-                            }
-                          } : null,
-                          style: ElevatedButton.styleFrom(
-                            // Koyu mavi: 🔧 emojisi gri, açık mavide kayboluyordu.
-                            // Yazı da beyaza alındı ki koyu zeminde okunsun.
-                            backgroundColor: const Color(0xFF1E63C8), foregroundColor: Colors.white,
-                            disabledBackgroundColor: const Color(0xFF2a2a2a),
-                            disabledForegroundColor: Colors.white24,
-                            minimumSize: const Size(0, 44),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                          ),
-                          child: const Text('🔧 Tamir Et',
-                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                        )),
-                      ]),
+                      child: dialogButonlari(
+                        anaEtiket: '🔧 Tamir Et',
+                        // Koyu mavi: 🔧 emojisi gri, açık mavide kayboluyordu.
+                        anaRenk: const Color(0xFF1E63C8),
+                        anaYazi: Colors.white,
+                        anaOnTap: setVar ? () {
+                          Navigator.pop(ctx);
+                          if (_state.tamirEt(slotIndex)) {
+                            _dialogBildirim(context, '🔧 Ürün tamir edildi!');
+                          }
+                        } : null,
+                        ikincilEtiket: '🗑️ Çöpe At',
+                        ikincilOnTap: () => _envanterUrunCopeAtOnay(item, ctx),
+                        ikincilZemin: const Color(0xFF3a1010),
+                        ikincilKenar: const Color(0xFFcc3311),
+                        ikincilYazi: const Color(0xFFff7043),
+                      ),
                     ),
                     const SizedBox(height: 10),
                     // ── Alt satır: iki butonun toplam genişliğinde Kapat ──
@@ -8088,12 +8135,12 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                         child: ElevatedButton(
                           onPressed: () => Navigator.pop(ctx),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF21262d),
+                            backgroundColor: Panel.ikincilZemin,
                             foregroundColor: Colors.white70,
                             minimumSize: const Size(0, 44),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(8),
-                              side: const BorderSide(color: Color(0xFF30363d)),
+                              side: const BorderSide(color: Panel.ikincilKenar),
                             ),
                           ),
                           child: const Text('Kapat',
