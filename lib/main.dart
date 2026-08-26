@@ -18,6 +18,7 @@ import 'tisss_oyunu.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await AyarServisi.yukle(); // ses/titreşim tercihleri açılışta geri gelsin
   await ReklamServisi.emulatorAlgila();
   if (!ReklamServisi.emulator) {
     // iOS: AdMob initialize'tan ÖNCE ATT izni iste (Apple zorunluyor — Guideline 2.1)
@@ -405,7 +406,9 @@ class AnaMenuEkrani extends StatefulWidget {
 }
 
 class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
-  bool _sesAcik = true;
+  // Kayıtlı tercihlerden başlat — açılışta AyarServisi.yukle() zaten çalıştı.
+  bool _sesAcik = SesServisi.sesAcik;
+  bool _titresimAcik = SesServisi.titresimAcik;
   bool _ayarlarAcik = false;
   bool _yukleniyor = false;
   bool _kayitVar = false;
@@ -576,14 +579,36 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
             child: Column(mainAxisSize: MainAxisSize.min, children: [
               const Text('⚙️ AYARLAR', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF3a2000), letterSpacing: 1)),
               const SizedBox(height: 24),
+              // Ses ve Titreşim ayrı ayarlar (oyun içi Ayarlar ile aynı mantık).
               Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                 const Text('🔊 Ses:', style: TextStyle(fontSize: 16, color: Color(0xFF3a2000), fontWeight: FontWeight.bold)),
                 GestureDetector(
-                  onTap: () => setState(() { _sesAcik = !_sesAcik; SesServisi.sesAcik = _sesAcik; }),
+                  onTap: () => setState(() {
+                    _sesAcik = !_sesAcik;
+                    SesServisi.sesAcik = _sesAcik;
+                    AyarServisi.kaydet();
+                  }),
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     decoration: BoxDecoration(color: _sesAcik ? const Color(0xFF228B22) : const Color(0xFF8B0000), borderRadius: BorderRadius.circular(8)),
                     child: Text(_sesAcik ? 'AÇIK' : 'KAPALI', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  ),
+                ),
+              ]),
+              const SizedBox(height: 16),
+              Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                const Text('📳 Titreşim:', style: TextStyle(fontSize: 16, color: Color(0xFF3a2000), fontWeight: FontWeight.bold)),
+                GestureDetector(
+                  onTap: () => setState(() {
+                    _titresimAcik = !_titresimAcik;
+                    SesServisi.titresimAcik = _titresimAcik;
+                    AyarServisi.kaydet();
+                    if (_titresimAcik) SesServisi.dokun(); // örnek titreşim
+                  }),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(color: _titresimAcik ? const Color(0xFF228B22) : const Color(0xFF8B0000), borderRadius: BorderRadius.circular(8)),
+                    child: Text(_titresimAcik ? 'AÇIK' : 'KAPALI', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                   ),
                 ),
               ]),
@@ -1836,6 +1861,15 @@ class PazarlikSeans {
 class SesServisi {
   static bool sesAcik = true;
 
+  /// Dokunsal geri bildirim ayrı bir ayar. Eskiden `sesAcik`e bağlıydı ama
+  /// ikisi farklı beklentiler: sessiz oynayan biri titreşimi isteyebilir.
+  static bool titresimAcik = true;
+
+  /// Buton dokunuşu — SES YOK, sadece çok kısa titreşim.
+  /// Ana ekrandaki her `_oyunButon` bunu çağırır; ayrı bir ses çalmak
+  /// tıklama başına gürültü olurdu.
+  static void dokun() => _titre(HapticFeedback.selectionClick);
+
   // ── Mevcut ──
   static void kapiyiCal()  { _oynat('kapi.mp3');       _titre(HapticFeedback.lightImpact); }
   static void paraGirdi()  { _oynat('paragirdi.mp3'); }
@@ -1870,9 +1904,9 @@ class SesServisi {
   }
 
   /// Dokunsal geri bildirim — ses dosyası gerektirmez, cihaz titreşimi.
-  /// Ses kapalıysa titreşim de kapanır (tek ayar, tek beklenti).
+  /// ⚠️ Artık `sesAcik`e DEĞİL, kendi ayarına (`titresimAcik`) bakıyor.
   static void _titre(Future<void> Function() f) {
-    if (!sesAcik) return;
+    if (!titresimAcik) return;
     try { f(); } catch (_) {}
   }
 
@@ -1886,6 +1920,29 @@ class SesServisi {
 }
 
 // ─── KAYIT SERVİSİ ───────────────────────────────────────────────────────────
+
+/// Ses/titreşim tercihleri. Oyun kaydından AYRI tutuluyor: oyunu sıfırlamak
+/// ya da silmek bu tercihleri kaybettirmemeli.
+class AyarServisi {
+  static const _sesKey = 'ses_acik';
+  static const _titresimKey = 'titresim_acik';
+
+  static Future<void> yukle() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      SesServisi.sesAcik = prefs.getBool(_sesKey) ?? true;
+      SesServisi.titresimAcik = prefs.getBool(_titresimKey) ?? true;
+    } catch (_) {/* ilk açılış / prefs yoksa varsayılanlar kalsın */}
+  }
+
+  static Future<void> kaydet() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_sesKey, SesServisi.sesAcik);
+      await prefs.setBool(_titresimKey, SesServisi.titresimAcik);
+    } catch (_) {}
+  }
+}
 
 class KayitServisi {
   static const _key = 'oyun_kayit';
@@ -5159,6 +5216,52 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     );
   }
 
+  /// Ayarlar satırı: solda etiket, sağda iki segmentli Açık/Kapalı switch.
+  /// "AÇIK/KAPALI" tek kelimeyken hangi durumda olduğu ve dokununca ne
+  /// olacağı belirsizdi; iki segment yan yana, aktif olan renkli duruyor.
+  static Widget _ayarSatiri({
+    required String etiket,
+    required bool deger,
+    required ValueChanged<bool> onDegis,
+  }) {
+    Widget segment(String metin, bool bu, Color renk) {
+      final secili = deger == bu;
+      return GestureDetector(
+        onTap: () => onDegis(bu),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            color: secili ? renk : Colors.transparent,
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Text(metin,
+            style: TextStyle(
+              color: secili ? Colors.white : Colors.white38,
+              fontWeight: FontWeight.bold, fontSize: 13)),
+        ),
+      );
+    }
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(etiket, style: const TextStyle(fontSize: 16, color: Colors.white70, fontWeight: FontWeight.bold)),
+        Container(
+          padding: const EdgeInsets.all(3),
+          decoration: BoxDecoration(
+            color: const Color(0xFF0d1117),
+            borderRadius: BorderRadius.circular(9),
+            border: Border.all(color: Colors.white12),
+          ),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            segment('Açık', true, const Color(0xFF228B22)),
+            segment('Kapalı', false, const Color(0xFF8B0000)),
+          ]),
+        ),
+      ],
+    );
+  }
+
   void _ayarlarPopup() {
     showDialog(
       context: context,
@@ -5171,47 +5274,26 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
           ),
           title: const Text('⚙️ Ayarlar', textAlign: TextAlign.center,
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFFd2a679), letterSpacing: 1)),
-          content: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text('🔊 Ses:', style: TextStyle(fontSize: 16, color: Colors.white70, fontWeight: FontWeight.bold)),
-              // Gerçek switch görünümü — "AÇIK/KAPALI" tek kelimeyken hangi
-              // durumda olduğu ve dokununca ne olacağı belirsizdi. Artık iki
-              // segment yan yana; aktif olan renkli, diğeri soluk duruyor.
-              Builder(builder: (_) {
-                Widget segment(String etiket, bool bu, Color renk) {
-                  final secili = SesServisi.sesAcik == bu;
-                  return GestureDetector(
-                    onTap: () => setDialogState(() => SesServisi.sesAcik = bu),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 150),
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: secili ? renk : Colors.transparent,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(etiket,
-                        style: TextStyle(
-                          color: secili ? Colors.white : Colors.white38,
-                          fontWeight: FontWeight.bold, fontSize: 13)),
-                    ),
-                  );
-                }
-                return Container(
-                  padding: const EdgeInsets.all(3),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF0d1117),
-                    borderRadius: BorderRadius.circular(9),
-                    border: Border.all(color: Colors.white12),
-                  ),
-                  child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    segment('Açık', true, const Color(0xFF228B22)),
-                    segment('Kapalı', false, const Color(0xFF8B0000)),
-                  ]),
-                );
+          // Ses ve Titreşim AYRI ayarlar: sessiz oynayan biri titreşimi
+          // isteyebilir. İkisi de aynı iki segmentli switch dilinde.
+          content: Column(mainAxisSize: MainAxisSize.min, children: [
+            _ayarSatiri(
+              etiket: '🔊 Ses:',
+              deger: SesServisi.sesAcik,
+              onDegis: (v) => setDialogState(() { SesServisi.sesAcik = v; AyarServisi.kaydet(); }),
+            ),
+            const SizedBox(height: 14),
+            _ayarSatiri(
+              etiket: '📳 Titreşim:',
+              deger: SesServisi.titresimAcik,
+              // Açılırken hemen bir titreşim ver: ayarın ne yaptığı anlaşılsın.
+              onDegis: (v) => setDialogState(() {
+                SesServisi.titresimAcik = v;
+                AyarServisi.kaydet();
+                if (v) SesServisi.dokun();
               }),
-            ],
-          ),
+            ),
+          ]),
           actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
           actions: [Row(children: [
             // Geri: sadece Ayarlar'ı kapatır, browser menüsü altta açık kalır.
@@ -5453,7 +5535,8 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
         _browserMenuItem(
           ikon: '⚙️',
           baslik: 'Ayarlar',
-          altyazi: SesServisi.sesAcik ? 'Ses: Açık' : 'Ses: Kapalı',
+          altyazi: 'Ses: ${SesServisi.sesAcik ? "Açık" : "Kapalı"} · '
+                   'Titreşim: ${SesServisi.titresimAcik ? "Açık" : "Kapalı"}',
           renk: const Color(0xFFd2a679),
           onTap: () => _ayarlarPopup(),
         ),
@@ -6840,7 +6923,11 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   }) {
     final aktif = onTap != null;
     return GestureDetector(
-      onTap: onTap,
+      // Dokunsal geri bildirim tek yerden: ana ekrandaki bütün önemli butonlar
+      // (Müşteri Çağır, Envanter, EVET/HAYIR, Teklif Ver, Reddet, Kabul Et,
+      // Kolonya Tut, Tamam...) bu widget'tan geçiyor. Pasif butonda titreşim
+      // YOK — dokunuşun bir karşılığı yoksa titretmek yanıltıcı olur.
+      onTap: aktif ? () { SesServisi.dokun(); onTap(); } : null,
       child: CustomPaint(
         painter: _PixelButonPainter(renk: gradyan[0], aktif: aktif),
         child: SizedBox(
@@ -7001,7 +7088,9 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                   _state.musteriKabulBekliyor || _pazarlikBekleniyor;
               final aktif = hasMusteri && !_state.kolonyaIkramEdildi && musteriEtkilesimde;
               return GestureDetector(
-                onTap: aktif ? _kolonyaIkramEt : null,
+                // Bu buton `_oyunButon`'dan geçmiyor (kendi CustomPaint'i var),
+                // dokunsal geri bildirimi elle veriliyor.
+                onTap: aktif ? () { SesServisi.dokun(); _kolonyaIkramEt(); } : null,
                 child: CustomPaint(
                   painter: _PixelButonPainter(renk: const Color(0xFFE6A800), aktif: aktif),
                   child: SizedBox(

@@ -1098,7 +1098,37 @@ Bu sayede tüm tetikleyiciler önceden bağlandı; dosyalar sonradan doldurulabi
 
 Her ses metodu uygun titreşimle eşleştirildi: anlaşma→medium, rozet→heavy,
 hata→heavy, kapı/seri/tamir→light, envanter/tık→selectionClick.
-`sesAcik` kapalıysa titreşim de kapanır (tek ayar, tek beklenti).
+
+> ⚠️ **v115'te ayrıldı**: titreşim artık `sesAcik`e DEĞİL, kendi ayarına
+> (`SesServisi.titresimAcik`) bakıyor. Sessiz oynayan biri titreşimi
+> isteyebilir — ikisi farklı beklenti.
+
+### Buton dokunuşunda haptik (v115)
+`SesServisi.dokun()` — **ses yok**, sadece `selectionClick`. Her tıklamada ses
+çalmak gürültü olurdu.
+
+Ana ekrandaki bütün önemli butonlar `_oyunButon` widget'ından geçtiği için
+haptik **tek yerden** veriliyor:
+
+```dart
+onTap: aktif ? () { SesServisi.dokun(); onTap(); } : null,
+```
+
+- Müşteri Çağır, Envanter, EVET/HAYIR, Teklif Ver, Reddet, Kabul Et, Tamam,
+  alkol testi şıkları… hepsi otomatik kapsanıyor.
+- **Pasif butonda titreşim YOK** — dokunuşun karşılığı yoksa titretmek
+  yanıltıcı olur.
+- Kolonya Tut kendi `CustomPaint`'ini kullandığı için haptiği elle veriliyor.
+
+### Ayarlar kalıcı — `AyarServisi`
+Ses/titreşim tercihleri `SharedPreferences`'ta, **oyun kaydından ayrı**
+anahtarlarda (`ses_acik`, `titresim_acik`). Oyunu sıfırlamak ya da silmek
+tercihleri kaybettirmemeli. `main()` içinde `AyarServisi.yukle()` ile açılışta
+geri yükleniyor.
+
+> Ayarlar hem ana menüde hem oyun içi browser'da; ikisi de aynı iki segmentli
+> Açık/Kapalı switch dilinde (`_ayarSatiri`). Titreşim açılırken örnek bir
+> titreşim veriliyor ki ayarın ne yaptığı anlaşılsın.
 
 ### Ücretsiz ses kaynakları
 `freesound.org` (CC0 filtresi) Â· `pixabay.com/sound-effects` Â· `opengameart.org` Â·
@@ -2017,6 +2047,7 @@ Base ratio hâlâ `_clamp(0.18 - progress * 0.15, 0.02, 0.18)`.
 ## Versiyon Geçmişi (son)
 | Commit | Açıklama |
 |--------|----------|
+| v115 | **📳 Buton dokunuşunda haptik**: ana ekrandaki bütün önemli butonlar `_oyunButon`'dan geçtiği için haptik tek yerden veriliyor (`SesServisi.dokun()` — ses yok, sadece `selectionClick`). Pasif butonda titreşim yok. Kolonya Tut kendi CustomPaint'ini kullandığından haptiği elle veriliyor. **Titreşim artık ayrı ayar**: `sesAcik`e bağlıydı, kendi anahtarına (`titresimAcik`) alındı — sessiz oynayan biri titreşimi isteyebilir. Hem ana menü hem oyun içi Ayarlar'da Açık/Kapalı switch'i var. **Ayarlar kalıcı**: `AyarServisi` ile SharedPreferences'ta, oyun kaydından ayrı anahtarlarda; oyunu sıfırlamak tercihleri kaybettirmiyor. |
 | v114 | **👩‍🏫 Rehber Hande**: oyunun en başında, "Müşteri Çağır"a basılmadan gelen tanıtım karakteri; dört repliği tek ve geniş "Tamam" butonuyla anlatıp gidiyor. Müşteri sayacını tüketmiyor, rotasyona girmiyor, bir kez geliyor (`handeGosterildi` kayıtta saklanıyor; eski kayıtlarda `true` sayılıyor ki tanıtım açılmasın). **💰 Para sayacı animasyonu**: satış/alımda bakiye kutusu büyüyor, yeşile (giriş) / kırmızıya (çıkış) dönüyor, rakamlar eski değerden yenisine sayarak ilerliyor, sonra normale soluyor (2.2 sn). Animasyon ortasında yeni değişim gelirse ekrandaki değerden devam ediyor, sayı geri sıçramıyor. Tamir Et butonu koyu maviye alındı (gri anahtar emojisi açık mavide kayboluyordu). `test/guvenlik_test.dart` 28 test. |
 | v113 | **🛡️ Yakışıklı Güvenlik**: 3. günde (ve reddedilirse 3'ün katlarında) gelen özel müşteri; günde 50 liraya çalışır, tutulduğu sürece **hırsız hiç gelmez** ve arka plan güvenlikli sürüme geçer. Güvenliğe dokununca müşteri gibi öne gelip "İşi bırakmamı ister misin?" diye sorar — öne gelirken arka plandaki kopyası silinir (`_guvenlikOnde`), yoksa ekranda iki güvenlik olurdu. HAYIR'da sağa kaymaz, yukarı süzülüp kaybolur ve yerine geçmiş gibi görünür. Dokunma katmanı Stack'in EN SONUNDA olmak zorunda (sonra gelen çocuk önce hit-test edilir; masa/SafeArea dokunuşu yutuyordu). **🔑 Satılık Dükkanlar**: 5. günde açılan yeni browser bölümü, 5 dükkan (5000-20000), satın alınınca kira yok; ikinci dükkan kiraya verilip günlük gelir sağlanabilir. Dükkan artık kayıtta İSİMLE saklanıyor. **🏠 Dükkan görselleri dosya adıyla eşleşti** (`dukkan_<ad>.jpg` / `_guv.jpg`, eski `bgbos*` kaldırıldı); Cadde↔AVM sanatı yer değiştirdi, Çarşı ve 5 satılık için kapı camı yeniden ölçüldü. **Diğer**: Toptancı tezgâhı tek renk sarı, envanter turkuaz; çürük ürün ekranı büyütme diline geçti (Çöpe At/Tamir Et + tam genişlik Kapat); İTELE topu %30 hızlandı; 9 yeni ekipman + 4 yeni karakter (3'ü sabit adlı: Recai Carlos, Kahraman Memo, Şakir Oneyıl). `test/guvenlik_test.dart` (21 test). APK 60.9 → 65.8MB |
 | v112 | **🐛 Pazarlığı donduran `clamp` hatası düzeltildi**: müşterinin teklifi rezervasyon sınırına dayanınca `clamp(alt, üst)` çağrısının alt sınırı üst sınırını geçiyor, Dart `ArgumentError` atıyordu; istisna `teklifVer`den kaçtığı için ne replik ne yeni fiyat güncelleniyordu — oyuncu "Teklif Ver"e basıp duruyor, hiçbir şey olmuyordu. Artık clamp öncesi "yer kaldı mı" kontrolü var, yer yoksa `atFloor` dalına düşüp kabul/git kararı veriliyor. `test/pazarlik_test.dart` (6 test) eklendi. **Ürün büyütme artık `showDialog`** — Toptancı Rıza penceresi açıkken altında kalmıyordu (Stack katmanı → dialog route); Rıza'nın tezgâhındaki ürünlere de tıkla-büyüt eklendi. **"Yeterli paran yok"** durumunda ürün artık masadan aşağı kaymıyor, müşteriyle birlikte çıkıyor (`sonAnlasmaBasarisiz`). Bodrum Kat kapı silüeti sağdan %10 kısaldı (0.1330→0.1197). **İçerik**: 5 CD görseli yenilendi, 16 yeni CD (`CD_31..46`, toplam 46), 8 yeni karakter (`musteri_35..42`, roster 42). APK 54.0 → 60.9MB |
