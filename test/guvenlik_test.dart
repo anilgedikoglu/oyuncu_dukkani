@@ -225,6 +225,79 @@ void main() {
     });
   });
 
+  group('rehber Hande', () {
+    test('dört replik, hepsi dolu ve placeholder içermiyor', () {
+      expect(OzelMusteri.handeReplikleri.length, 4);
+      for (final r in OzelMusteri.handeReplikleri) {
+        expect(r.trim().isNotEmpty, isTrue);
+        expect(r.contains('{'), isFalse, reason: 'doldurulmamış placeholder: $r');
+      }
+      expect(OzelMusteri.handeReplikleri.first.contains('ben Hande'), isTrue);
+    });
+
+    test('replikler sırayla ilerler, sonuncudan sonra biter', () {
+      final s = GameState();
+      s.handeyiGonder();
+      expect(s.handeAktif, isTrue);
+      expect(s.handeAdim, 0);
+      expect(s.mesaj, OzelMusteri.handeReplikleri[0]);
+
+      for (int i = 1; i < OzelMusteri.handeReplikleri.length; i++) {
+        expect(s.handeIlerle(), isTrue, reason: 'adım $i');
+        expect(s.handeAdim, i);
+        expect(s.mesaj, OzelMusteri.handeReplikleri[i]);
+      }
+      // Son replikten sonra "devam edecek bir şey yok"
+      expect(s.handeIlerle(), isFalse);
+    });
+
+    test('alış/satış yapmaz: EVET/HAYIR beklenmiyor', () {
+      final s = GameState();
+      s.handeyiGonder();
+      expect(s.musteriKabulBekliyor, isFalse);
+      expect(s.aktifMusteri, isNull);
+      expect(s.aktifPazarlik, isNull);
+    });
+
+    test('müşteri sayacını tüketmez', () {
+      final s = GameState();
+      final onceGunluk = s.gunlukMusteriSayisi;
+      final onceToplam = s.musteriSayisi;
+      s.handeyiGonder();
+      expect(s.gunlukMusteriSayisi, onceGunluk);
+      expect(s.musteriSayisi, onceToplam);
+    });
+
+    test('sadece bir kez gelir', () {
+      final s = GameState();
+      s.handeyiGonder();
+      s.musteriAnimasyonBitti();
+      expect(s.handeGosterildi, isTrue);
+      s.handeyiGonder();
+      expect(s.aktifOzelMusteri, isNull, reason: 'ikinci kez gelmemeli');
+    });
+
+    test('rotasyona sızmaz', () {
+      final s = GameState();
+      for (int i = 0; i < 300; i++) {
+        s.yeniMusteriGonder();
+        expect(s.aktifOzelMusteri?.tip, isNot(OzelMusteriTip.hande), reason: 'tur $i');
+        s.musteriAnimasyonBitti();
+      }
+    });
+
+    test('gösterildi bilgisi kayıtta saklanır; eski kayıtlar tanıtımı görmüş sayılır', () {
+      final s = GameState();
+      s.handeyiGonder();
+      final s2 = GameState.fromJson(s.toJson());
+      expect(s2.handeGosterildi, isTrue);
+
+      // Alan hiç yoksa (eski kayıt) tanıtım tekrar açılmamalı
+      final eski = Map<String, dynamic>.from(s.toJson())..remove('handeGosterildi');
+      expect(GameState.fromJson(eski).handeGosterildi, isTrue);
+    });
+  });
+
   group('sabit adlı karakterler', () {
     test('ad alanı olanlar rastgele isim almaz', () {
       final s = GameState();

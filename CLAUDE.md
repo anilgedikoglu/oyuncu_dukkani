@@ -42,6 +42,7 @@ assets/                — görseller ve sesler
   musteri_1..46.png    — müşteri karakterleri (46 adet, yaş/cinsiyet musteriHavuzu içinde)
                          musteri_43/44/45 SABİT adlı (Recai Carlos, Kahraman Memo, Şakir Oneyıl)
   hirsiz/polis/vergici/kurye/toptanci/falci/guvenlik.png — özel müşteri karakterleri
+  hande.png            — Rehber Hande (oyunun başındaki tanıtım karakteri)
   dukkan_<ad>.jpg      — dükkan arka planı (bodrum/mahalle/cadde/carsi/avm + satilik1..5)
   dukkan_<ad>_guv.jpg  — aynı dükkanın GÜVENLİKLİ sürümü (kapıda güvenlik durur)
   CD_1..46.png         — 46 CD ürünü (CD_15/16/17 = KIRGEÇ, İTELE, TISSS: oynanabilir)
@@ -141,6 +142,62 @@ Toplu iş + kontak sayfası için: `tools/toplu_isle.ps1`
 
 > ℹ️ Ayak altındaki küçük gölge izleri **önemsiz** — müşteri masanın arkasında
 > göğsünden kesiliyor (`kMusteriUstu` 0.2183 → masa 0.4833), ayaklar hiç görünmüyor.
+
+---
+---
+
+## 👩‍🏫 v114 — REHBER HANDE (açılış tanıtımı)
+
+Oyunun **en başında**, "Müşteri Çağır"a basılmadan kendiliğinden gelen tanıtım
+karakteri. Alış/satış yapmaz; dört repliği sırayla anlatıp gider.
+
+- Tetikleyici: `initState` içinde `widget.yeniOyun && !handeGosterildi`
+  (700ms gecikme — sahne otursun, kapı sesi üst üste binmesin).
+- Alt barda **tek ve geniş "Tamam"** butonu çıkar; EVET/HAYIR, pazarlık ve
+  Müşteri Çağır/Envanter satırı gizlenir (`_state.handeAktif`).
+- Her "Tamam" `handeIlerle()` çağırır; `false` dönerse (replikler bitti)
+  `_ozelMusteriGonder()` ile sağdan çıkar ve normal akış başlar.
+- **Müşteri sayacına dokunmaz** — Hande bir ziyaret değil, oyunun girişi;
+  günlük müşteri hakkını yemesi haksızlık olur.
+- `handeGosterildi` kayıtta saklanır. ⚠️ Eski kayıtlarda alan yoksa
+  **`true`** kabul edilir: yıllardır oynayan birine tanıtım açılmasın.
+
+Replikler `OzelMusteri.handeReplikleri` içinde (4 adet); `OzelMusteri.hande()`
+fabrikası ilk repliği başlangıç mesajı yapar.
+
+> `guvenlik` gibi `hande` de özel müşteri ROTASYONUNA girmez — rotasyon
+> `_ozelTipSirasi`'ndan geliyor, oraya hiç eklenmiyor.
+
+---
+
+## 💰 v114 — PARA SAYACI ANİMASYONU
+
+Satış/alım anı gözden kaçmasın diye bakiye kutusu canlanıyor:
+
+| Aşama | Görünüm |
+|---|---|
+| Sayım (%0–72) | Kutu büyür, **yeşil** (giriş) / **kırmızı** (çıkış) olur, rakamlar eski değerden yenisine SAYARAK ilerler |
+| Dönüş (%72–100) | Renk ve boyut normale solar, değer hedefte kalır |
+
+Toplam süre **2.2 sn**. Renkler referanstaki gibi: `0xFF3CC850` yeşil,
+`0xFFF84C4C` kırmızı; vurgu sırasında yazı siyaha döner (renkli zeminde
+okunur kalsın).
+
+```dart
+int get _gosterilenPara { ... }        // sayım sırasında ara değer
+void _paraDegisimKontrol() { ... }     // _state listener'ı
+```
+
+- Kutu `AnimatedBuilder(animation: _paraController)` ile sarılı — sadece o
+  parça yeniden çiziliyor, tüm header değil.
+- ⚠️ Animasyon ortasında yeni bir para değişimi gelirse sayım **ekrandaki
+  değerden** devam eder (`_paraBaslangic = _gosterilenPara`); yoksa sayı geri
+  sıçrardı.
+- Ölçek `1 + 0.16 * sin(pi * t)` — tek tepe, kendiliğinden normale döner.
+
+### Tamir Et butonu koyu maviye alındı
+`0xFF58a6ff` → `0xFF1E63C8`, yazı beyaz. 🔧 emojisi gri olduğu için açık mavi
+zeminde kayboluyordu.
 
 ---
 ---
@@ -1960,6 +2017,7 @@ Base ratio hâlâ `_clamp(0.18 - progress * 0.15, 0.02, 0.18)`.
 ## Versiyon Geçmişi (son)
 | Commit | Açıklama |
 |--------|----------|
+| v114 | **👩‍🏫 Rehber Hande**: oyunun en başında, "Müşteri Çağır"a basılmadan gelen tanıtım karakteri; dört repliği tek ve geniş "Tamam" butonuyla anlatıp gidiyor. Müşteri sayacını tüketmiyor, rotasyona girmiyor, bir kez geliyor (`handeGosterildi` kayıtta saklanıyor; eski kayıtlarda `true` sayılıyor ki tanıtım açılmasın). **💰 Para sayacı animasyonu**: satış/alımda bakiye kutusu büyüyor, yeşile (giriş) / kırmızıya (çıkış) dönüyor, rakamlar eski değerden yenisine sayarak ilerliyor, sonra normale soluyor (2.2 sn). Animasyon ortasında yeni değişim gelirse ekrandaki değerden devam ediyor, sayı geri sıçramıyor. Tamir Et butonu koyu maviye alındı (gri anahtar emojisi açık mavide kayboluyordu). `test/guvenlik_test.dart` 28 test. |
 | v113 | **🛡️ Yakışıklı Güvenlik**: 3. günde (ve reddedilirse 3'ün katlarında) gelen özel müşteri; günde 50 liraya çalışır, tutulduğu sürece **hırsız hiç gelmez** ve arka plan güvenlikli sürüme geçer. Güvenliğe dokununca müşteri gibi öne gelip "İşi bırakmamı ister misin?" diye sorar — öne gelirken arka plandaki kopyası silinir (`_guvenlikOnde`), yoksa ekranda iki güvenlik olurdu. HAYIR'da sağa kaymaz, yukarı süzülüp kaybolur ve yerine geçmiş gibi görünür. Dokunma katmanı Stack'in EN SONUNDA olmak zorunda (sonra gelen çocuk önce hit-test edilir; masa/SafeArea dokunuşu yutuyordu). **🔑 Satılık Dükkanlar**: 5. günde açılan yeni browser bölümü, 5 dükkan (5000-20000), satın alınınca kira yok; ikinci dükkan kiraya verilip günlük gelir sağlanabilir. Dükkan artık kayıtta İSİMLE saklanıyor. **🏠 Dükkan görselleri dosya adıyla eşleşti** (`dukkan_<ad>.jpg` / `_guv.jpg`, eski `bgbos*` kaldırıldı); Cadde↔AVM sanatı yer değiştirdi, Çarşı ve 5 satılık için kapı camı yeniden ölçüldü. **Diğer**: Toptancı tezgâhı tek renk sarı, envanter turkuaz; çürük ürün ekranı büyütme diline geçti (Çöpe At/Tamir Et + tam genişlik Kapat); İTELE topu %30 hızlandı; 9 yeni ekipman + 4 yeni karakter (3'ü sabit adlı: Recai Carlos, Kahraman Memo, Şakir Oneyıl). `test/guvenlik_test.dart` (21 test). APK 60.9 → 65.8MB |
 | v112 | **🐛 Pazarlığı donduran `clamp` hatası düzeltildi**: müşterinin teklifi rezervasyon sınırına dayanınca `clamp(alt, üst)` çağrısının alt sınırı üst sınırını geçiyor, Dart `ArgumentError` atıyordu; istisna `teklifVer`den kaçtığı için ne replik ne yeni fiyat güncelleniyordu — oyuncu "Teklif Ver"e basıp duruyor, hiçbir şey olmuyordu. Artık clamp öncesi "yer kaldı mı" kontrolü var, yer yoksa `atFloor` dalına düşüp kabul/git kararı veriliyor. `test/pazarlik_test.dart` (6 test) eklendi. **Ürün büyütme artık `showDialog`** — Toptancı Rıza penceresi açıkken altında kalmıyordu (Stack katmanı → dialog route); Rıza'nın tezgâhındaki ürünlere de tıkla-büyüt eklendi. **"Yeterli paran yok"** durumunda ürün artık masadan aşağı kaymıyor, müşteriyle birlikte çıkıyor (`sonAnlasmaBasarisiz`). Bodrum Kat kapı silüeti sağdan %10 kısaldı (0.1330→0.1197). **İçerik**: 5 CD görseli yenilendi, 16 yeni CD (`CD_31..46`, toplam 46), 8 yeni karakter (`musteri_35..42`, roster 42). APK 54.0 → 60.9MB |
 | v111 | **16 maddelik düzeltme listesi**: ürün artık müşteriyle aynı karede giriyor (ayrı `_urunKayipController`, `AnimatedPositioned` kaldırıldı); yeni oyunda envanterde oynanabilir ürün yok (`// GECICI` kodu silindi); envanterdeki sağlam ürüne tıkla → büyüt + Çöpe At; tamir popup butonları (Tamir Et solda, Vazgeç sağda, ikisi de dolu arkaplan); browser sabit boyut + her sayfada Geri/Kapat, Ayarlar'da da; ses ayarı gerçek switch (Açık/Kapalı segment); sarı mouse balon görseli %30 küçüldü; 2 dükkan kapı silüeti sağa %15 genişledi; Kırgeç/İtele bitiş metinleri FittedBox ile taşmıyor; seri bildirimi ekran merkezinde; İtele: top %20 hızlı + kırmızı X kapatma + başlangıç yazısı alt yarıda; Falcı'ya 25 yeni fal metni (havuz 50→75); TISSS başlangıç yazısı üst 1/3'te; kolonya "zombi müşteri" hatası düzeltildi (reddedilip çıkış animasyonu oynayan müşteriye kolonya verilemez artık) |

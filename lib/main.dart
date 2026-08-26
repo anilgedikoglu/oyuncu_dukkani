@@ -678,7 +678,7 @@ class MusteriOzellik {
 
 // ─── ÖZEL MÜŞTERİ (HIRSIZ / POLİS / VERGİCİ / KURYE / TOPTANCI / FALCI) ─────
 
-enum OzelMusteriTip { hirsiz, polis, vergici, kurye, toptanci, falci, guvenlik }
+enum OzelMusteriTip { hirsiz, polis, vergici, kurye, toptanci, falci, guvenlik, hande }
 
 class OzelMusteri {
   final OzelMusteriTip tip;
@@ -702,6 +702,29 @@ class OzelMusteri {
   OzelMusteri({required this.tip, required this.gorsel, required this.ad, required this.ilkMiktar, required this.ilkMesaj,
     this.kuryeAd, this.kuryeYemek, this.sikSol, this.sikSag, this.dogruCevap,
     this.istifaSorusu = false});
+
+  /// Rehber Hande — oyunun EN BAŞINDA, "Müşteri Çağır"a basılmadan gelir.
+  /// Alış/satış yapmaz; sadece `handeRepikleri`'ni sırayla anlatır.
+  factory OzelMusteri.hande() => OzelMusteri(
+        tip: OzelMusteriTip.hande,
+        gorsel: 'assets/hande.png',
+        ad: 'Hande',
+        ilkMiktar: 0,
+        ilkMesaj: handeReplikleri.first,
+      );
+
+  /// Hande'nin tanıtım metinleri. Her "Tamam"da sıradakine geçilir; sonuncudan
+  /// sonra gider. Sıra `GameState.handeAdim` alanında tutulur.
+  static const List<String> handeReplikleri = [
+    'Merhaba, ben Hande; senin rehberin ve öğretmeninim. '
+        'Yeni dükkanın hayırlı olsun!',
+    'Bu oyunda amacın, elindeki oyun CD\'si ve ekipmanları satarak '
+        'dükkanını geliştirmek.',
+    'İlk günlerde satıp sermaye yapmak için, envanterdeki CD ve '
+        'ekipmanları kullanabilirsin.',
+    'Yepyeni ekipmanlar, ilginç müşteriler ve oynanabilir oyun sürprizleri '
+        'seni bekliyor. Bol şans!',
+  ];
 
   /// Dükkandaki güvenliğe tıklanınca müşteri gibi öne gelir ve istifayı sorar.
   factory OzelMusteri.guvenlikIstifa() => OzelMusteri(
@@ -809,6 +832,10 @@ class OzelMusteri {
         ];
         return OzelMusteri(tip: tip, gorsel: 'assets/falci.png', ad: 'Falcı Faloya',
           ilkMiktar: ucret, ilkMesaj: falSelamlar[rng.nextInt(falSelamlar.length)]);
+      case OzelMusteriTip.hande:
+        // Rehber; alış/satış yapmaz. `OzelMusteri.hande()` ile de üretilebilir,
+        // bu dal `olustur` çağrıları için var.
+        return OzelMusteri.hande();
       case OzelMusteriTip.guvenlik:
         // Ücret SABİT (günde 50 lira) — oyuncu neye evet dediğini bilsin.
         // CD alıp satmaz; tek işi hırsızı dükkana sokmamak.
@@ -2526,6 +2553,39 @@ class GameState extends ChangeNotifier {
   bool sonAnlasmaBasarisiz = false;
   DukkanSeviye aktifDukkan = tumDukkanlar[0]; // Seviye 1'den başla
 
+  // ── REHBER HANDE (açılış tanıtımı) ────────────────────────────────────────
+  /// Hande oyunun EN BAŞINDA bir kez gelir; "Müşteri Çağır"a basmak gerekmez.
+  /// Gösterildikten sonra bir daha gelmez (kayıtta saklanır).
+  bool handeGosterildi = false;
+
+  /// Hande'nin kaçıncı repliğinde olduğumuz (0..replikSayisi-1).
+  int handeAdim = 0;
+
+  bool get handeAktif => aktifOzelMusteri?.tip == OzelMusteriTip.hande;
+
+  /// Açılış tanıtımını başlatır. Müşteri sayacına DOKUNMAZ: Hande bir ziyaret
+  /// değil, oyunun girişi — günlük müşteri hakkını yemesi haksızlık olur.
+  void handeyiGonder() {
+    if (handeGosterildi) return;
+    handeGosterildi = true;
+    handeAdim = 0;
+    aktifOzelMusteri = OzelMusteri.hande();
+    ozelMusteriGorunuyor = true;
+    musteriKabulBekliyor = false; // EVET/HAYIR değil, tek "Tamam" butonu var
+    mesaj = OzelMusteri.handeReplikleri[0];
+    notifyListeners();
+  }
+
+  /// "Tamam"a basıldı. Sıradaki replik varsa ona geçer ve `true` döner;
+  /// replikler bittiyse `false` döner (çağıran taraf Hande'yi gönderir).
+  bool handeIlerle() {
+    if (handeAdim >= OzelMusteri.handeReplikleri.length - 1) return false;
+    handeAdim++;
+    mesaj = OzelMusteri.handeReplikleri[handeAdim];
+    notifyListeners();
+    return true;
+  }
+
   // ── YAKIŞIKLI GÜVENLİK ────────────────────────────────────────────────────
   /// Güvenlik tutulduysa arka plan güvenlikli sürüme geçer ve **hırsız asla
   /// gelmez**. Ücret her gün kirayla birlikte kesilir; para yetmezse işi bırakır.
@@ -3049,6 +3109,7 @@ class GameState extends ChangeNotifier {
       final sv = (j['aktifDukkanSeviye'] as int).clamp(1, tumDukkanlar.length);
       aktifDukkan = tumDukkanlar[sv - 1];
     }
+    handeGosterildi = j['handeGosterildi'] as bool? ?? true; // eski kayitlar tanitimi gormus sayilir
     guvenlikVar = j['guvenlikVar'] as bool? ?? false;
     guvenlikSonTeklifGunu = j['guvenlikSonTeklifGunu'] as int? ?? 0;
     sahipDukkanlar = ((j['sahipDukkanlar'] as List?) ?? const [])
@@ -3134,6 +3195,7 @@ class GameState extends ChangeNotifier {
     'gunlukMusteriLimiti': gunlukMusteriLimiti,
     'aktifDukkanSeviye': aktifDukkan.seviye, // eski sürümler için bırakıldı
     'aktifDukkanIsim': aktifDukkan.isim,
+    'handeGosterildi': handeGosterildi,
     'guvenlikVar': guvenlikVar,
     'guvenlikSonTeklifGunu': guvenlikSonTeklifGunu,
     'sahipDukkanlar': sahipDukkanlar.toList(),
@@ -3783,6 +3845,41 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   ///
   /// 0 = kapıdaki yerinde (görünmez), 1 = tezgâhta (tam görünür).
   late AnimationController _guvenlikBelirmeController;
+
+  // ── 💰 PARA SAYACI ANİMASYONU ─────────────────────────────────────────────
+  // Para değişince bakiye kutusu büyür, yeşile (giriş) ya da kırmızıya (çıkış)
+  // boyanır, rakamlar eski değerden yenisine doğru SAYARAK ilerler, sonra
+  // normale döner. Satış/alım anını gözden kaçırmak zorlaşsın diye.
+  late AnimationController _paraController;
+  int _paraBaslangic = 0;   // sayımın başladığı değer (ekranda görünen)
+  int _paraHedef = 0;       // ulaşılacak değer
+  bool _paraArtis = true;   // true = yeşil (giriş), false = kırmızı (çıkış)
+
+  static const Color _paraYesil = Color(0xFF3CC850);
+  static const Color _paraKirmizi = Color(0xFFF84C4C);
+
+  /// Sayım toplam sürenin bu oranında biter; kalanı "normale dönüş".
+  static const double _paraSayimOrani = 0.72;
+
+  /// Ekranda o an gösterilecek bakiye.
+  int get _gosterilenPara {
+    if (!_paraController.isAnimating && _paraController.value == 0) return _paraHedef;
+    final t = _paraController.value;
+    if (t >= _paraSayimOrani) return _paraHedef;
+    final p = Curves.easeOutCubic.transform(t / _paraSayimOrani);
+    return (_paraBaslangic + (_paraHedef - _paraBaslangic) * p).round();
+  }
+
+  /// `_state.para` değişti mi? Değiştiyse sayımı baştan başlat.
+  void _paraDegisimKontrol() {
+    if (_state.para == _paraHedef) return;
+    // Animasyon ortasında yeni bir değişiklik gelirse ekrandaki değerden devam
+    // et — sayı asla geri sıçramasın.
+    _paraBaslangic = _gosterilenPara;
+    _paraArtis = _state.para > _paraBaslangic;
+    _paraHedef = _state.para;
+    _paraController.forward(from: 0);
+  }
   bool _envanterAcik = false;
   /// Toptanci ekraninda envanter sekmesi acik mi (tek yonlu gecis)
   bool _toptanciEnvanterSekmesi = false;
@@ -3828,8 +3925,23 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     _slideAnim = Tween<double>(begin: 1.0, end: 0.0).animate(CurvedAnimation(parent: _slideController, curve: Curves.easeOutCubic));
     _urunKayipController = AnimationController(vsync: this, duration: const Duration(milliseconds: 650));
     _guvenlikBelirmeController = AnimationController(vsync: this, duration: const Duration(milliseconds: 480));
+    // 💰 Para sayacı: toplam ~2.2 sn (sayım + normale dönüş)
+    _paraController = AnimationController(vsync: this, duration: const Duration(milliseconds: 2200));
+    _paraBaslangic = _paraHedef = _state.para;
+    _state.addListener(_paraDegisimKontrol);
     _state.addListener(_daireHedefGuncelle);
     _daireTicker = createTicker(_daireTick)..start();
+    // 👩‍🏫 Rehber Hande: oyunun EN BAŞINDA kendiliğinden gelir, "Müşteri Çağır"a
+    // basmak gerekmez. Sadece yeni oyunda ve bir kez (`handeGosterildi`).
+    // Kısa gecikme: sahne otursun, kapı sesi/animasyon üst üste binmesin.
+    if (widget.yeniOyun && !_state.handeGosterildi) {
+      Future.delayed(const Duration(milliseconds: 700), () {
+        if (!mounted) return;
+        SesServisi.kapiyiCal();
+        _state.handeyiGonder();
+        _slideController.forward(from: 0);
+      });
+    }
   }
 
   void _daireHedefGuncelle() {
@@ -3871,10 +3983,12 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     _kuryeTimer?.cancel();
     _toastTimer?.cancel();
     _daireTicker.dispose();
+    _state.removeListener(_paraDegisimKontrol);
     _state.removeListener(_daireHedefGuncelle);
     _slideController.dispose();
     _urunKayipController.dispose();
     _guvenlikBelirmeController.dispose();
+    _paraController.dispose();
     super.dispose();
   }
 
@@ -6133,6 +6247,15 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     });
   }
 
+  /// Rehber Hande'nin "Tamam" butonu: sıradaki repliğe geçer, replikler
+  /// bitince Hande sağdan çıkar ve oyun normal akışına döner (kapıda müşteri
+  /// beklemeye başlar).
+  void _handeTamam() {
+    if (!_state.handeAktif) return;
+    if (_state.handeIlerle()) return; // daha anlatacağı var
+    _ozelMusteriGonder();
+  }
+
   /// Güvenliği "müşteri" olarak öne çağırır (istifa sorusu modunda).
   void _guvenligeDokun() {
     if (!_state.guvenlikVar) return;
@@ -6363,19 +6486,53 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
               painter: _DairePainter(_daireGosterilen.clamp(0.0, 1.0)),
             ),
           ),
-          // ── Sağ: Bakiye ──
+          // ── Sağ: Bakiye (para değişiminde canlanır) ──
           Expanded(
-            child: Container(
-              height: 48,
-              decoration: paraDecor,
-              child: Center(
-                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  const Text('💰', style: TextStyle(fontSize: 16)),
-                  const SizedBox(width: 6),
-                  Text('${_state.para}',
-                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Color(0xFFFFD700), letterSpacing: 0.3)),
-                ]),
-              ),
+            child: AnimatedBuilder(
+              animation: _paraController,
+              builder: (context, _) {
+                final t = _paraController.value;
+                // Vurgu: sayım boyunca tam güçte, sonunda normale solar.
+                final vurgu = t == 0
+                    ? 0.0
+                    : (t < _paraSayimOrani
+                        ? 1.0
+                        : 1.0 - ((t - _paraSayimOrani) / (1 - _paraSayimOrani)));
+                // Büyüyüp geri küçülme (tek tepe)
+                final olcek = 1.0 + 0.16 * sin(pi * t.clamp(0.0, 1.0));
+                final efektRenk = _paraArtis ? _paraYesil : _paraKirmizi;
+                final aktifDecor = vurgu == 0
+                    ? paraDecor
+                    : BoxDecoration(
+                        color: Color.lerp(const Color(0xFF2a1c00), efektRenk, vurgu),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: Color.lerp(const Color(0xFFFFD700), Colors.black, vurgu * 0.75)!,
+                          width: 1.3 + vurgu * 0.9),
+                        boxShadow: [BoxShadow(
+                          color: efektRenk.withValues(alpha: 0.55 * vurgu),
+                          blurRadius: 8 + 14 * vurgu)],
+                      );
+                return Transform.scale(
+                  scale: olcek,
+                  child: Container(
+                    height: 48,
+                    decoration: aktifDecor,
+                    child: Center(
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        const Text('💰', style: TextStyle(fontSize: 16)),
+                        const SizedBox(width: 6),
+                        Text('$_gosterilenPara',
+                          style: TextStyle(
+                            fontSize: 20, fontWeight: FontWeight.w900,
+                            // Renkli zeminde siyah yazı okunur kalıyor
+                            color: Color.lerp(const Color(0xFFFFD700), Colors.black, vurgu),
+                            letterSpacing: 0.3)),
+                      ]),
+                    ),
+                  ),
+                );
+              },
             ),
           ),
         ],
@@ -6611,6 +6768,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       case OzelMusteriTip.toptanci: return const Color(0xFFd29922); // toptancı altın sarısı
       case OzelMusteriTip.falci:    return const Color(0xFFB967FF); // falcı moru
       case OzelMusteriTip.guvenlik: return const Color(0xFF4FC3F7); // güvenlik mavisi
+      case OzelMusteriTip.hande:    return const Color(0xFF7fdfff); // rehber camgöbeği
     }
   }
 
@@ -6728,8 +6886,19 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          // 👩‍🏫 Rehber Hande anlatırken TEK ve GENİŞ bir "Tamam" butonu olur;
+          // alış/satış yapmadığı için EVET/HAYIR ya da pazarlık butonları yok.
+          if (_state.handeAktif) ...[
+            _oyunButon(
+              emoji: '👍', label: 'Tamam',
+              onTap: _handeTamam,
+              gradyan: const [Color(0xFF43c468), Color(0xFF1a6b32)],
+              kenar: const Color(0xFF81c784),
+            ),
+            const SizedBox(height: 8),
+          ]
           // Özel müşteriye kolonya ikram edilmişse EVET/HAYIR gizlenir (3 sn sonra gider)
-          if (_state.musteriKabulBekliyor && _kolonyaGeciciMesaj == null) ...[
+          else if (_state.musteriKabulBekliyor && _kolonyaGeciciMesaj == null) ...[
             // Alkol testi yapan polis: EVET/HAYIR yerine iki sayı şıkkı
             if (_state.aktifOzelMusteri?.alkolTesti == true) ...[
               Builder(builder: (_) {
@@ -6768,7 +6937,11 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
               ]),
             const SizedBox(height: 8),
           ],
-          if (_pazarlikBekleniyor) ...[
+          // Hande anlatırken sadece "Tamam" görünür — Müşteri Çağır/Envanter
+          // ve pazarlık butonları gizlenir.
+          if (_state.handeAktif)
+            const SizedBox.shrink()
+          else if (_pazarlikBekleniyor) ...[
             // Kabul Et — en az 1 tur geçtiyse (alıcı veya satıcı fark etmez)
             if (_state.aktifMusteri != null &&
                 _state.aktifPazarlik != null && _state.aktifPazarlik!.turSayisi > 0) ...[
@@ -7715,7 +7888,9 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                             }
                           } : null,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF58a6ff), foregroundColor: Colors.black,
+                            // Koyu mavi: 🔧 emojisi gri, açık mavide kayboluyordu.
+                            // Yazı da beyaza alındı ki koyu zeminde okunsun.
+                            backgroundColor: const Color(0xFF1E63C8), foregroundColor: Colors.white,
                             disabledBackgroundColor: const Color(0xFF2a2a2a),
                             disabledForegroundColor: Colors.white24,
                             minimumSize: const Size(0, 44),
