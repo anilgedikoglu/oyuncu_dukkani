@@ -90,7 +90,7 @@ void main() {
     });
 
     test('ev alınınca para düşer, ikinci kez alınamaz', () {
-      final s = GameState()..para = EvEsyasi.evFiyati + 500;
+      final s = GameState()..para = Mekan.ev.fiyat + 500;
       expect(s.mekanSatinAl(Konum.ev), isTrue);
       expect(s.evSahibi, isTrue);
       expect(s.para, 500);
@@ -173,8 +173,63 @@ void main() {
     test('her mekânın kendi arka planı ve oranı var', () {
       expect(Mekan.bul(Konum.ev).arkaplan, isNot(Mekan.bul(Konum.yazlik).arkaplan));
       expect(Mekan.bul(Konum.dukkan).arkaplan, Mekan.ev.arkaplan); // varsayılan ev
-      expect(Mekan.ev.oran, greaterThan(0));
-      expect(Mekan.yazlik.oran, greaterThan(0));
+      for (final m in Mekan.satinAlinabilir) {
+        expect(m.oran, greaterThan(0), reason: m.ad);
+        expect(m.fiyat, greaterThan(0), reason: m.ad);
+      }
+      expect(Mekan.satinAlinabilir.map((m) => m.arkaplan).toSet().length,
+          Mekan.satinAlinabilir.length);
+    });
+  });
+
+  group('Dağ Evi', () {
+    test('7 dağ evi eşyası var, hepsi tam katman ve ikonlu', () {
+      final d = EvEsyasi.konumun(Konum.dagevi);
+      expect(d.length, 7);
+      for (final e in d) {
+        expect(e.tamKatman, isTrue, reason: e.id);
+        expect(e.ikon, isNotNull, reason: e.id);
+        expect(e.id, startsWith('d_'), reason: e.id);
+      }
+    });
+
+    test('dağ evi ayrı satın alınır ve kayıtta korunur', () {
+      final s = GameState()..para = 99999;
+      expect(s.konumSahibi(Konum.dagevi), isFalse);
+      expect(s.mekanSatinAl(Konum.dagevi), isTrue);
+      expect(s.mekanSatinAl(Konum.dagevi), isFalse);
+      expect(s.evSahibi, isFalse);
+      s.evEsyasiAl(EvEsyasi.konumun(Konum.dagevi).first);
+      final s2 = GameState.fromJson(s.toJson());
+      expect(s2.konumSahibi(Konum.dagevi), isTrue);
+      expect(s2.evEsyalari.contains('d_somine'), isTrue);
+    });
+
+    test('v118 ara kayıt migrasyonu: evSahibi/yazlikSahibi boolları okunur', () {
+      final s = GameState();
+      final json = s.toJson();
+      json.remove('sahipMekanlar');
+      json['evSahibi'] = true;
+      json['yazlikSahibi'] = true;
+      final s2 = GameState.fromJson(json);
+      expect(s2.evSahibi, isTrue);
+      expect(s2.yazlikSahibi, isTrue);
+      expect(s2.konumSahibi(Konum.dagevi), isFalse);
+    });
+  });
+
+  group('Toptancı stok', () {
+    test('tezgâhta aynı üründen iki kopya yok', () {
+      for (int i = 0; i < 25; i++) {
+        final s = GameState();
+        s.toptanciStokKontrol();
+        final idler = s.toptanciStok
+            .where((t) => t.item != null && !t.item!.kapaliKutu)
+            .map((t) => t.item!.id)
+            .toList();
+        expect(idler.toSet().length, idler.length,
+            reason: 'tekrar var: $idler');
+      }
     });
   });
 
