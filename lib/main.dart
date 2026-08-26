@@ -3927,6 +3927,21 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     return (_paraBaslangic + (_paraHedef - _paraBaslangic) * p).round();
   }
 
+  // ── 🗓️ GÜN SAYACI ANİMASYONU ──────────────────────────────────────────────
+  // Para kutusuyla AYNI dil: kutu büyür, yeşile döner, sayı değişir, normale
+  // soluyor. Fark: gün hep +1 arttığı için "sayma" yerine ODOMETRE gibi
+  // dönüyor — eski sayı yukarı çıkıp giderken yeni sayı alttan geliyor.
+  late AnimationController _gunController;
+  int _gunEski = 1;
+  int _gunYeni = 1;
+
+  void _gunDegisimKontrol() {
+    if (_state.gun == _gunYeni) return;
+    _gunEski = _gunYeni;
+    _gunYeni = _state.gun;
+    _gunController.forward(from: 0);
+  }
+
   /// `_state.para` değişti mi? Değiştiyse sayımı baştan başlat.
   void _paraDegisimKontrol() {
     if (_state.para == _paraHedef) return;
@@ -3985,6 +4000,9 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     // 💰 Para sayacı: toplam ~2.2 sn (sayım + normale dönüş)
     _paraController = AnimationController(vsync: this, duration: const Duration(milliseconds: 2200));
     _paraBaslangic = _paraHedef = _state.para;
+    _gunController = AnimationController(vsync: this, duration: const Duration(milliseconds: 2200));
+    _gunEski = _gunYeni = _state.gun;
+    _state.addListener(_gunDegisimKontrol);
     _state.addListener(_paraDegisimKontrol);
     _state.addListener(_daireHedefGuncelle);
     _daireTicker = createTicker(_daireTick)..start();
@@ -4040,12 +4058,14 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     _kuryeTimer?.cancel();
     _toastTimer?.cancel();
     _daireTicker.dispose();
+    _state.removeListener(_gunDegisimKontrol);
     _state.removeListener(_paraDegisimKontrol);
     _state.removeListener(_daireHedefGuncelle);
     _slideController.dispose();
     _urunKayipController.dispose();
     _guvenlikBelirmeController.dispose();
     _paraController.dispose();
+    _gunController.dispose();
     super.dispose();
   }
 
@@ -6528,6 +6548,42 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     );
   }
 
+  /// Gün yazısı — odometre gibi döner: eski gün yukarı çıkıp kaybolurken yeni
+  /// gün alttan gelir. Para kutusundaki "sayma" burada işe yaramaz, çünkü gün
+  /// hep +1 artıyor; arada gösterilecek ara değer yok.
+  Widget _gunYazisi(double t, double vurgu) {
+    final renk = Color.lerp(const Color(0xFFFFD700), Colors.black, vurgu);
+    TextStyle stil() => TextStyle(
+        fontSize: 20, fontWeight: FontWeight.w900, color: renk, height: 1.0);
+    if (t == 0 || _gunEski == _gunYeni) {
+      return Text('$_gunYeni. GÜN', style: stil());
+    }
+    // Dönüş sayım fazında tamamlanır; kalan süre renk/boyutun normale dönüşü.
+    final d = Curves.easeOutCubic.transform((t / _paraSayimOrani).clamp(0.0, 1.0));
+    const yuk = 26.0; // yazı kutusunun yüksekliği — taşan kısım kırpılır
+    return SizedBox(
+      height: yuk,
+      child: ClipRect(
+        child: Stack(alignment: Alignment.center, children: [
+          Opacity(
+            opacity: (1 - d).clamp(0.0, 1.0),
+            child: Transform.translate(
+              offset: Offset(0, -yuk * d),
+              child: Text('$_gunEski. GÜN', style: stil()),
+            ),
+          ),
+          Opacity(
+            opacity: d.clamp(0.0, 1.0),
+            child: Transform.translate(
+              offset: Offset(0, yuk * (1 - d)),
+              child: Text('$_gunYeni. GÜN', style: stil()),
+            ),
+          ),
+        ]),
+      ),
+    );
+  }
+
   Widget _buildHeader() {
     final gunDecor = BoxDecoration(
       gradient: LinearGradient(
@@ -6553,19 +6609,45 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // ── Sol: Gün ──
+          // ── Sol: Gün (yeni güne geçişte canlanır) ──
           Expanded(
-            child: Container(
-              height: 48,
-              decoration: gunDecor,
-              child: Center(
-                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  const Text('🗓️', style: TextStyle(fontSize: 13)),
-                  const SizedBox(width: 5),
-                  Text('${_state.gun}. GÜN',
-                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Color(0xFFFFD700), height: 1.0)),
-                ]),
-              ),
+            child: AnimatedBuilder(
+              animation: _gunController,
+              builder: (context, _) {
+                final t = _gunController.value;
+                final vurgu = t == 0
+                    ? 0.0
+                    : (t < _paraSayimOrani
+                        ? 1.0
+                        : 1.0 - ((t - _paraSayimOrani) / (1 - _paraSayimOrani)));
+                final olcek = 1.0 + 0.16 * sin(pi * t.clamp(0.0, 1.0));
+                final aktifDecor = vurgu == 0
+                    ? gunDecor
+                    : BoxDecoration(
+                        color: Color.lerp(const Color(0xFF16240f), _paraYesil, vurgu),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: Color.lerp(const Color(0xFF4caf50), Colors.black, vurgu * 0.75)!,
+                          width: 1.3 + vurgu * 0.9),
+                        boxShadow: [BoxShadow(
+                          color: _paraYesil.withValues(alpha: 0.55 * vurgu),
+                          blurRadius: 8 + 14 * vurgu)],
+                      );
+                return Transform.scale(
+                  scale: olcek,
+                  child: Container(
+                    height: 48,
+                    decoration: aktifDecor,
+                    child: Center(
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        const Text('🗓️', style: TextStyle(fontSize: 13)),
+                        const SizedBox(width: 5),
+                        _gunYazisi(t, vurgu),
+                      ]),
+                    ),
+                  ),
+                );
+              },
             ),
           ),
           // ── Orta: Daire geri sayım (CustomPaint) ──

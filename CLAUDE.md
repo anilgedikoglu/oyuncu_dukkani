@@ -195,6 +195,15 @@ void _paraDegisimKontrol() { ... }     // _state listener'ı
   sıçrardı.
 - Ölçek `1 + 0.16 * sin(pi * t)` — tek tepe, kendiliğinden normale döner.
 
+### 🗓️ Gün sayacı da aynı dilde (v115)
+Yeni güne geçişte gün kutusu da büyüyor, **yeşile** dönüyor ve sayı değişip
+normale soluyor — para kutusuyla aynı zamanlama (`_paraSayimOrani`, 2.2 sn).
+
+> ⚠️ Fark: gün hep **+1** arttığı için "sayma" işe yaramaz, arada
+> gösterilecek ara değer yok. Onun yerine **odometre dönüşü**: eski gün
+> yukarı çıkıp kaybolurken yeni gün alttan geliyor (`_gunYazisi`,
+> `ClipRect` + iki `Text`, biri `-yuk*d` diğeri `+yuk*(1-d)` ofsetli).
+
 ### Tamir Et butonu koyu maviye alındı
 `0xFF58a6ff` → `0xFF1E63C8`, yazı beyaz. 🔧 emojisi gri olduğu için açık mavi
 zeminde kayboluyordu.
