@@ -12199,20 +12199,28 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
         title: const Text('🚗 Hangi konuma gitmek istersin?',
           textAlign: TextAlign.center,
           style: TextStyle(color: Color(0xFF90caf9), fontSize: 16, fontWeight: FontWeight.bold)),
-        content: Row(mainAxisSize: MainAxisSize.min, children: [
-          for (final m in Mekan.satinAlinabilir) ...[
-            if (m != Mekan.satinAlinabilir.first) const SizedBox(width: 8),
-            Expanded(child: Builder(builder: (_) {
+        // ⚠️ 6 mekân TEK SATIRA sığmıyor — kutular eziliyor, yazılar
+        // birbirine giriyordu. 3 sütunlu ızgara: 2 satır × 3 kutu.
+        content: SizedBox(
+          width: 300,
+          child: GridView.count(
+            crossAxisCount: 3,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            mainAxisSpacing: 8,
+            crossAxisSpacing: 8,
+            childAspectRatio: 0.80,
+            children: Mekan.satinAlinabilir.map((m) {
               final sahip = _state.konumSahibi(m.konum);
               return _konumKutusu(
                 ikon: m.ikon, ad: m.ad,
-                aciklama: sahip ? 'Senin' : 'Önce Market\'ten al',
+                aciklama: sahip ? 'Senin' : 'Market\'ten al',
                 aktif: sahip,
                 onTap: () { Navigator.pop(ctx); _gecisBaslat(m.konum); },
               );
-            })),
-          ],
-        ]),
+            }).toList(),
+          ),
+        ),
         actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
         actions: [Center(child: ElevatedButton(
           onPressed: () => Navigator.pop(ctx),
@@ -12238,7 +12246,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       child: GestureDetector(
         onTap: aktif ? () { SesServisi.dokun(); onTap(); } : null,
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
           decoration: BoxDecoration(
             color: const Color(0xFF11202f),
             borderRadius: BorderRadius.circular(12),
@@ -12246,14 +12254,23 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
               color: aktif ? const Color(0xFF4f8bd6) : Colors.white24,
               width: aktif ? 1.5 : 1),
           ),
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Text(aktif ? ikon : '🔒', style: const TextStyle(fontSize: 30)),
-            const SizedBox(height: 6),
-            Text(ad, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Panel.yazi)),
-            const SizedBox(height: 2),
-            Text(aciklama, textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 10, color: Panel.yaziSoluk)),
-          ]),
+          // Izgara hücresi dar: adlar ("Mütevazı Ev", "Orman Evi") tek satıra
+          // sığmayabiliyor — FittedBox ile küçülüyorlar, taşma yok.
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(aktif ? ikon : '🔒', style: const TextStyle(fontSize: 26)),
+              const SizedBox(height: 4),
+              FittedBox(fit: BoxFit.scaleDown, child: Text(ad,
+                maxLines: 1,
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold,
+                  color: Panel.yazi))),
+              const SizedBox(height: 2),
+              FittedBox(fit: BoxFit.scaleDown, child: Text(aciklama,
+                maxLines: 1, textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 9, color: Panel.yaziSoluk))),
+            ]),
         ),
       ),
     );
