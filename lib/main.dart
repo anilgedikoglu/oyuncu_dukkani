@@ -9,6 +9,8 @@ import 'package:device_preview/device_preview.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart' show Ticker;
 import 'package:flutter/services.dart' show HapticFeedback; // dokunsal geri bildirim
+import 'package:games_services/games_services.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -45,6 +47,77 @@ void main() async {
       builder: (context) => const OyuncuDukkaniApp(),
     ),
   );
+}
+
+// ─── 🏆 LİDERLİK TABLOSU (Game Center / Play Games) ──────────────────────────
+// "En Zengin Oyuncu" tablosu: skor = ulaşılan en yüksek kazanç. iOS'ta Game
+// Center kendi "Şu adla giriş yapıldı" bandını gösterir; Android'de Play
+// Games otomatik oturum açar ve biz ana menüde küçük bir band gösteririz.
+//
+// ⚠️ Tablo kimlikleri mağaza konsollarında OLUŞTURULMALI:
+//   - App Store Connect → Game Center → Leaderboard ID: `enzenginoyuncu`
+//   - Play Console → Grow → Play Games Services → Leaderboards → ID'yi
+//     `_androidTabloId`ya yapıştır (CgkI... biçiminde).
+class LiderServisi {
+  static const String _iosTabloId = 'enzenginoyuncu';
+  static const String _androidTabloId = 'CgkIliderTablosuIdBuraya';
+
+  static bool girisYapildi = false;
+  static String? oyuncuAdi;
+
+  /// Sessiz giriş. Başarılıysa oyuncu adını doldurur; hata/iptalde ses çıkarmaz.
+  static Future<void> girisYap() async {
+    if (ReklamServisi.emulator) return; // emülatörde servis yok
+    try {
+      await GameAuth.signIn();
+      girisYapildi = await GameAuth.isSignedIn;
+      if (girisYapildi) {
+        oyuncuAdi = await Player.getPlayerName();
+      }
+    } catch (_) {
+      girisYapildi = false;
+    }
+  }
+
+  /// Rekor skoru gönderir (giriş yoksa sessizce geçer).
+  static Future<void> skorGonder(int skor) async {
+    if (!girisYapildi) return;
+    try {
+      await Leaderboards.submitScore(score: Score(
+        iOSLeaderboardID: _iosTabloId,
+        androidLeaderboardID: _androidTabloId,
+        value: skor,
+      ));
+    } catch (_) {}
+  }
+
+  /// Platformun kendi liderlik tablosu ekranını açar — sıralama, isimler
+  /// ve oyuncunun kaçıncı olduğu orada görünür.
+  static Future<void> tabloyuGoster() async {
+    try {
+      await Leaderboards.showLeaderboards(
+        iOSLeaderboardID: _iosTabloId,
+        androidLeaderboardID: _androidTabloId,
+      );
+    } catch (_) {}
+  }
+}
+
+// ─── 🎮 DİĞER OYUNLAR ────────────────────────────────────────────────────────
+// Ana menüdeki "Diğer Oyunlar": geliştiricinin mağaza sayfasını açar.
+// Linkler mağazalardan doğrulandı (iTunes lookup artistId + Play dev sayfası).
+class DigerOyunlar {
+  static final Uri _ios =
+      Uri.parse('https://apps.apple.com/developer/id1612979370');
+  static final Uri _android = Uri.parse(
+      'https://play.google.com/store/apps/developer?id=Futurastic+Teknoloji+Limited+%C5%9Eirketi');
+
+  static Future<void> ac() async {
+    final uri = Platform.isIOS ? _ios : _android;
+    try {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (_) {}
+  }
 }
 
 // ─── REKLAM SERVİSİ ──────────────────────────────────────────────────────────
@@ -415,12 +488,25 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
   int? _enYuksekGun;
   int? _enYuksekPara;
 
+  /// Liderlik girişi bandı: "Şu adla giriş yapıldı: nick". Birkaç saniye
+  /// görünüp kaybolur (iOS'ta Game Center kendi bandını da gösterir).
+  String? _girisBandi;
+
   @override
   void initState() {
     super.initState();
     KayitServisi.enYuksekGunYukle().then((v) { if (mounted) setState(() => _enYuksekGun = v); });
     KayitServisi.enYuksekParaYukle().then((v) { if (mounted) setState(() => _enYuksekPara = v); });
     KayitServisi.kayitVarMi().then((v) { if (mounted) setState(() => _kayitVar = v); });
+    LiderServisi.girisYap().then((_) {
+      if (!mounted || !LiderServisi.girisYapildi) return;
+      final ad = LiderServisi.oyuncuAdi;
+      if (ad == null || ad.isEmpty) return;
+      setState(() => _girisBandi = ad);
+      Future.delayed(const Duration(seconds: 4), () {
+        if (mounted) setState(() => _girisBandi = null);
+      });
+    });
   }
 
   void _yeniOyun() {
@@ -522,14 +608,36 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
+                // 🏆 Liderlik girişi bandı (rakip oyundaki gibi, üstte).
+                if (_girisBandi != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 10),
+                    child: Center(child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.72),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: Colors.white24),
+                      ),
+                      child: Text('Şu adla giriş yapıldı: $_girisBandi',
+                        style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+                    )),
+                  ),
                 const Spacer(flex: 3),
                 Center(child: _menuButon('Yeni Oyun', _yeniOyun)),
                 const SizedBox(height: 12),
                 Center(child: _menuButon('Devam Et', (_kayitVar && !_yukleniyor) ? () => _devamEt() : null)),
                 const SizedBox(height: 12),
                 Center(child: _menuButon('Ayarlar', () => setState(() => _ayarlarAcik = true))),
-                // Rekor kutusu: Ayarlar ile ekranın altı arasındaki ORTA nokta.
-                Expanded(flex: 2, child: Center(child: _rekorKutusu())),
+                const SizedBox(height: 12),
+                Center(child: _menuButon('Diğer Oyunlar', DigerOyunlar.ac)),
+                // Rekor kutusu: butonlar ile ekranın altı arasındaki ORTA nokta.
+                // Tıklanınca platformun liderlik tablosu açılır — sıralamadaki
+                // yerini orada görürsün.
+                Expanded(flex: 2, child: Center(child: GestureDetector(
+                  onTap: LiderServisi.tabloyuGoster,
+                  child: _rekorKutusu(),
+                ))),
               ],
             ),
           ),
@@ -701,7 +809,8 @@ class MusteriOzellik {
 
 // ─── ÖZEL MÜŞTERİ (HIRSIZ / POLİS / VERGİCİ / KURYE / TOPTANCI / FALCI) ─────
 
-enum OzelMusteriTip { hirsiz, polis, vergici, kurye, toptanci, falci, guvenlik, hande, galerici }
+enum OzelMusteriTip { hirsiz, polis, vergici, kurye, toptanci, falci, guvenlik, hande, galerici,
+  sezercik, seyma, delibekir, palyaco, buyucu }
 
 class OzelMusteri {
   final OzelMusteriTip tip;
@@ -722,9 +831,19 @@ class OzelMusteri {
   /// (Oyuncu dükkanda duran güvenliğe tıklayınca bu hâlde gelir.)
   final bool istifaSorusu;
 
+  /// 🤪 Deli Bekir: gelen saçma cümlenin havuzdaki sırası — EVET ve HAYIR
+  /// cevapları aynı indeksten okunur, cümleler birbirine bağlı espriler.
+  final int? deliIdx;
+
+  /// 🧙 Büyücü Yakup'un genel kültür sorusu: metinli iki şık.
+  /// Şıkların yeri kuruluşta karıştırılır; [dogruA] SOLDAKİ doğru mu demek.
+  final String? cevapA, cevapB;
+  final bool? dogruA;
+  bool get bilgiSorusu => cevapA != null && dogruA != null;
+
   OzelMusteri({required this.tip, required this.gorsel, required this.ad, required this.ilkMiktar, required this.ilkMesaj,
     this.kuryeAd, this.kuryeYemek, this.sikSol, this.sikSag, this.dogruCevap,
-    this.istifaSorusu = false});
+    this.istifaSorusu = false, this.deliIdx, this.cevapA, this.cevapB, this.dogruA});
 
   /// Rehber Hande — oyunun EN BAŞINDA, "Müşteri Çağır"a basılmadan gelir.
   /// Alış/satış yapmaz; sadece `handeRepikleri`'ni sırayla anlatır.
@@ -760,6 +879,93 @@ class OzelMusteri {
         ilkMesaj: 'Selamın Aleyküm, ben Gürbüz, Gürbüz Oto Galeri\'nin sahibi. '
             'Araç lazım mı? Ne verelim abime?',
       );
+
+  // ── 👦 SEZERCİK ────────────────────────────────────────────────────────────
+  /// Fakir çocuk; oyuncunun parasının 1/5'i ile 1/2'si arasında yardım ister.
+  /// {X} yerine tutar yazılır — tek harf placeholder yasağı burada da geçerli.
+  static const List<String> sezercikSelamlari = [
+    'Selam, ben Sezercik. Karnım çok aç. Allah rızası için {X} verir misin?',
+    'Merhaba ben Sezercik. Evsizim, çok üşüyorum, bana {X} verir misin?',
+    'Merhaba, adım Sezercik. Karnımı doyurmam gerek. {X}\'ün var mı?',
+  ];
+  static const List<String> sezercikTesekkurleri = [
+    'Allah ne muradın varsa versin!',
+    'Allah tuttuğunu altın etsin, sağ ol.',
+    'Çok teşekkür ederim sana!...',
+    'Allah sizden razı olsun!',
+  ];
+  static const List<String> sezercikKirginlari = [
+    'Beni düş kırıklığına uğrattın, iyi birisin sanmıştım...',
+    'Bugün sana, yarın bana, sen bilirsin...',
+    'Bana bir el vermedin, alacağın olsun...',
+    'Yapma be... Beni bu halde bıraktın demek...',
+    'Üzüldüm, demek kalbinde hiç sevgi yok...',
+    'Yardımsever sanmıştım seni, yanılmışım...',
+  ];
+
+  factory OzelMusteri.sezercik(int miktar) {
+    final selam = sezercikSelamlari[Random().nextInt(sezercikSelamlari.length)]
+        .replaceAll('{X}', '$miktar');
+    return OzelMusteri(
+      tip: OzelMusteriTip.sezercik,
+      gorsel: 'assets/sezercik.png',
+      ad: 'Sezercik',
+      ilkMiktar: miktar,
+      ilkMesaj: selam,
+    );
+  }
+
+  // ── 💎 ŞEYMA KOKO ─────────────────────────────────────────────────────────
+  factory OzelMusteri.seyma() => OzelMusteri(
+        tip: OzelMusteriTip.seyma,
+        gorsel: 'assets/seymakoko.png',
+        ad: 'Şeyma Koko',
+        ilkMiktar: 0,
+        ilkMesaj: 'Merhaba, ben ünlü Milyarder Şeyma Koko. Nasılsın?',
+      );
+
+  // ── 🤡 PALYAÇO ────────────────────────────────────────────────────────────
+  factory OzelMusteri.palyaco(int miktar) => OzelMusteri(
+        tip: OzelMusteriTip.palyaco,
+        gorsel: 'assets/palyaco.png',
+        ad: 'Palyaço',
+        ilkMiktar: miktar,
+        ilkMesaj: 'Selam dostum, bendeniz Palyaço. '
+            'Sirkimiz için yardım topluyorum. Ateşle $miktar.',
+      );
+
+  // ── 🤪 DELİ BEKİR ─────────────────────────────────────────────────────────
+  factory OzelMusteri.delibekir() {
+    final idx = Random().nextInt(DeliBekirRepligi.tumu.length);
+    return OzelMusteri(
+      tip: OzelMusteriTip.delibekir,
+      gorsel: 'assets/delibekir.png',
+      ad: 'Deli Bekir',
+      ilkMiktar: 0,
+      ilkMesaj: DeliBekirRepligi.tumu[idx].gelis,
+      deliIdx: idx,
+    );
+  }
+
+  // ── 🧙 BÜYÜCÜ YAKUP ───────────────────────────────────────────────────────
+  factory OzelMusteri.buyucu() {
+    final rng = Random();
+    final s = YakupSoru.tumu[rng.nextInt(YakupSoru.tumu.length)];
+    // Doğru cevap bazen solda bazen sağda — hep A olsa ezberlenirdi.
+    final dogruSolda = rng.nextBool();
+    return OzelMusteri(
+      tip: OzelMusteriTip.buyucu,
+      gorsel: 'assets/buyucu.png',
+      ad: 'Büyücü Yakup',
+      ilkMiktar: 0,
+      ilkMesaj: 'Huww, selam! Ben Büyücü Yakup. Sana bir soru soracağım. '
+          'Bilemezsen büyü yapacağım!',
+      kuryeAd: s.soru, // soru metni burada taşınır (alan boşa çıkmasın diye)
+      cevapA: dogruSolda ? s.dogru : s.yanlis,
+      cevapB: dogruSolda ? s.yanlis : s.dogru,
+      dogruA: dogruSolda,
+    );
+  }
 
   /// Dükkandaki güvenliğe tıklanınca müşteri gibi öne gelir ve istifayı sorar.
   factory OzelMusteri.guvenlikIstifa() => OzelMusteri(
@@ -882,8 +1088,282 @@ class OzelMusteri {
                     'bu dükkana hırsız giremez. İster misin?');
       case OzelMusteriTip.galerici:
         return OzelMusteri.galerici();
+      // Aşağıdakilerin ziyaretleri kendi programlarından kurulur; buradaki
+      // dallar sadece enum'u eksiksiz kapatmak için (fal kehaneti vb.
+      // buraya düşerse makul varsayılanlarla gelirler).
+      case OzelMusteriTip.sezercik:
+        return OzelMusteri.sezercik(200);
+      case OzelMusteriTip.seyma:
+        return OzelMusteri.seyma();
+      case OzelMusteriTip.delibekir:
+        return OzelMusteri.delibekir();
+      case OzelMusteriTip.palyaco:
+        return OzelMusteri.palyaco(200);
+      case OzelMusteriTip.buyucu:
+        return OzelMusteri.buyucu();
     }
   }
+}
+
+// ─── 🤪 DELİ BEKİR REPLİKLERİ ────────────────────────────────────────────────
+
+/// Deli Bekir'in saçma sapan ziyareti: [gelis] cümlesine EVET denirse [evet],
+/// HAYIR denirse [hayir] söylenir — üçü aynı indeksten okunur, espriler
+/// birbirine bağlı. Para/eşya alışverişi YOK, Bekir sadece renk.
+class DeliBekirRepligi {
+  final String gelis, evet, hayir;
+  const DeliBekirRepligi(this.gelis, this.evet, this.hayir);
+
+  static const List<DeliBekirRepligi> tumu = [
+    DeliBekirRepligi(
+      'Heyy selam! Ben Deli Bekir! Bir kilo domates rica edecektim.',
+      'Aaa pardon sen benim kendi manavım değilmişsin. Kaçtım ben!...',
+      'Ahh veremezsin tabii, tezgahtaki malların hep çürük!'),
+    DeliBekirRepligi(
+      'Bekir geldi! Dün gece rüyamda buradan uzay mekiği ısmarlamışım. Hazır mı?',
+      'Süper! Ama ehliyetim traktöre. Sen kullan, ben el sallarım!',
+      'İyi ki vermedin, otoparkım zaten dolu. Uçtum ben!'),
+    DeliBekirRepligi(
+      'Şşşt! Duvarlarını dinlemeye geldim. Fısır fısır konuşuyorlar da.',
+      'Hmm... Bu duvar fa diyez söylüyor. Akordu bozuk, ben gittim!',
+      'Duvarlar küstü ama olsun, dedikoduyu kapıdan dinlerim!'),
+    DeliBekirRepligi(
+      'Selam! Buzdolabıma kışlık lastik takacağım. Sende var mı?',
+      'Dur önce dolabın ehliyeti var mı sorayım. Muayenesi de geçmiş, kaçtım!',
+      'Sen anlamazsın, benim dolap rallici! Vın vın!'),
+    DeliBekirRepligi(
+      'Kolay gelsin! Gölgemi evde unutmuşum, ödünç gölgen var mı?',
+      'Ayy bu gölge bana büyük geldi, üstünden düştüm. Al geri, hoşça kal!',
+      'Cimriye bak! Güneş batınca bedava alırım zaten!'),
+    DeliBekirRepligi(
+      'Hey dostum! Denizde balıklara yüzme dersi veriyorum. Bilet alır mısın?',
+      'İlk ders bedavaymış, unutmuşum! Parayı balıklar iade edecek, baaay!',
+      'Balıklar bunu duyunca çok üzülecek. Nefesini tutma da gel!'),
+    DeliBekirRepligi(
+      'Selamlar! Bulutlardan bir kilo pamuk şeker devşirdim, tartar mısın?',
+      'Eyvah, terazide eridi! Yağmur olarak geri ödeyeceğim, söz!',
+      'Sen bilirsin, ben de hepsini gökkuşağına satarım!'),
+    DeliBekirRepligi(
+      'Bekir burada! Karıncalarıma gece lambası arıyorum, minik olsun.',
+      'Ah, karıncalar tatile çıkmış! Lamba bahara kalsın, kaçtım!',
+      'Karanlıkta kalan karıncalar sana mektup yazacak, bilesin!'),
+    DeliBekirRepligi(
+      'Merhaba! Saat kaç diye soracaktım ama saatim var. Sen niye yoksun?',
+      'Doğru cevap! Zaten soruyu ben de anlamamıştım. Güle güle!',
+      'Vaktin yokmuş anlaşılan... Benim de saatim var ama vaktim bol!'),
+    DeliBekirRepligi(
+      'Hey! Dün buradan bir kova gök gürültüsü almıştım, garantisi var mı?',
+      'Garanti sağolsun ama kova susuyor. Şimşeğe çevirdim, çaktım gittim!',
+      'Garantisiz gök gürültüsü mü olur! Yağmura şikayet edeceğim!'),
+    DeliBekirRepligi(
+      'Selam komşu! Papağanıma Fransızca kursu lazım. Burada mıydı?',
+      'Mersi bokuu! Ama papağan Almanca konuşmaya başlamış bile. Orövuar!',
+      'Papağan bunu duyarsa senin taklidini yapacak, haberin olsun!'),
+    DeliBekirRepligi(
+      'Bekir geldi! Rüzgara yakalanmış, saçlarım karışmış. Tarağın var mı?',
+      'Of, tarak saçımı tanımadı! Biz eski dostuz sanıyordum. Neyse, uçtum!',
+      'Rüzgarla aranız bozulacak ama, söylemedi deme!'),
+    DeliBekirRepligi(
+      'Hişşt! Ay\'a merdiven dayadım, bir basamak eksik çıktı. Sende var mı?',
+      'Sağ ol! Ama Ay bu gece izinliymiş. Merdiveni yıldıza dayadım, tırmandım!',
+      'Bir basamağı çok gördün! Ben de asansörle çıkarım!'),
+    DeliBekirRepligi(
+      'Selam! Kaplumbağama koşu ayakkabısı bakıyorum, 4 numara.',
+      'Ayakkabıları giydi, şimdi de yavaş koşuyor ama ŞIK koşuyor! Bay bay!',
+      'Kaplumbağa bunu duyunca kabuğuna küsecek, ayıp ettin!'),
+    DeliBekirRepligi(
+      'Merhabalar! Çoraplarımın teki kayıp. Sende mi saklanıyor?',
+      'İşte buradaymış! Ama bu sağ çorap, benim kaybım soldu. Yine gelirim!',
+      'Tamam tamam... Çorabım özgürlüğünü ilan etmiş, saygı duyuyorum!'),
+    DeliBekirRepligi(
+      'Hey dostum! Sessizlik satıyor musun? Evdeki çok gürültülü çıktı.',
+      'Şükür! Ama poşete koyunca konuşmaya başladı. İade ederim sonra!',
+      'İyi, ben de gürültüyü kısık ateşte kaynatırım!'),
+    DeliBekirRepligi(
+      'Bekir burada! Dolunayı çeyrek taksitle alabilir miyim?',
+      'Anlaştık! İlk taksit hilal olarak yattı bile. Ay sonunda görüşürüz!',
+      'Peşin isteyeceğini biliyordum! Yıldızlar veresiye veriyor ama!'),
+    DeliBekirRepligi(
+      'Selam! Salyangozuma hız cezası kesmişler. İtiraz dilekçen var mı?',
+      'Dilekçe kabul edildi, ceza sümüklüböceğe kesildi! Adalet yerini buldu!',
+      'Salyangoz bunu duyunca gaza basacak, sorumluluk sende!'),
+    DeliBekirRepligi(
+      'Merhaba! Aynada kendime rastladım, çok benziyoruz. Sence de öyle mi?',
+      'Değil mi ama! Yalnız o benden yakışıklı. Kıskandım, gidiyorum!',
+      'Sen de mi benzetemedin! O zaman o kimdi?!'),
+    DeliBekirRepligi(
+      'Hey! Kar tanelerini sayarken 7\'de takıldım. Devamını biliyor musun?',
+      'Sekizmiş! Sağ ol, kışın kaldığım yerden devam ederim!',
+      'Sayamıyorsan sayma! Ben de yağmur damlasına geçerim, o daha kolay!'),
+    DeliBekirRepligi(
+      'Selam dostum! Uykum kaçtı, nereye gittiğini gördün mü?',
+      'Demek o tarafa koştu! Yastığı alıp peşine düşüyorum, iyi geceler!',
+      'Sende de mi yok! Neyse, kahveyle anlaşırım ben!'),
+    DeliBekirRepligi(
+      'Bekir geldi! Ceketimin düğmesine konser bileti lazım, ön sıradan.',
+      'Biletler kapalı gişe! Düğmem sahnede zıplayacak, ben tutamam artık!',
+      'Düğmem üzüntüden koptu işte! Mendil de mi yok sende!'),
+    DeliBekirRepligi(
+      'Merhaba! Sandalyeme yürüyüş yaptırıyorum, tasma satar mısın?',
+      'Tasmayı taktım, sandalye önde ben arkada! Kim kimi gezdiriyor belli değil!',
+      'Sandalye bunu duyunca dört ayak üstüne çöktü, gördün mü yaptığını!'),
+    DeliBekirRepligi(
+      'Hey! Gökkuşağının ucundaki altını bulan var mı? Kazma getirdim.',
+      'Kazma sende kalsın, ben küreği kaptım! Ganimet yarı yarıya, koştum!',
+      'Sen inanmasan da altın orada! Yağmur yağınca görüşürüz ortak!'),
+    DeliBekirRepligi(
+      'Selam! Esnemem bulaşıcıymış, maskem düştü. Yenisini ver desem?',
+      'Ooof şimdi sen de esnedin! Gördün mü, maske şart! Kaçtım eczaneye!',
+      'Esnememi tuttum tuttum... Olmadı, sana da bulaştı! Öhhaaam!'),
+    DeliBekirRepligi(
+      'Bekir burada! Merdivenlerime asansör dersi veriyorum. Tebeşir var mı?',
+      'Tebeşirle çizdim, merdiven dümdüz yokuş oldu! Ders iptal, kaydım gittim!',
+      'Merdivenler sınıfta kaldı senin yüzünden! Veli toplantısında konuşuruz!'),
+    DeliBekirRepligi(
+      'Merhaba! Cebimdeki delik büyüyor. Sence terziye mi doktora mı gitsem?',
+      'Terzi dedin, gittim; delik dikildi ama param içeride kaldı! Olsun!',
+      'İkisine de gitmem o zaman! Delik ailemden sayılır artık!'),
+    DeliBekirRepligi(
+      'Hey dostum! Ekmeğin kabuğuyla içi kavga etmiş. Arabulucu musun?',
+      'Barıştılar! Şahitliğine simit geldi. Düğün pastadan, davetlisin!',
+      'Karışmıyorsan karışma! Ben tostçuya giderim, o ikisini ısıtıp barıştırır!'),
+    DeliBekirRepligi(
+      'Selam! Terliklerim gece kaçıp geziyormuş. GPS takar mısın?',
+      'GPS taktık, meğer her gece pazara gidiyorlarmış! Ucuzluk varmış, kaçtım!',
+      'Takmıyorsan takma! Sabah terliği ters buldum mu senden bilirim!'),
+    DeliBekirRepligi(
+      'Bekir geldi! Hapşırığımı kaybettim. Hapşu diye seslenirsen gelir mi?',
+      'HAPŞUUU! Aaa geldi! Çok yaşa bana, sana da hep beraber! Kaçtım!',
+      'Seslenmiyorsan ben seslenirim! Hapşuuu! ...Nezle oldum, senden bilirim!'),
+  ];
+}
+
+// ─── 🧙 BÜYÜCÜ YAKUP SORU ARŞİVİ ─────────────────────────────────────────────
+
+/// Genel kültür sorusu: [dogru] ve [yanlis] şık; yerleri kuruluşta karışır.
+class YakupSoru {
+  final String soru, dogru, yanlis;
+  const YakupSoru(this.soru, this.dogru, this.yanlis);
+
+  static const List<YakupSoru> tumu = [
+    // ── Başkentler ──
+    YakupSoru('Türkiye\'nin başkenti neresi dostum?', 'Ankara', 'İstanbul'),
+    YakupSoru('Fransa\'nın başkenti neresi?', 'Paris', 'Lyon'),
+    YakupSoru('Almanya\'nın başkenti neresi?', 'Berlin', 'Münih'),
+    YakupSoru('İtalya\'nın başkenti neresi?', 'Roma', 'Milano'),
+    YakupSoru('İspanya\'nın başkenti neresi?', 'Madrid', 'Barselona'),
+    YakupSoru('Japonya\'nın başkenti neresi?', 'Tokyo', 'Osaka'),
+    YakupSoru('Mısır\'ın başkenti neresi?', 'Kahire', 'İskenderiye'),
+    YakupSoru('Rusya\'nın başkenti neresi?', 'Moskova', 'St. Petersburg'),
+    YakupSoru('İngiltere\'nin başkenti neresi?', 'Londra', 'Manchester'),
+    YakupSoru('Yunanistan\'ın başkenti neresi?', 'Atina', 'Selanik'),
+    YakupSoru('Azerbaycan\'ın başkenti neresi?', 'Bakü', 'Gence'),
+    YakupSoru('İran\'ın başkenti neresi?', 'Tahran', 'İsfahan'),
+    YakupSoru('Amerika\'nın başkenti neresi?', 'Vaşington', 'New York'),
+    YakupSoru('Kanada\'nın başkenti neresi?', 'Ottava', 'Toronto'),
+    YakupSoru('Avustralya\'nın başkenti neresi?', 'Kanberra', 'Sidney'),
+    YakupSoru('Hollanda\'nın başkenti neresi?', 'Amsterdam', 'Rotterdam'),
+    YakupSoru('Çin\'in başkenti neresi?', 'Pekin', 'Şanghay'),
+    YakupSoru('Hindistan\'ın başkenti neresi?', 'Yeni Delhi', 'Bombay'),
+    YakupSoru('Norveç\'in başkenti neresi?', 'Oslo', 'Bergen'),
+    YakupSoru('İsveç\'in başkenti neresi?', 'Stokholm', 'Göteborg'),
+    // ── Türkiye coğrafyası & meşhurlar ──
+    YakupSoru('Kayseri nesiyle meşhur dostum?', 'Pastırma', 'Lokum'),
+    YakupSoru('Türkiye\'nin en yüksek dağı hangisi?', 'Ağrı Dağı', 'Uludağ'),
+    YakupSoru('Türkiye\'nin en büyük gölü hangisi?', 'Van Gölü', 'Tuz Gölü'),
+    YakupSoru('Tamamı ülkemizde olan en uzun nehrimiz hangisi?', 'Kızılırmak', 'Susurluk Çayı'),
+    YakupSoru('Türkiye\'nin en kalabalık şehri hangisi?', 'İstanbul', 'İzmir'),
+    YakupSoru('Peribacaları hangi ilimizde?', 'Nevşehir', 'Eskişehir'),
+    YakupSoru('Pamukkale hangi ilimizde?', 'Denizli', 'Aydın'),
+    YakupSoru('Efes Antik Kenti hangi ilimizde?', 'İzmir', 'Antalya'),
+    YakupSoru('Gaziantep en çok nesiyle meşhur?', 'Baklava', 'Höşmerim'),
+    YakupSoru('Adana deyince akla ne gelir?', 'Kebap', 'Mantı'),
+    YakupSoru('İskender kebap hangi şehrimizle özdeş?', 'Bursa', 'Konya'),
+    YakupSoru('Hamsi deyince hangi şehrimiz akla gelir?', 'Trabzon', 'Mardin'),
+    YakupSoru('Kayısının başkenti hangi ilimiz?', 'Malatya', 'Muş'),
+    YakupSoru('Çay deyince hangi ilimiz akla gelir?', 'Rize', 'Edirne'),
+    YakupSoru('Fındık üretimiyle ünlü ilimiz hangisi?', 'Giresun', 'Burdur'),
+    YakupSoru('Gül yetiştiriciliğiyle ünlü ilimiz?', 'Isparta', 'Sinop'),
+    YakupSoru('Mevlana Müzesi hangi ilimizde?', 'Konya', 'Kütahya'),
+    YakupSoru('Truva Atı hangi ilimizde sergileniyor?', 'Çanakkale', 'Balıkesir'),
+    YakupSoru('Sümela Manastırı hangi ilimizde?', 'Trabzon', 'Artvin'),
+    YakupSoru('Nemrut Dağı heykelleri hangi ilimizde?', 'Adıyaman', 'Elazığ'),
+    YakupSoru('Cezerye hangi şehrimizin tatlısı?', 'Mersin', 'Samsun'),
+    YakupSoru('Mantı deyince hangi ilimiz meşhurdur?', 'Kayseri', 'Muğla'),
+    // ── Tarih ──
+    YakupSoru('İstanbul hangi yıl fethedildi?', '1453', '1543'),
+    YakupSoru('Cumhuriyet hangi yıl ilan edildi?', '1923', '1938'),
+    YakupSoru('Atatürk hangi yıl doğdu?', '1881', '1899'),
+    YakupSoru('İstanbul\'u fetheden padişah kimdir?', 'Fatih Sultan Mehmet', 'Yavuz Sultan Selim'),
+    YakupSoru('Osmanlı Devleti\'nin kurucusu kimdir?', 'Osman Bey', 'Orhan Bey'),
+    YakupSoru('Ünlü dünya haritasını çizen denizcimiz kim?', 'Piri Reis', 'Barbaros'),
+    YakupSoru('Kurtuluş Savaşı hangi antlaşmayla taçlandı?', 'Lozan', 'Sevr'),
+    YakupSoru('Ankara hangi yıl başkent oldu?', '1923', '1908'),
+    YakupSoru('Mısır piramitleri kimler için yapıldı?', 'Firavunlar', 'Krallar Şövalyeleri'),
+    YakupSoru('İlk Çağ\'ın ünlü kütüphanesi nerededir?', 'İskenderiye', 'Kudüs'),
+    // ── Matematik ──
+    YakupSoru('7 çarpı 8 kaç eder dostum?', '56', '54'),
+    YakupSoru('12 çarpı 12 kaç eder?', '144', '124'),
+    YakupSoru('100 bölü 4 kaç eder?', '25', '40'),
+    YakupSoru('9 çarpı 9 kaç eder?', '81', '89'),
+    YakupSoru('15 artı 27 kaç eder?', '42', '32'),
+    YakupSoru('13 çarpı 3 kaç eder?', '39', '33'),
+    YakupSoru('64\'ün karekökü kaçtır?', '8', '6'),
+    YakupSoru('111 eksi 19 kaç eder?', '92', '98'),
+    YakupSoru('Bir düzine kaç tanedir?', '12', '10'),
+    YakupSoru('Çeyrek saat kaç dakikadır?', '15', '25'),
+    YakupSoru('Bir günde kaç saat vardır?', '24', '12'),
+    YakupSoru('6 çarpı 7 kaç eder?', '42', '48'),
+    // ── Fen & genel ──
+    YakupSoru('Dünya\'nın uydusu hangisidir?', 'Ay', 'Mars'),
+    YakupSoru('Güneş Sistemi\'nin en büyük gezegeni?', 'Jüpiter', 'Satürn'),
+    YakupSoru('Suyun kimyasal formülü nedir?', 'H2O', 'CO2'),
+    YakupSoru('Hangisi daha hızlıdır?', 'Işık', 'Ses'),
+    YakupSoru('Hangi kuş uçamaz?', 'Penguen', 'Martı'),
+    YakupSoru('Yarasa hangi sınıftandır?', 'Memeli', 'Kuş'),
+    YakupSoru('Balı hangi hayvan yapar?', 'Arı', 'Kelebek'),
+    YakupSoru('Dünya, Güneş\'in etrafını kaç günde döner?', '365', '180'),
+    YakupSoru('İnsan vücudundaki en büyük organ hangisi?', 'Deri', 'Karaciğer'),
+    YakupSoru('Gökkuşağında kaç renk vardır?', '7', '5'),
+    YakupSoru('En kalabalık okyanus canlısı grubu?', 'Balıklar', 'Kaplumbağalar'),
+    YakupSoru('Ahtapotun kaç kolu vardır?', '8', '6'),
+    // ── Popüler kültür ──
+    YakupSoru('"Şımarık" kimin şarkısıdır?', 'Tarkan', 'Mustafa Sandal'),
+    YakupSoru('"Gülpembe" kimin şarkısıdır?', 'Barış Manço', 'Cem Karaca'),
+    YakupSoru('"Gülümse" albümü kimindir?', 'Sezen Aksu', 'Ajda Pekkan'),
+    YakupSoru('"Ele Güne Karşı" hangi grubun şarkısı?', 'MFÖ', 'Ezginin Günlüğü'),
+    YakupSoru('Hababam Sınıfı\'nın İnek Şaban\'ı kimdir?', 'Kemal Sunal', 'Şener Şen'),
+    YakupSoru('"Eşkıya" filminin başrolü kimdir?', 'Şener Şen', 'Kadir İnanır'),
+    YakupSoru('G.O.R.A. filmini kim yazdı?', 'Cem Yılmaz', 'Ata Demirer'),
+    YakupSoru('Recep İvedik\'i kim canlandırıyor?', 'Şahan Gökbakar', 'Okan Bayülgen'),
+    YakupSoru('"Düm Tek Tek" ile Eurovision\'a kim katıldı?', 'Hadise', 'Sıla'),
+    YakupSoru('2003 Eurovision\'u hangi sanatçımız kazandı?', 'Sertab Erener', 'Nil Karaibrahimgil'),
+    YakupSoru('"Süperstar" lakaplı sanatçımız kim?', 'Ajda Pekkan', 'Emel Sayın'),
+    YakupSoru('"Sanat Güneşi" lakaplı sanatçımız kim?', 'Zeki Müren', 'Müslüm Gürses'),
+    YakupSoru('"Bozkırın Tezenesi" kimdir?', 'Neşet Ertaş', 'Aşık Veysel'),
+    YakupSoru('Nasreddin Hoca hangi ilçeyle anılır?', 'Akşehir', 'Ürgüp'),
+    YakupSoru('Keloğlan kimin kahramanıdır?', 'Masalların', 'Çizgi romanların'),
+    YakupSoru('Karagöz-Hacivat nedir?', 'Gölge oyunu', 'Kukla tiyatrosu'),
+    YakupSoru('2000 UEFA Kupası\'nı hangi takımımız kazandı?', 'Galatasaray', 'Fenerbahçe'),
+    YakupSoru('2002 Dünya Kupası\'nda milli takım kaçıncı oldu?', 'Üçüncü', 'Beşinci'),
+    YakupSoru('Fenerbahçe\'nin renkleri nedir?', 'Sarı-Lacivert', 'Sarı-Kırmızı'),
+    YakupSoru('Beşiktaş\'ın renkleri nedir?', 'Siyah-Beyaz', 'Yeşil-Beyaz'),
+    YakupSoru('Trabzonspor\'un renkleri nedir?', 'Bordo-Mavi', 'Mor-Beyaz'),
+    YakupSoru('Survivor yarışması hangi ülkede çekilir?', 'Dominik', 'Meksika'),
+    // ── Atasözü & deyim geyikleri ──
+    YakupSoru('Bir elin nesi var, iki elin...?', 'Sesi var', 'Parası var'),
+    YakupSoru('Damlaya damlaya ne olur?', 'Göl olur', 'Sel olur'),
+    YakupSoru('Sakla samanı, gelir...?', 'Zamanı', 'Dumanı'),
+    YakupSoru('Ayağını yorganına göre...?', 'Uzat', 'Kısalt'),
+    YakupSoru('İşleyen demir ne tutmaz?', 'Pas', 'Işık'),
+    YakupSoru('Ak akçe hangi gün içindir?', 'Kara gün', 'Bayram günü'),
+    YakupSoru('Üzüm üzüme baka baka ne olur?', 'Kararır', 'Tatlanır'),
+    YakupSoru('Görünen köy ne istemez?', 'Kılavuz', 'Yol tarifi'),
+    YakupSoru('Damdan düşen ne yapar?', 'Halden anlar', 'Bir daha çıkar'),
+    YakupSoru('Erken kalkan ne alır?', 'Yol', 'Uyku'),
+    YakupSoru('Taşıma suyla hangisi dönmez?', 'Değirmen', 'Dolap'),
+    YakupSoru('Meyve veren ağaç ne yapılır?', 'Taşlanır', 'Sulanır'),
+  ];
 }
 
 // ─── FAL SİSTEMİ ─────────────────────────────────────────────────────────────
@@ -2140,7 +2620,11 @@ class KayitServisi {
   static Future<void> enYuksekParaGuncelle(int para) async {
     final prefs = await SharedPreferences.getInstance();
     final mevcut = prefs.getInt(_enYuksekParaKey) ?? 0;
-    if (para > mevcut) await prefs.setInt(_enYuksekParaKey, para);
+    if (para > mevcut) {
+      await prefs.setInt(_enYuksekParaKey, para);
+      // Rekor kırıldı → çevrimiçi liderlik tablosuna da gönder.
+      LiderServisi.skorGonder(para);
+    }
   }
 
   static Future<int?> enYuksekParaYukle() async {
@@ -2165,7 +2649,7 @@ class KayitServisi {
 enum ItemCategory { cd, konsol, aksesuar, arac }
 
 /// Oyuncunun bulunduğu yer.
-enum Konum { dukkan, ev, yazlik, dagevi }
+enum Konum { dukkan, ev, yazlik, dagevi, tekne }
 
 /// Satın alınabilir bir mekân: ad/ikon/fiyat (Market kartı ve konum seçimi)
 /// + arka plan ve en-boy oranı (eşyalar bu kutuya oranla konumlanıyor).
@@ -2184,7 +2668,9 @@ class Mekan {
   static const yazlik = Mekan(Konum.yazlik, 'Yazlık',  '🏖️', 'assets/yazlik_bos.jpg', 719 / 1274, 12000);
   static const dagevi = Mekan(Konum.dagevi, 'Dağ Evi', '🏔️', 'assets/dagevi_bos.jpg', 719 / 1274, 15000);
 
-  static const List<Mekan> satinAlinabilir = [ev, yazlik, dagevi];
+  static const tekne  = Mekan(Konum.tekne,  'Tekne',   '⛵', 'assets/tekne_bos.jpg',  719 / 1274, 20000);
+
+  static const List<Mekan> satinAlinabilir = [ev, yazlik, dagevi, tekne];
 
   static Mekan bul(Konum k) =>
       satinAlinabilir.where((m) => m.konum == k).firstOrNull ?? ev;
@@ -2276,6 +2762,28 @@ class EvEsyasi {
       konum: Konum.dagevi, tamKatman: true, ikon: 'assets/dagevi_06_k.png'),
     EvEsyasi('d_pikap',    'Eski Pikap',      'assets/dagevi_07.png', 2800, 0, 0, 1,
       konum: Konum.dagevi, tamKatman: true, ikon: 'assets/dagevi_07_k.png'),
+
+    // ── ⛵ TEKNE ──
+    // Katmanlar `tekne_guvertesi_katmanli.ora`'dan; dağ eviyle aynı düzen.
+    // Sıra dosya numarasına göre (01 en arkada — deri minderler önce çizilir).
+    EvEsyasi('t_minder',   'Deri Minderler',   'assets/tekne_01.png', 2400, 0, 0, 1,
+      konum: Konum.tekne, tamKatman: true, ikon: 'assets/tekne_01_k.png'),
+    EvEsyasi('t_olta',     'Olta Takımı',      'assets/tekne_02.png',  900, 0, 0, 1,
+      konum: Konum.tekne, tamKatman: true, ikon: 'assets/tekne_02_k.png'),
+    EvEsyasi('t_ocak',     'Ocak',             'assets/tekne_03.png', 1600, 0, 0, 1,
+      konum: Konum.tekne, tamKatman: true, ikon: 'assets/tekne_03_k.png'),
+    EvEsyasi('t_buzdolabi','Buzdolabı',        'assets/tekne_04.png', 3000, 0, 0, 1,
+      konum: Konum.tekne, tamKatman: true, ikon: 'assets/tekne_04_k.png'),
+    EvEsyasi('t_masa',     'Güverte Masası',   'assets/tekne_05.png', 2000, 0, 0, 1,
+      konum: Konum.tekne, tamKatman: true, ikon: 'assets/tekne_05_k.png'),
+    EvEsyasi('t_tabak',    'Tabak Çanak',      'assets/tekne_06.png',  500, 0, 0, 1,
+      konum: Konum.tekne, tamKatman: true, ikon: 'assets/tekne_06_k.png'),
+    EvEsyasi('t_dalgic',   'Dalgıç Takımı',    'assets/tekne_07.png', 2800, 0, 0, 1,
+      konum: Konum.tekne, tamKatman: true, ikon: 'assets/tekne_07_k.png'),
+    EvEsyasi('t_zipkin',   'Zıpkın',           'assets/tekne_08.png', 1200, 0, 0, 1,
+      konum: Konum.tekne, tamKatman: true, ikon: 'assets/tekne_08_k.png'),
+    EvEsyasi('t_caki',     'İsviçre Çakısı',   'assets/tekne_09.png',  350, 0, 0, 1,
+      konum: Konum.tekne, tamKatman: true, ikon: 'assets/tekne_09_k.png'),
   ];
 
   static List<EvEsyasi> konumun(Konum k) => tumu.where((e) => e.konum == k).toList();
@@ -2305,11 +2813,26 @@ class Arac {
       category: ItemCategory.arac, basePrice: 3000, kondisyon: 4), 120),
     Arac(GameItem(id: 'arac5', name: 'Yol Kartalı', gorsel: 'assets/arac_5.png',
       category: ItemCategory.arac, basePrice: 11000, kondisyon: 5), 75),
+    // ── v120 araçları ──
+    Arac(GameItem(id: 'arac6', name: 'Dağ Keçisi', gorsel: 'assets/arac_6.png',       // elektrikli dağ bisikleti
+      category: ItemCategory.arac, basePrice: 2200, kondisyon: 4), 150),
+    Arac(GameItem(id: 'arac7', name: 'Yarış Tayı', gorsel: 'assets/arac_7.png',       // yol bisikleti
+      category: ItemCategory.arac, basePrice: 2600, kondisyon: 4), 130),
+    Arac(GameItem(id: 'arac8', name: 'Mavi Furya', gorsel: 'assets/arac_8.png',       // mavi üstü açık spor
+      category: ItemCategory.arac, basePrice: 26000, kondisyon: 5), 22),
+    Arac(GameItem(id: 'arac9', name: 'Çöl Kaplanı', gorsel: 'assets/arac_9.png',      // bej arazi aracı
+      category: ItemCategory.arac, basePrice: 18000, kondisyon: 5), 32),
+    Arac(GameItem(id: 'arac10', name: 'Fıstık', gorsel: 'assets/arac_10.png',         // beyaz tavanlı yeşil mini
+      category: ItemCategory.arac, basePrice: 8000, kondisyon: 4), 40),
+    Arac(GameItem(id: 'arac11', name: 'Vahşi At', gorsel: 'assets/arac_11.png',       // kırmızı kas arabası
+      category: ItemCategory.arac, basePrice: 21000, kondisyon: 5), 25),
   ];
 
   /// Bir ürün id'sinin geçiş süresi. Araç değilse null.
   static int? gecisSuresi(String id) =>
       tumu.where((a) => a.item.id == id).map((a) => a.gecisSaniye).firstOrNull;
+
+  static Arac? bul(String id) => tumu.where((a) => a.item.id == id).firstOrNull;
 }
 
 class GameItem {
@@ -2733,7 +3256,7 @@ class GameState extends ChangeNotifier {
   int _ozelMusteriSayaci = 0;        // toplam müşteri sayacı (özel dahil değil)
   // Rotasyon: sadece "olay" tipli özel müşteriler. Toptancı Rıza BURADA DEĞİL —
   // onun kendi günlük programı var (_rizaGunuAyarla).
-  List<OzelMusteriTip> _ozelTipSirasi = [OzelMusteriTip.hirsiz, OzelMusteriTip.polis, OzelMusteriTip.vergici, OzelMusteriTip.kurye, OzelMusteriTip.falci];
+  List<OzelMusteriTip> _ozelTipSirasi = [OzelMusteriTip.hirsiz, OzelMusteriTip.polis, OzelMusteriTip.vergici, OzelMusteriTip.kurye, OzelMusteriTip.falci, OzelMusteriTip.delibekir];
   int _ozelTipIndex = 0;
   /// Falcının kehaneti: bir sonraki özel müşteri bu tip olacak.
   /// Sıradaki müşteride tüketilir (rotasyon bozulmaz, sadece araya girer).
@@ -2754,30 +3277,176 @@ class GameState extends ChangeNotifier {
     final ust = gunlukMusteriLimiti - 3;
     _rizaZiyaretSirasi = 2 + (ust > 1 ? Random().nextInt(ust) : 0);
     _galericiBugunGeldi = false;
+    _yakupBugunGeldi = false;
   }
 
   // ── Galerici Gürbüz: Rıza gibi kendi programı var, rotasyona girmez.
-  //    4. günden itibaren ÜÇ GÜNDE BİR (4, 7, 10…) günün 2. müşterisi olarak
-  //    uğrar. Her gün gelmesi araç almayı sıradanlaştırırdı.
+  //    Bilgisayar 2. günde geldiği için 3. günden itibaren ÜÇ GÜNDE BİR
+  //    (3, 6, 9…) günün 2. müşterisi olarak uğrar.
   bool _galericiBugunGeldi = false;
   bool get _galericiZamani =>
-      !_galericiBugunGeldi && gun >= 4 && (gun - 4) % 3 == 0;
+      !_galericiBugunGeldi && gun >= 3 && (gun - 3) % 3 == 0;
 
   /// Özel müşteri ROTASYONUNA hiç girmeyen tipler — her birinin kendi
   /// programı var, rotasyondan da gelirlerse iki kez gelmiş olurlar.
+  /// (Deli Bekir bilerek LİSTEDE YOK: o sıradan rotasyona girer.)
   static const Set<OzelMusteriTip> _rotasyonDisi = {
     OzelMusteriTip.toptanci,
     OzelMusteriTip.guvenlik,
     OzelMusteriTip.galerici,
     OzelMusteriTip.hande,
+    OzelMusteriTip.sezercik,
+    OzelMusteriTip.seyma,
+    OzelMusteriTip.palyaco,
+    OzelMusteriTip.buyucu,
   };
+
+  // ── 👦 SEZERCİK / 💎 ŞEYMA KOKO ───────────────────────────────────────────
+  // Sezercik 3-6. günlerden birinde BİR KEZ gelir. Şeyma Koko ancak Sezercik
+  // geldikten en az bir tam gün SONRA gelebilir (ertesi gün yasak) ve
+  // Sezercik'e verilen cevaba göre ödül ya da sitem getirir.
+  int sezercikGunu = 3 + Random().nextInt(4); // 3..6
+  int sezercikDurumu = 0; // 0 = gelmedi, 1 = yardım edildi, 2 = reddedildi
+  int? seymaGunu;         // sezercik ziyareti çözülünce kurulur
+  bool seymaGeldi = false;
+  /// Şeyma diyaloğunun adımı (0..2) ve alt bardaki tek butonun etiketi.
+  int seymaAdim = 0;
+
+  // ── 🤡 PALYAÇO ────────────────────────────────────────────────────────────
+  // 4. günden sonra rastgele bir günde, oyun boyunca BİR KEZ.
+  int palyacoGunu = 5 + Random().nextInt(6); // 5..10
+  bool palyacoGeldi = false;
+
+  // ── 🧙 BÜYÜCÜ YAKUP ───────────────────────────────────────────────────────
+  // 3, 8, 13. günlerde ve sonra 10'un katlarında; günde en fazla bir kez.
+  bool _yakupBugunGeldi = false;
+  bool get _yakupZamani =>
+      !_yakupBugunGeldi &&
+      (gun == 3 || gun == 8 || gun == 13 || (gun >= 20 && gun % 10 == 0));
+  /// Yakup'ta soru ekranına geçildi mi (alt barda şıklar görünsün mü)?
+  bool yakupSoruAcik = false;
+
+  /// Sezercik'e cevap: yardımsa para düşer, Şeyma Koko'nun günü kurulur.
+  /// Ertesi gün YASAK — en az bir tam gün arada kalır (gun + 2'den önce olmaz).
+  void sezercikCevapla(bool yardimEt) {
+    final om = aktifOzelMusteri;
+    if (om == null || om.tip != OzelMusteriTip.sezercik) return;
+    final rng = Random();
+    if (yardimEt && para >= om.ilkMiktar) {
+      para -= om.ilkMiktar;
+      SesServisi.paraGirdi();
+      sezercikDurumu = 1;
+      mesaj = OzelMusteri.sezercikTesekkurleri[
+          rng.nextInt(OzelMusteri.sezercikTesekkurleri.length)];
+    } else {
+      sezercikDurumu = 2;
+      mesaj = OzelMusteri.sezercikKirginlari[
+          rng.nextInt(OzelMusteri.sezercikKirginlari.length)];
+    }
+    seymaGunu = gun + 2 + rng.nextInt(3);
+    musteriKabulBekliyor = false;
+    notifyListeners();
+  }
+
+  /// 💎 Şeyma'nın sıradaki repliği. Adım ilerletmez — UI okur, sonra
+  /// [seymaIlerle] çağırır.
+  String seymaMesaji() {
+    final yardim = sezercikDurumu == 1;
+    switch (seymaAdim) {
+      case 0:
+        return 'Merhaba, ben ünlü Milyarder Şeyma Koko. Nasılsın?';
+      case 1:
+        return yardim
+            ? 'Sezercik\'i hatırladın mı, hani yardım etmiştin, fakir bir çocuktu...'
+            : 'Sezercik\'i hatırladın mı, geri çevirdiğin fakir çocuk!...';
+      default:
+        return 'O\'na yardım ettiğini öğrendim. Müstesna birisin. Ben de sana edeceğim!';
+    }
+  }
+
+  /// Şeyma'nın hediye kararı: ('araba' | 'motor' | 'para', ilgili id ya da tutar).
+  /// Para hediyesi bakiyenin 2 katıdır. Araç zaten sahipliyse paraya düşülür.
+  (String, String, int) seymaOdulSec() {
+    final rng = Random();
+    final paraOdul = para * 2;
+    final tip = rng.nextInt(3);
+    if (tip == 0 && !aracSahibi('arac10')) {
+      return ('araba', 'arac10', 0); // beyaz tavanlı Fıstık
+    }
+    if (tip == 1) {
+      final motor = rng.nextBool() ? 'arac4' : 'arac5';
+      if (!aracSahibi(motor)) return ('motor', motor, 0);
+    }
+    return ('para', '', paraOdul);
+  }
+
+  /// Şeyma'nın "kaçırdın" sitemindeki X — verilmeyecek hediyenin adı.
+  String seymaKacirilanOdul() {
+    switch (Random().nextInt(3)) {
+      case 0: return 'bir araba';
+      case 1: return 'bir motosiklet';
+      default: return '${para * 2} lira';
+    }
+  }
+
+  /// 🧙 Yakup'un cevabı. Doğruysa true döner; yanlışsa para kesilir ve
+  /// kesilen tutar [sonYakupCezasi]nda durur (mesajda gösterilir).
+  int sonYakupCezasi = 0;
+  bool yakupCevapla(bool soldakiSecildi) {
+    final om = aktifOzelMusteri;
+    if (om == null || !om.bilgiSorusu) return false;
+    final dogru = soldakiSecildi == om.dogruA;
+    if (dogru) {
+      mesaj = 'Tebrikler, gazabımdan şimdilik kurtuldun. Gene görüşeceğiz!';
+    } else {
+      final ceza = (100 + Random().nextInt(301)).clamp(0, para);
+      sonYakupCezasi = ceza;
+      para -= ceza;
+      SesServisi.paraGirdi();
+      mesaj = 'Bilemedinn! Abra kadabraa! $ceza lira kaybettin!';
+    }
+    yakupSoruAcik = false;
+    musteriKabulBekliyor = false;
+    notifyListeners();
+    return dogru;
+  }
+
+  /// Özel müşteri gönderiminin ortak son adımı — sayaç/mesaj/bildirim.
+  void _ozelGonder(OzelMusteri om) {
+    aktifOzelMusteri = om;
+    ozelMusteriGorunuyor = true;
+    musteriKabulBekliyor = true;
+    musteriSayisi++;
+    gunlukMusteriSayisi++;
+    mesaj = om.ilkMesaj;
+    notifyListeners();
+  }
 
   // ── 🚗 ARAÇ / 🏠 KONUM ────────────────────────────────────────────────────
 
-  /// Envanterdeki araçlar. "Konum Değiştir" bunlardan birini ister.
-  List<GameItem> get sahipAraclar =>
-      slotlar.whereType<GameItem>().where((u) => u.category == ItemCategory.arac).toList();
-  bool get aracVar => sahipAraclar.isNotEmpty;
+  /// Sahip olunan araçların id'leri.
+  ///
+  /// ⚠️ v120: Araçlar artık ENVANTERE GİRMEZ — envanter CD/ekipman içindir,
+  /// müşterilerin araç istemesi de böylece kökten imkânsız oldu. Eski
+  /// kayıtların slotlarına girmiş araçlar `fromJson`'da buraya taşınır.
+  List<String> sahipAracIdleri = [];
+
+  List<GameItem> get sahipAraclar => sahipAracIdleri
+      .map((id) => Arac.bul(id)?.item)
+      .whereType<GameItem>()
+      .toList();
+  bool get aracVar => sahipAracIdleri.isNotEmpty;
+  bool aracSahibi(String id) => sahipAracIdleri.contains(id);
+
+  /// Market'ten araç satın alma (galerici pazarlığına alternatif, liste fiyatına).
+  bool aracSatinAl(Arac a) {
+    if (aracSahibi(a.item.id) || para < a.item.basePrice) return false;
+    para -= a.item.basePrice;
+    sahipAracIdleri.add(a.item.id);
+    SesServisi.paraGirdi();
+    notifyListeners();
+    return true;
+  }
 
   /// Sahip olunan mekânlar (Market'ten alınanlar; `Konum.name` ile) ve
   /// içlerine konan eşyalar. Eşya id'leri mekânlar arasında benzersiz
@@ -2852,6 +3521,72 @@ class GameState extends ChangeNotifier {
   void konumaGec(Konum k) {
     aktifKonum = k;
     notifyListeners();
+  }
+
+  // ── 💼 SAHİP OLUNANLARI SATMA ─────────────────────────────────────────────
+  // Araç satışında Galerici Gürbüz, mekân satışında Emlakçı Necmi ALICI
+  // müşteri olarak gelir ve normal pazarlık döner. Satılan şey envanterde
+  // olmadığı için `_anlasmayiTamamla`nın satış dalı bu bayraklara bakar:
+  // slottan ürün çıkarmak yerine sahiplik listesinden düşer.
+  String? satistakiAracId;
+  Konum? satistakiKonum;
+  bool get _ozelSatisAktif => satistakiAracId != null || satistakiKonum != null;
+
+  /// Mekânın güncel değeri: kendi bedeli + içine alınan eşyaların bedeli.
+  /// Ev ne kadar döşenirse o kadar eder — eşyalar satışta evle birlikte gider.
+  int mekanDegeri(Konum k) {
+    final esyaToplam = EvEsyasi.konumun(k)
+        .where((e) => evEsyalari.contains(e.id))
+        .fold(0, (t, e) => t + e.fiyat);
+    return Mekan.bul(k).fiyat + esyaToplam;
+  }
+
+  /// [alici] ismi/görseliyle, [deger] piyasa fiyatlı bir ALICI müşteri kurar.
+  void _aliciKur(String ad, String gorsel, GameItem urun, int deger) {
+    final ozellik = MusteriOzellik.random();
+    final pv = ozellik.perceivedValue(urun.kondisyon, deger);
+    final reserv = _piyasaEtkisi(ozellik.reservationPrice(pv, deger, false), false);
+    final ilkTeklif = ozellik.openingOffer(reserv, deger, false).round();
+    aktifOzelMusteri = null;
+    ozelMusteriGorunuyor = false;
+    aktifMusteri = Customer(
+      name: ad, gorsel: gorsel,
+      musteriSatiyor: false, item: urun, ilkTeklif: ilkTeklif,
+      ozellik: ozellik, yas: YasGrubu.yetiskin, cinsiyet: 'E');
+    musteriGorunuyor = true;
+    musteriKabulBekliyor = true;
+    notifyListeners();
+  }
+
+  /// "Sahip Olunanlar"dan araç satışı: Gürbüz alıcı olarak kapıya gelir.
+  void aracSatisiBaslat(Arac a) {
+    satistakiAracId = a.item.id;
+    satistakiKonum = null;
+    _aliciKur('Galerici Gürbüz', 'assets/galerici.png', a.item, a.item.basePrice);
+    mesaj = 'Duydum ki ${a.item.name} satılıkmış. '
+        'Galeriye ararım abime, ne istiyorsun?';
+  }
+
+  /// "Sahip Olunanlar"dan mekân satışı: Emlakçı Necmi alıcı olarak gelir.
+  /// Değere eşyalar dahil — satış gerçekleşirse eşyalar da evle gider.
+  void mekanSatisiBaslat(Konum k) {
+    final m = Mekan.bul(k);
+    satistakiKonum = k;
+    satistakiAracId = null;
+    final deger = mekanDegeri(k);
+    // Balonda ve pazarlıkta görünecek sahte ürün — envantere hiç girmez.
+    final urun = GameItem(id: 'satis_${k.name}', name: m.ad,
+        gorsel: m.arkaplan, category: ItemCategory.aksesuar,
+        basePrice: deger, kondisyon: 5);
+    _aliciKur('Emlakçı Necmi', 'assets/emlakci.png', urun, deger);
+    mesaj = '${m.ad} satılıkmış diye duydum. '
+        'Ciddi alıcıyım, fiyatta anlaşalım mı?';
+  }
+
+  /// Satış modu iptali (müşteri reddedildi/gitti) — bayraklar temizlenir.
+  void ozelSatisiTemizle() {
+    satistakiAracId = null;
+    satistakiKonum = null;
   }
   int toplamTeklifSayisi = 0;
   int krediKalanTaksit = 0;
@@ -3703,6 +4438,23 @@ class GameState extends ChangeNotifier {
     _rizaBugunGeldi        = (j['rizaBugunGeldi'] as bool?) ?? false;
     _galericiBugunGeldi    = (j['galericiBugunGeldi'] as bool?) ?? false;
     sahipMekanlar          = ((j['sahipMekanlar'] as List?) ?? []).map((e) => e as String).toSet();
+    sahipAracIdleri        = ((j['sahipAracIdleri'] as List?) ?? []).map((e) => e as String).toList();
+    sezercikGunu           = (j['sezercikGunu'] as int?) ?? (3 + Random().nextInt(4));
+    sezercikDurumu         = (j['sezercikDurumu'] as int?) ?? 0;
+    seymaGunu              = j['seymaGunu'] as int?;
+    seymaGeldi             = (j['seymaGeldi'] as bool?) ?? false;
+    palyacoGunu            = (j['palyacoGunu'] as int?) ?? (5 + Random().nextInt(6));
+    palyacoGeldi           = (j['palyacoGeldi'] as bool?) ?? false;
+    _yakupBugunGeldi       = (j['yakupBugunGeldi'] as bool?) ?? false;
+    // v118/v119 kayitlarinda araclar envanter slotlarindaydi — tasi.
+    for (int i = 0; i < slotlar.length; i++) {
+      final u = slotlar[i];
+      if (u != null && u.category == ItemCategory.arac) {
+        if (!sahipAracIdleri.contains(u.id)) sahipAracIdleri.add(u.id);
+        slotlar[i] = null;
+      }
+    }
+    _slotlariSikistir();
     // v118 ara kayıtları mekân sahipliğini iki ayrı bool'da tutuyordu.
     if ((j['evSahibi'] as bool?) ?? false) sahipMekanlar.add(Konum.ev.name);
     if ((j['yazlikSahibi'] as bool?) ?? false) sahipMekanlar.add(Konum.yazlik.name);
@@ -3766,6 +4518,14 @@ class GameState extends ChangeNotifier {
     'rizaBugunGeldi': _rizaBugunGeldi,
     'galericiBugunGeldi': _galericiBugunGeldi,
     'sahipMekanlar': sahipMekanlar.toList(),
+    'sahipAracIdleri': sahipAracIdleri,
+    'sezercikGunu': sezercikGunu,
+    'sezercikDurumu': sezercikDurumu,
+    if (seymaGunu != null) 'seymaGunu': seymaGunu,
+    'seymaGeldi': seymaGeldi,
+    'palyacoGunu': palyacoGunu,
+    'palyacoGeldi': palyacoGeldi,
+    'yakupBugunGeldi': _yakupBugunGeldi,
     'evEsyalari': evEsyalari.toList(),
     'aktifKonum': aktifKonum.name,
     'rizaZiyaretSirasi': _rizaZiyaretSirasi,
@@ -3955,13 +4715,54 @@ class GameState extends ChangeNotifier {
     // 🚗 Galerici Gürbüz — 3 günde bir, günün 2. müşterisi.
     if (_galericiZamani && gunlukMusteriSayisi >= 2) {
       _galericiBugunGeldi = true;
-      aktifOzelMusteri = OzelMusteri.galerici();
-      ozelMusteriGorunuyor = true;
-      musteriKabulBekliyor = true;
-      musteriSayisi++;
-      gunlukMusteriSayisi++;
-      mesaj = aktifOzelMusteri!.ilkMesaj;
-      notifyListeners();
+      _ozelGonder(OzelMusteri.galerici());
+      return;
+    }
+    // 👦 Sezercik — 3-6. günlerden birinde bir kez. İsteyeceği para oyuncunun
+    // kasasının 1/5'i ile 1/2'si arası; kasa çok boşsa ziyaret ertelenir
+    // (5 lirası olandan 2 lira istemek sahneyi komikleştiriyordu).
+    if (sezercikDurumu == 0 && gun >= sezercikGunu && gunlukMusteriSayisi >= 2) {
+      if (para < 100) {
+        sezercikGunu = gun + 1;
+      } else {
+        final rng = Random();
+        final alt = para ~/ 5;
+        final ust = para ~/ 2;
+        final miktar = alt + rng.nextInt((ust - alt).clamp(1, 1 << 30));
+        _ozelGonder(OzelMusteri.sezercik(miktar));
+        return;
+      }
+    }
+    // 💎 Şeyma Koko — Sezercik'ten en az bir tam gün sonra, bir kez.
+    if (!seymaGeldi && seymaGunu != null && gun >= seymaGunu! &&
+        gunlukMusteriSayisi >= 2) {
+      seymaGeldi = true;
+      seymaAdim = 0;
+      _ozelGonder(OzelMusteri.seyma());
+      return;
+    }
+    // 🤡 Palyaço — 4. günden sonra rastgele bir günde bir kez. Hediye CD
+    // verebilmesi için boş slot şart; envanter doluysa ertesi güne sarkar.
+    if (!palyacoGeldi && gun >= palyacoGunu && gunlukMusteriSayisi >= 2) {
+      final bosSlotVar = slotlar.sublist(0, acikSlotSayisi).contains(null);
+      if (!bosSlotVar) {
+        palyacoGunu = gun + 1;
+      } else {
+        palyacoGeldi = true;
+        final x = (para * 0.15).round().clamp(100, 600);
+        if (para >= x) {
+          _ozelGonder(OzelMusteri.palyaco(x));
+          return;
+        }
+        palyacoGeldi = false;
+        palyacoGunu = gun + 1;
+      }
+    }
+    // 🧙 Büyücü Yakup — 3/8/13 ve 10'un katları, günde bir kez.
+    if (_yakupZamani && gunlukMusteriSayisi >= 3) {
+      _yakupBugunGeldi = true;
+      yakupSoruAcik = false;
+      _ozelGonder(OzelMusteri.buyucu());
       return;
     }
     // Toptancı Rıza günde bir uğrar (özel müşteri rotasyonundan bağımsız)
@@ -4162,6 +4963,8 @@ class GameState extends ChangeNotifier {
     // yerine geri döner (istifa ettiyse `guvenlikVar` zaten false yapılıyor).
     _guvenlikOnde = false;
     _kolonyaPendingBonus = 0.0;
+    // Satış görüşmesi anlaşmasız bittiyse varlık sahipte kalır.
+    ozelSatisiTemizle();
     notifyListeners();
   }
 
@@ -4192,6 +4995,10 @@ class GameState extends ChangeNotifier {
         if (m.item.id == 'kolonya') {
           // Kolonya slota girmez — ayrı tutulur, +1 ilave
           kolonyaKullanim = 10;
+        } else if (m.item.category == ItemCategory.arac) {
+          // 🚗 Araç da slota girmez — sahiplik listesine yazılır (galerici
+          // pazarlığı). Envanterde araç olmayınca müşteri de isteyemiyor.
+          if (!sahipAracIdleri.contains(m.item.id)) sahipAracIdleri.add(m.item.id);
         } else {
           final itemMaliyet = m.item.kopyaWith(maliyet: anlasilanFiyat);
           if (!urunEkle(itemMaliyet)) {
@@ -4210,6 +5017,23 @@ class GameState extends ChangeNotifier {
         _musteriGonder();
         return;
       }
+    } else if (_ozelSatisAktif) {
+      // 💼 Sahip olunan araç/mekân satışı: ürün envanterde değil,
+      // sahiplik listesinden düşülür. Rozet/hedef sayaçlarına girmez —
+      // bu bir dükkan satışı değil, varlık satışı.
+      if (satistakiAracId != null) sahipAracIdleri.remove(satistakiAracId);
+      if (satistakiKonum != null) {
+        final k = satistakiKonum!;
+        sahipMekanlar.remove(k.name);
+        // Eşyalar evle birlikte gitti (değerleri fiyata dahildi).
+        for (final e in EvEsyasi.konumun(k)) {
+          evEsyalari.remove(e.id);
+        }
+        if (aktifKonum == k) aktifKonum = Konum.dukkan;
+      }
+      ozelSatisiTemizle();
+      para += anlasilanFiyat;
+      SesServisi.paraGirdi();
     } else {
       urunCikarOrnek(m.item); // aynı id'den çürük/sağlam iki kopya varsa doğrusunu çıkar
       para += anlasilanFiyat;
@@ -4218,8 +5042,8 @@ class GameState extends ChangeNotifier {
       SesServisi.paraGirdi();
       // Günlük hedef ilerlemesi (sadece SATIŞ sayılır)
       _hedefIlerlet(HedefTip.satisAdedi, 1);
-      _hedefIlerlet(HedefTip.gelir, anlasilanFiyat);
       _hedefIlerlet(HedefTip.tekSatis, anlasilanFiyat, mutlak: true);
+      _hedefIlerlet(HedefTip.gelir, anlasilanFiyat);
     }
     basariliPazarlik++;
     _komboArtir();
@@ -4260,6 +5084,15 @@ class GameState extends ChangeNotifier {
   void imacSatin() {
     para -= 2000;
     imacSatinAlindi = true;
+    SesServisi.paraGirdi();
+    notifyListeners();
+  }
+
+  /// iMac'i doğrudan satar — masa `bg1`'e (bilgisayarsız) döner.
+  void imacSat(int fiyat) {
+    if (!imacSatinAlindi) return;
+    imacSatinAlindi = false;
+    para += fiyat;
     SesServisi.paraGirdi();
     notifyListeners();
   }
@@ -4370,7 +5203,7 @@ class GameScreen extends StatefulWidget {
 }
 
 /// Browser penceresinde acilabilen sayfalar.
-enum _BrowserSayfa { menu, dukkanlar, satilik, hedefler, market, banka }
+enum _BrowserSayfa { menu, sahiplik, dukkanlar, satilik, hedefler, market, banka }
 
 class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   late GameState _state;
@@ -4452,7 +5285,8 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   }
   bool _envanterAcik = false;
   /// Toptanci ekraninda envanter sekmesi acik mi (tek yonlu gecis)
-  bool _toptanciEnvanterSekmesi = false;
+  /// 0 = Tezgâh, 1 = Envanter, 2 = Koleksiyon.
+  int _toptanciSekmeIdx = 0;
 
   // ── 🚗 KONUM GEÇİŞİ ───────────────────────────────────────────────────────
   // Yolculuk gerçek zamanda ilerler: sahnede solda küçük araç görseli ve
@@ -5215,41 +6049,331 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
         ]),
         const SizedBox(height: 12),
         Row(children: [
-          Expanded(child: _marketSekmeButonu('🏠 Ev / Araç', 0, setDlg)),
+          Expanded(child: _marketSekmeButonu('🏠 Ev', 0, setDlg)),
           const SizedBox(width: 8),
-          Expanded(child: _marketSekmeButonu('🖥️ Eşya', 1, setDlg)),
+          Expanded(child: _marketSekmeButonu('🚗 Araç', 1, setDlg)),
+          const SizedBox(width: 8),
+          Expanded(child: _marketSekmeButonu('🖥️ Eşya', 2, setDlg)),
         ]),
         const SizedBox(height: 12),
-        GridView.count(
-          crossAxisCount: 3,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          mainAxisSpacing: 10,
-          crossAxisSpacing: 10,
-          childAspectRatio: 0.78,
-          children: _marketSekme == 0
-            ? [
-                // Satın alınabilir mekânlar tek listeden türer (ev/yazlık/dağ evi…)
-                for (final m in Mekan.satinAlinabilir)
+        // Satın alınan şey listeden ÇIKAR — "Alındı" rozetli ölü kart yok,
+        // sahip olunanlar artık kendi sayfasında (Sahip Olunanlar).
+        Builder(builder: (_) {
+          final kartlar = <Widget>[
+            if (_marketSekme == 0)
+              for (final m in Mekan.satinAlinabilir)
+                if (!_state.konumSahibi(m.konum))
                   _marketUrunKart(
-                    ikon: m.ikon,
                     isim: m.ad,
                     fiyat: m.fiyat,
-                    satinAlindi: _state.konumSahibi(m.konum),
+                    gorselYolu: m.arkaplan,
                     onTap: () { Navigator.pop(ctx); _mekanSatinAlPopup(m.konum); },
                   ),
-              ]
-            : [
-                _marketUrunKart(
-                  ikon: '🖥️',
-                  isim: 'iMac',
-                  fiyat: 2000,
-                  satinAlindi: _state.imacSatinAlindi,
-                  onTap: () { Navigator.pop(ctx); _imacDetayPopup(); },
-                ),
-              ],
-        ),
+            if (_marketSekme == 1)
+              for (final a in Arac.tumu)
+                if (!_state.aracSahibi(a.item.id))
+                  _marketUrunKart(
+                    isim: a.item.name,
+                    fiyat: a.item.basePrice,
+                    gorselYolu: a.item.gorsel,
+                    onTap: () { Navigator.pop(ctx); _aracSatinAlPopup(a); },
+                  ),
+            if (_marketSekme == 2 && !_state.imacSatinAlindi)
+              _marketUrunKart(
+                ikon: '🖥️',
+                isim: 'iMac',
+                fiyat: 2000,
+                onTap: () { Navigator.pop(ctx); _imacDetayPopup(); },
+              ),
+          ];
+          if (kartlar.isEmpty) {
+            return const Padding(
+              padding: EdgeInsets.symmetric(vertical: 28),
+              child: Text('Bu bölümdeki her şey sende! 🎉',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 13, color: Panel.yaziSoluk)),
+            );
+          }
+          return GridView.count(
+            crossAxisCount: 3,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            mainAxisSpacing: 10,
+            crossAxisSpacing: 10,
+            childAspectRatio: 0.78,
+            children: kartlar,
+          );
+        }),
       ],
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  //  💼 SAHİP OLUNANLAR — evler, araçlar, eşyalar + satış akışları
+  // ═══════════════════════════════════════════════════════════════════════════
+  /// Sekme: 0 = Ev, 1 = Araç, 2 = Eşya. Browser gövdesi her karede baştan
+  /// çalıştığı için State'te durur (banka/hedefler ile aynı sebep).
+  int _sahiplikSekme = 0;
+
+  Widget _sahiplikGovdesi(BuildContext ctx, void Function(VoidCallback) setDlg) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+          Text('💼 ', style: TextStyle(fontSize: 20)),
+          Text('SAHİP OLUNANLAR', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF00C2A8), letterSpacing: 2)),
+        ]),
+        const SizedBox(height: 12),
+        Row(children: [
+          Expanded(child: _sahiplikSekmeButonu('🏠 Ev', 0, setDlg)),
+          const SizedBox(width: 8),
+          Expanded(child: _sahiplikSekmeButonu('🚗 Araç', 1, setDlg)),
+          const SizedBox(width: 8),
+          Expanded(child: _sahiplikSekmeButonu('🖥️ Eşya', 2, setDlg)),
+        ]),
+        const SizedBox(height: 12),
+        Builder(builder: (_) {
+          final kartlar = <Widget>[
+            if (_sahiplikSekme == 0)
+              for (final m in Mekan.satinAlinabilir)
+                if (_state.konumSahibi(m.konum))
+                  _sahiplikKart(
+                    isim: m.ad,
+                    altYazi: 'Değeri: ${_state.mekanDegeri(m.konum)}',
+                    gorselYolu: m.arkaplan,
+                    onTap: () => _mekanSatOnay(ctx, m),
+                  ),
+            if (_sahiplikSekme == 1)
+              for (final a in Arac.tumu)
+                if (_state.aracSahibi(a.item.id))
+                  _sahiplikKart(
+                    isim: a.item.name,
+                    altYazi: 'Değeri: ~${a.item.basePrice}',
+                    gorselYolu: a.item.gorsel,
+                    onTap: () => _aracSatOnay(ctx, a),
+                  ),
+            if (_sahiplikSekme == 2 && _state.imacSatinAlindi)
+              _sahiplikKart(
+                isim: 'iMac',
+                altYazi: 'Satış: 1200',
+                gorselYolu: null,
+                ikon: '🖥️',
+                onTap: () => _imacSatOnay(ctx),
+              ),
+          ];
+          if (kartlar.isEmpty) {
+            return const Padding(
+              padding: EdgeInsets.symmetric(vertical: 28),
+              child: Text('Bu bölümde henüz bir şeyin yok.\nMarket seni bekliyor!',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 13, color: Panel.yaziSoluk, height: 1.4)),
+            );
+          }
+          return GridView.count(
+            crossAxisCount: 2,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            mainAxisSpacing: 10,
+            crossAxisSpacing: 10,
+            childAspectRatio: 1.05,
+            children: kartlar,
+          );
+        }),
+      ],
+    );
+  }
+
+  Widget _sahiplikSekmeButonu(String etiket, int idx, void Function(VoidCallback) setDlg) {
+    final aktif = _sahiplikSekme == idx;
+    return GestureDetector(
+      onTap: () { SesServisi.dokun(); setDlg(() => _sahiplikSekme = idx); },
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 9),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: aktif ? const Color(0xFF0e2a26) : Panel.ikincilZemin,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: aktif ? const Color(0xFF00C2A8) : Panel.ikincilKenar,
+            width: aktif ? 1.5 : 1),
+        ),
+        child: FittedBox(fit: BoxFit.scaleDown, child: Text(etiket,
+          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1,
+            color: aktif ? const Color(0xFF00C2A8) : Panel.yaziSoluk))),
+      ),
+    );
+  }
+
+  Widget _sahiplikKart({
+    required String isim,
+    required String altYazi,
+    required VoidCallback onTap,
+    String? gorselYolu,
+    String ikon = '',
+  }) {
+    final kapak = gorselYolu != null && gorselYolu.endsWith('.jpg');
+    return GestureDetector(
+      onTap: () { SesServisi.dokun(); onTap(); },
+      child: Container(
+        decoration: BoxDecoration(
+          color: const Color(0xFF161b22),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: const Color(0xFF00C2A8).withValues(alpha: 0.45)),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            if (gorselYolu != null)
+              Expanded(child: Padding(
+                padding: const EdgeInsets.fromLTRB(6, 6, 6, 0),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: SizedBox.expand(
+                    child: Image.asset(gorselYolu,
+                      fit: kapak ? BoxFit.cover : BoxFit.contain),
+                  ),
+                ),
+              ))
+            else
+              Text(ikon, style: const TextStyle(fontSize: 40)),
+            const SizedBox(height: 6),
+            Text(isim, maxLines: 1, overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white70)),
+            const SizedBox(height: 2),
+            Text(altYazi, style: const TextStyle(fontSize: 10, color: Color(0xFF00C2A8), fontWeight: FontWeight.bold)),
+            const SizedBox(height: 6),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Mekân satışı onayı: büyük görsel + değer, Evet → browser kapanır,
+  /// Emlakçı Necmi kapıya gelir ve alıcı pazarlığı başlar.
+  void _mekanSatOnay(BuildContext browserCtx, Mekan m) {
+    _satisOnayPopup(
+      baslik: '${m.ikon} ${m.ad} satılsın mı?',
+      gorselYolu: m.arkaplan,
+      aciklama: 'Tahmini değeri ${_state.mekanDegeri(m.konum)} lira '
+          '(eşyalar dahil — satılırsa eşyalar da gider).\n'
+          'Evet dersen Emlakçı Necmi gelip pazarlık edecek.',
+      onEvet: () {
+        Navigator.pop(browserCtx); // browser kapansın, sahne görünsün
+        _state.mekanSatisiBaslat(m.konum);
+        SesServisi.kapiyiCal();
+        _slideController.forward(from: 0);
+      },
+    );
+  }
+
+  /// Araç satışı onayı: Evet → Galerici Gürbüz alıcı olarak gelir.
+  void _aracSatOnay(BuildContext browserCtx, Arac a) {
+    _satisOnayPopup(
+      baslik: '🚗 ${a.item.name} satılsın mı?',
+      gorselYolu: a.item.gorsel,
+      aciklama: 'Tahmini değeri ${a.item.basePrice} lira.\n'
+          'Evet dersen Galerici Gürbüz gelip pazarlık edecek.',
+      onEvet: () {
+        Navigator.pop(browserCtx);
+        _state.aracSatisiBaslat(a);
+        SesServisi.kapiyiCal();
+        _slideController.forward(from: 0);
+      },
+    );
+  }
+
+  /// iMac doğrudan satılır — pazarlık yok, buton fiyatı neyse o.
+  void _imacSatOnay(BuildContext browserCtx) {
+    _satisOnayPopup(
+      baslik: '🖥️ iMac satılsın mı?',
+      gorselYolu: null,
+      aciklama: '1200 liraya hemen satılır.\n'
+          'Masa eski hâline döner; Market\'ten yeniden alabilirsin.',
+      onEvet: () {
+        Navigator.pop(browserCtx);
+        _state.imacSat(1200);
+        _toastGoster('iMac satıldı', altYazi: '+1200 lira', emoji: '🖥️',
+          renk: const Color(0xFF00C2A8), ms: 2400);
+      },
+    );
+  }
+
+  void _satisOnayPopup({
+    required String baslik,
+    required String aciklama,
+    required VoidCallback onEvet,
+    String? gorselYolu,
+  }) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Panel.zemin,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: Color(0xFF00C2A8), width: 1.5),
+        ),
+        title: Text(baslik, textAlign: TextAlign.center,
+          style: const TextStyle(color: Color(0xFF00C2A8), fontSize: 16, fontWeight: FontWeight.bold)),
+        content: Column(mainAxisSize: MainAxisSize.min, children: [
+          if (gorselYolu != null)
+            Image.asset(gorselYolu, height: 130,
+              fit: gorselYolu.endsWith('.jpg') ? BoxFit.cover : BoxFit.contain),
+          const SizedBox(height: 10),
+          Text(aciklama, textAlign: TextAlign.center,
+            style: const TextStyle(color: Panel.yazi, fontSize: 13, height: 1.35)),
+        ]),
+        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+        actions: [
+          dialogButonlari(
+            anaEtiket: 'Evet, Sat',
+            anaRenk: const Color(0xFF00C2A8),
+            anaOnTap: () { Navigator.pop(ctx); onEvet(); },
+            ikincilEtiket: 'Vazgeç',
+            ikincilOnTap: () => Navigator.pop(ctx),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 🚗 Market'ten araç satın alma onayı (liste fiyatına, pazarlıksız).
+  void _aracSatinAlPopup(Arac a) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Panel.zemin,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: Color(0xFF4f8bd6), width: 1.5),
+        ),
+        title: Text('🚗 ${a.item.name}', textAlign: TextAlign.center,
+          style: const TextStyle(color: Color(0xFF90caf9), fontSize: 18, fontWeight: FontWeight.bold)),
+        content: Column(mainAxisSize: MainAxisSize.min, children: [
+          Image.asset(a.item.gorsel, height: 120, fit: BoxFit.contain),
+          const SizedBox(height: 10),
+          Text('${a.item.basePrice} lira · Geçiş süresi ${a.gecisSaniye} sn\n'
+               'Pazarlık istersen Galerici Gürbüz uğradığında dene.',
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Panel.yazi, fontSize: 13, height: 1.3)),
+        ]),
+        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+        actions: [
+          dialogButonlari(
+            anaEtiket: 'Satın Al',
+            anaRenk: const Color(0xFF4f8bd6),
+            anaYazi: Colors.white,
+            anaOnTap: _state.para < a.item.basePrice ? null : () {
+              Navigator.pop(ctx);
+              if (_state.aracSatinAl(a)) {
+                _dialogBildirim(context, '🚗 ${a.item.name} artık senin!');
+              }
+            },
+            ikincilEtiket: 'Kapat',
+            ikincilOnTap: () => Navigator.pop(ctx),
+          ),
+        ],
+      ),
     );
   }
 
@@ -5275,45 +6399,49 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     );
   }
 
+  /// Market kartı. [gorselYolu] verilirse emoji yerine gerçek görsel
+  /// gösterilir — mekânlarda arka plan fotoğrafı (cover), araçlarda ürün
+  /// görseli (contain), kutuya sığacak şekilde.
   Widget _marketUrunKart({
-    required String ikon,
     required String isim,
     required int fiyat,
-    required bool satinAlindi,
     required VoidCallback onTap,
-    bool kilitli = false,
-    String kilitYazi = '',
+    String ikon = '',
+    String? gorselYolu,
   }) {
-    return Opacity(
-      opacity: kilitli ? 0.45 : 1.0,
-      child: GestureDetector(
-        onTap: kilitli ? null : onTap,
-        child: Container(
-          decoration: BoxDecoration(
-            color: const Color(0xFF161b22),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-              color: satinAlindi
-                  ? const Color(0xFF3fb950).withValues(alpha: 0.6)
-                  : const Color(0xFFf78166).withValues(alpha: 0.35),
-              width: satinAlindi ? 1.5 : 1,
-            ),
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
+    final kapak = gorselYolu != null && gorselYolu.endsWith('.jpg');
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        decoration: BoxDecoration(
+          color: const Color(0xFF161b22),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: const Color(0xFFf78166).withValues(alpha: 0.35)),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            if (gorselYolu != null)
+              Expanded(child: Padding(
+                padding: const EdgeInsets.fromLTRB(6, 6, 6, 0),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: SizedBox.expand(
+                    child: Image.asset(gorselYolu,
+                      fit: kapak ? BoxFit.cover : BoxFit.contain),
+                  ),
+                ),
+              ))
+            else
               Text(ikon, style: const TextStyle(fontSize: 32)),
-              const SizedBox(height: 6),
-              Text(isim, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white70), textAlign: TextAlign.center),
-              const SizedBox(height: 4),
-              if (kilitli)
-                Text('🔒 $kilitYazi', style: const TextStyle(fontSize: 10, color: Colors.white38, fontWeight: FontWeight.bold))
-              else if (satinAlindi)
-                const Text('✅ Alındı', style: TextStyle(fontSize: 10, color: Color(0xFF3fb950), fontWeight: FontWeight.bold))
-              else
-                Text('$fiyat', style: const TextStyle(fontSize: 11, color: Color(0xFFf78166), fontWeight: FontWeight.bold)),
-            ],
-          ),
+            const SizedBox(height: 6),
+            Text(isim, maxLines: 1, overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white70),
+              textAlign: TextAlign.center),
+            const SizedBox(height: 4),
+            Text('$fiyat', style: const TextStyle(fontSize: 11, color: Color(0xFFf78166), fontWeight: FontWeight.bold)),
+            const SizedBox(height: 6),
+          ],
         ),
       ),
     );
@@ -5349,7 +6477,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   }
 
   Future<void> _toptanciPopup({bool ziyaret = false}) async {
-    _toptanciEnvanterSekmesi = false; // her açılışta tezgâhla başla
+    _toptanciSekmeIdx = 0; // her açılışta tezgâhla başla
     if (ziyaret) {
       _state.toptanciZiyaretiTazele(); // kapıya geldiyse taze stok
     } else {
@@ -5434,13 +6562,25 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                     // popup'ından toptancıya geçiş YOK — alışveriş yalnızca
                     // Rıza kapıya geldiğinde açılmalı.
                     Row(children: [
-                      _toptanciSekme('🛒 Tezgâh', !_toptanciEnvanterSekmesi,
-                          () => setDlg(() => _toptanciEnvanterSekmesi = false)),
-                      _toptanciSekme('📦 Envanter', _toptanciEnvanterSekmesi,
-                          () => setDlg(() => _toptanciEnvanterSekmesi = true)),
+                      _toptanciSekme('🛒 Tezgâh', _toptanciSekmeIdx == 0,
+                          () => setDlg(() => _toptanciSekmeIdx = 0)),
+                      _toptanciSekme('📦 Envanter', _toptanciSekmeIdx == 1,
+                          () => setDlg(() => _toptanciSekmeIdx = 1)),
+                      _toptanciSekme('📚 Koleksiyon', _toptanciSekmeIdx == 2,
+                          () => setDlg(() => _toptanciSekmeIdx = 2)),
                     ]),
-                    if (_toptanciEnvanterSekmesi)
+                    if (_toptanciSekmeIdx == 1)
                       Flexible(child: _envanterGovdesi(baslikGoster: false))
+                    else if (_toptanciSekmeIdx == 2)
+                      // Koleksiyon tablosuna Rıza'dayken de tek dokunuşla
+                      // bakılabilsin — hangi ürünü koleksiyona ayırdığını
+                      // görmeden alışveriş yapmak zor.
+                      Flexible(
+                        child: SingleChildScrollView(
+                          padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+                          child: _koleksiyonGovdesi(setDlg),
+                        ),
+                      )
                     else
                     // ── Stok ──
                     Flexible(
@@ -6081,6 +7221,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   String _browserAdres(_BrowserSayfa s) {
     switch (s) {
       case _BrowserSayfa.menu:      return 'oyuncu_dukkani';
+      case _BrowserSayfa.sahiplik:  return 'sahip_olunanlar';
       case _BrowserSayfa.dukkanlar: return 'kiralik_dukkanlar';
       case _BrowserSayfa.satilik:   return 'satilik_dukkanlar';
       case _BrowserSayfa.hedefler:  return 'hedefler';
@@ -6226,7 +7367,17 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Hedefler EN ÜSTTE: oyuncunun en sık baktığı yer.
+        // 💼 Sahip Olunanlar EN ÜSTTE — evler, araçlar, eşyalar burada.
+        _browserMenuItem(
+          ikon: '💼',
+          baslik: 'Sahip Olunanlar',
+          altyazi: '${_state.sahipMekanlar.length} ev · '
+                   '${_state.sahipAracIdleri.length} araç · '
+                   '${_state.imacSatinAlindi ? 1 : 0} eşya',
+          renk: const Color(0xFF00C2A8),
+          onTap: () => git(_BrowserSayfa.sahiplik),
+        ),
+        const SizedBox(height: 10),
         _browserMenuItem(
           ikon: '🏆',
           baslik: 'Hedefler',
@@ -6325,6 +7476,8 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
         return _hedeflerGovdesi(setDlg);
       case _BrowserSayfa.market:
         return _marketGovdesi(ctx, setDlg);
+      case _BrowserSayfa.sahiplik:
+        return _sahiplikGovdesi(ctx, setDlg);
       case _BrowserSayfa.banka:
         return _bankaGovdesi(ctx, setDlg);
       case _BrowserSayfa.menu:
@@ -6912,6 +8065,10 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       Text('Güncel dükkanın: ${_state.aktifDukkan.isim}',
         textAlign: TextAlign.center,
         style: const TextStyle(fontSize: 11, color: Colors.white38)),
+      const SizedBox(height: 2),
+      const Text('Büyük dükkan = Büyük envanter',
+        textAlign: TextAlign.center,
+        style: TextStyle(fontSize: 11, color: Color(0xFFFFD700), fontWeight: FontWeight.bold)),
       const SizedBox(height: 12),
       ListView.separated(
         shrinkWrap: true,
@@ -7259,6 +8416,25 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                   ),
                 ),
               ),
+              // 🚗 Kestirme: Konum Değiştir aktifse browser butonunun sağında
+              // şeffaf zeminli bir araç butonu — menüye girmeden yolculuk.
+              if (_state.gun >= 2 && _state.aracVar && !_gecisAktif)
+                Positioned(
+                  left: 96,
+                  bottom: 300,
+                  child: GestureDetector(
+                    onTap: () { SesServisi.dokun(); _konumSecPopup(); },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.35),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: const Color(0xFF4FC3F7).withValues(alpha: 0.5)),
+                      ),
+                      child: const Text('🚗', style: TextStyle(fontSize: 18)),
+                    ),
+                  ),
+                ),
               if (_envanterAcik) _buildEnvanterOverlay(),
               // 🚗 Yolculuk göstergesi — sahnenin solunda, dokunuşu yutmaz.
               _buildGecisGostergesi(),
@@ -7733,7 +8909,10 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
         // ║  Yatay       : müşteriyi takip eder (dx + oransal kayma)      ║
         // ║  Sabit piksel YOK — her çözünürlükte masaya oturur.           ║
         // ╚═══════════════════════════════════════════════════════════════╝
-        if (_state.aktifMusteri != null && _state.aktifMusteri!.musteriSatiyor ||
+        // ⚠️ Araç masada GÖSTERİLMEZ: ekipman değil, galerici pazarlığında
+        // masaya minicik bir araba koymak saçma görünüyordu. Balonda görünür.
+        if (_state.aktifMusteri != null && _state.aktifMusteri!.musteriSatiyor &&
+                _state.aktifMusteri!.item.category != ItemCategory.arac ||
             _state.aktifOzelMusteri?.tip == OzelMusteriTip.kurye)
           AnimatedBuilder(
             animation: _slideAnim,
@@ -7917,6 +9096,11 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       case OzelMusteriTip.guvenlik: return const Color(0xFF4FC3F7); // güvenlik mavisi
       case OzelMusteriTip.hande:    return const Color(0xFF7fdfff); // rehber camgöbeği
       case OzelMusteriTip.galerici: return const Color(0xFF90caf9); // galerici mavisi
+      case OzelMusteriTip.sezercik: return const Color(0xFFD9A05B); // yoksul turuncusu
+      case OzelMusteriTip.seyma:    return const Color(0xFFFF8AC2); // milyarder pembesi
+      case OzelMusteriTip.delibekir:return const Color(0xFFA8E063); // deli yeşili
+      case OzelMusteriTip.palyaco:  return const Color(0xFFFF6F61); // palyaço mercanı
+      case OzelMusteriTip.buyucu:   return const Color(0xFFB967FF); // büyücü moru
     }
   }
 
@@ -8075,6 +9259,52 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                   kenar: const Color(0xFFef9a9a),
                 )),
               ]),
+            ]
+            // 💎 Şeyma Koko: tek geniş buton, etiket diyalog adımına göre.
+            else if (_state.aktifOzelMusteri?.tip == OzelMusteriTip.seyma) ...[
+              _oyunButon(
+                emoji: '',
+                label: _state.seymaAdim == 0 ? 'Teşekkürler' : 'Evet',
+                onTap: _seymaIlerle,
+                gradyan: const [Color(0xFFFF8AC2), Color(0xFF7a2b52)],
+                kenar: const Color(0xFFFFB3D9),
+              ),
+            ]
+            // 🧙 Büyücü Yakup: önce "Tamam", sonra iki METİNLİ şık.
+            else if (_state.aktifOzelMusteri?.tip == OzelMusteriTip.buyucu) ...[
+              if (!_state.yakupSoruAcik)
+                _oyunButon(
+                  emoji: '',
+                  label: 'Tamam',
+                  onTap: () {
+                    setState(() {
+                      _state.yakupSoruAcik = true;
+                      _state.mesaj = _state.aktifOzelMusteri!.kuryeAd ?? '';
+                      _state.notifyListeners();
+                    });
+                  },
+                  gradyan: const [Color(0xFFB967FF), Color(0xFF4a2b66)],
+                  kenar: const Color(0xFFD9B3FF),
+                )
+              else
+                Builder(builder: (_) {
+                  final om = _state.aktifOzelMusteri!;
+                  return Row(children: [
+                    Expanded(child: _oyunButon(
+                      emoji: '', label: om.cevapA ?? '',
+                      onTap: () => _yakupCevapVer(true),
+                      gradyan: const [Color(0xFFB967FF), Color(0xFF4a2b66)],
+                      kenar: const Color(0xFFD9B3FF),
+                    )),
+                    const SizedBox(width: 12),
+                    Expanded(child: _oyunButon(
+                      emoji: '', label: om.cevapB ?? '',
+                      onTap: () => _yakupCevapVer(false),
+                      gradyan: const [Color(0xFFB967FF), Color(0xFF4a2b66)],
+                      kenar: const Color(0xFFD9B3FF),
+                    )),
+                  ]);
+                }),
             ]
             // Alkol testi yapan polis: EVET/HAYIR yerine iki sayı şıkkı
             else if (_state.aktifOzelMusteri?.alkolTesti == true) ...[
@@ -9269,6 +10499,64 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       return;
     }
 
+    // 👦 Sezercik: para verildi, dua edip gider. Şeyma'nın günü kurulur.
+    if (om.tip == OzelMusteriTip.sezercik) {
+      _state.sezercikCevapla(true);
+      _ozelMusteriGonder();
+      return;
+    }
+    // 🤪 Deli Bekir: para/eşya yok, kendi esprisiyle gider.
+    if (om.tip == OzelMusteriTip.delibekir) {
+      _state.mesaj = DeliBekirRepligi.tumu[om.deliIdx ?? 0].evet;
+      _state.musteriKabulBekliyor = false;
+      _state.notifyListeners();
+      _ozelMusteriGonder();
+      return;
+    }
+    // 🤡 Palyaço: bağış karşılığı rastgele bir CD hediye eder.
+    if (om.tip == OzelMusteriTip.palyaco) {
+      _state.para -= om.ilkMiktar;
+      SesServisi.paraGirdi();
+      final cdler = GameState.koleksiyonUrunleri
+          .where((u) => u.category == ItemCategory.cd && !u.oynanabilir)
+          .toList();
+      final hediye = cdler[rng.nextInt(cdler.length)].kopyaWith(maliyet: 0);
+      _state.urunEkle(hediye);
+      _state.mesaj = 'Yardımına karşılık sana bir oyun cd\'si hediye ediyorum!';
+      _state.musteriKabulBekliyor = false;
+      _state.notifyListeners();
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: Panel.zemin,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: const BorderSide(color: Color(0xFFFF6F61), width: 2),
+          ),
+          title: const Text('🎁 Hediye Kazandın!', textAlign: TextAlign.center,
+            style: TextStyle(color: Color(0xFFFF6F61), fontSize: 19, fontWeight: FontWeight.bold)),
+          content: Column(mainAxisSize: MainAxisSize.min, children: [
+            Image.asset(hediye.gorsel, height: 130, fit: BoxFit.contain),
+            const SizedBox(height: 8),
+            Text(hediye.name, textAlign: TextAlign.center,
+              style: const TextStyle(color: Panel.yazi, fontSize: 15, fontWeight: FontWeight.bold)),
+          ]),
+          actions: [Center(child: ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              _state.mesaj = 'Görüşürüz dostum. Sirke de bekleriz!...';
+              _state.notifyListeners();
+              _ozelMusteriGonder();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFFF6F61), foregroundColor: Colors.white),
+            child: const Text('Harika!', style: TextStyle(fontWeight: FontWeight.bold)),
+          ))],
+        ),
+      );
+      return;
+    }
+
     if (om.tip == OzelMusteriTip.hirsiz) {
       kesinti = om.ilkMiktar;
       mesaj = 'Polisler duymadan kaçıyorum!';
@@ -9636,7 +10924,10 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
             const SizedBox(height: 12),
             Flexible(
               child: SingleChildScrollView(
-                child: Column(children: Arac.tumu.map((a) => Padding(
+                // Sahip olunan araçlar tezgâhta listelenmez.
+                child: Column(children: Arac.tumu
+                    .where((a) => !_state.aracSahibi(a.item.id))
+                    .map((a) => Padding(
                   padding: const EdgeInsets.only(bottom: 9),
                   child: GestureDetector(
                     onTap: () {
@@ -9696,6 +10987,106 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     );
   }
 
+  /// 💎 Şeyma Koko diyaloğu. Yardım edildiyse 3. adımda hediye popup'ı,
+  /// reddedildiyse 2. adımda sitem edip gider.
+  void _seymaIlerle() {
+    final yardim = _state.sezercikDurumu == 1;
+    if (_state.seymaAdim == 0) {
+      _state.seymaAdim = 1;
+      _state.mesaj = _state.seymaMesaji();
+      _state.notifyListeners();
+      setState(() {});
+      return;
+    }
+    if (!yardim) {
+      // Reddedildi: "kaçırdın" sitemi ve veda.
+      final x = _state.seymaKacirilanOdul();
+      _state.mesaj = 'Ona yardım etseydin sana $x hediye edecektim '
+          'fakat kaçırdın! Sağlıcakla kal...';
+      _state.musteriKabulBekliyor = false;
+      _state.notifyListeners();
+      _ozelMusteriGonder();
+      return;
+    }
+    if (_state.seymaAdim == 1) {
+      _state.seymaAdim = 2;
+      _state.mesaj = _state.seymaMesaji();
+      _state.notifyListeners();
+      setState(() {});
+      return;
+    }
+    // Adım 2 → hediye!
+    final (tip, aracId, tutar) = _state.seymaOdulSec();
+    final String balon, mujde;
+    switch (tip) {
+      case 'araba':
+        _state.sahipAracIdleri.add(aracId);
+        final ad = Arac.bul(aracId)!.item.name;
+        balon = 'Sana bir araba hediye ediyorum!';
+        mujde = '🚗 $ad artık senin!\nSahip Olunanlar\'dan bakabilirsin.';
+        break;
+      case 'motor':
+        _state.sahipAracIdleri.add(aracId);
+        final ad = Arac.bul(aracId)!.item.name;
+        balon = 'Sana bir motorsiklet hediye ediyorum!';
+        mujde = '🏍️ $ad artık senin!\nSahip Olunanlar\'dan bakabilirsin.';
+        break;
+      default:
+        _state.para += tutar;
+        SesServisi.paraGirdi();
+        balon = 'Sana $tutar lira hediye ediyorum!';
+        mujde = '💰 Kasana $tutar lira eklendi!';
+    }
+    _state.mesaj = balon;
+    _state.musteriKabulBekliyor = false;
+    _state.notifyListeners();
+    final odakGorsel = (tip == 'araba' || tip == 'motor')
+        ? Arac.bul(aracId)!.item.gorsel : null;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Panel.zemin,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: Color(0xFFFF8AC2), width: 2),
+        ),
+        title: const Text('🎉 MÜJDE!', textAlign: TextAlign.center,
+          style: TextStyle(color: Color(0xFFFF8AC2), fontSize: 20, fontWeight: FontWeight.bold)),
+        content: Column(mainAxisSize: MainAxisSize.min, children: [
+          if (odakGorsel != null) ...[
+            Image.asset(odakGorsel, height: 110, fit: BoxFit.contain),
+            const SizedBox(height: 8),
+          ],
+          Text(mujde, textAlign: TextAlign.center,
+            style: const TextStyle(color: Panel.yazi, fontSize: 14, height: 1.35)),
+        ]),
+        actions: [Center(child: ElevatedButton(
+          onPressed: () {
+            Navigator.pop(ctx);
+            _state.mesaj = 'Görüşmek üzere, iyilikle kal!';
+            _state.notifyListeners();
+            _ozelMusteriGonder();
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFFFF8AC2), foregroundColor: Colors.black),
+          child: const Text('Harika!', style: TextStyle(fontWeight: FontWeight.bold)),
+        ))],
+      ),
+    );
+  }
+
+  /// 🧙 Yakup'un sorusu cevaplandı — doğruysa kurtuluş, yanlışsa büyü + ceza.
+  void _yakupCevapVer(bool soldaki) {
+    final dogru = _state.yakupCevapla(soldaki);
+    if (!dogru) SesServisi.hata();
+    setState(() {});
+    // Replik okunabilsin diye kısa bekleyip gönder.
+    Future.delayed(const Duration(milliseconds: 1600), () {
+      if (mounted) _ozelMusteriGonder();
+    });
+  }
+
   void _ozelMusteriHayirPopup(OzelMusteri om) {
     final rng = Random();
     String mesaj = '';
@@ -9713,6 +11104,39 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       }
       // İşe alma teklifine HAYIR → küsmeden gider, 3'ün katlarında tekrar dener.
       _state.mesaj = 'Peki, fikrini değiştirirsen buralardayım.';
+      _state.notifyListeners();
+      _ozelMusteriGonder();
+      return;
+    }
+
+    // 👦 Sezercik reddedildi — kırgın gider, Şeyma bunu unutmayacak.
+    if (om.tip == OzelMusteriTip.sezercik) {
+      _state.sezercikCevapla(false);
+      _ozelMusteriGonder();
+      return;
+    }
+    // 🤪 Deli Bekir: hayır cevabının kendi esprisi var.
+    if (om.tip == OzelMusteriTip.delibekir) {
+      _state.mesaj = DeliBekirRepligi.tumu[om.deliIdx ?? 0].hayir;
+      _state.musteriKabulBekliyor = false;
+      _state.notifyListeners();
+      _ozelMusteriGonder();
+      return;
+    }
+    // 🤡 Palyaço: el çabukluğuyla envanterden RASTGELE bir şey çalar.
+    // Ne çaldığı söylenmez — oyuncu envanteri açınca fark eder.
+    if (om.tip == OzelMusteriTip.palyaco) {
+      final dolular = <int>[];
+      for (int i = 0; i < _state.acikSlotSayisi; i++) {
+        if (_state.slotlar[i] != null) dolular.add(i);
+      }
+      if (dolular.isNotEmpty) {
+        final calinan = dolular[rng.nextInt(dolular.length)];
+        _state.urunCikarOrnek(_state.slotlar[calinan]!);
+      }
+      _state.mesaj = 'Demek yardım etmiyorsun. El çabukluğu ile '
+          'envanterinden bir şey çaldım o halde! Bys!!!';
+      _state.musteriKabulBekliyor = false;
       _state.notifyListeners();
       _ozelMusteriGonder();
       return;

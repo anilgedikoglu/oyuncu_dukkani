@@ -11,10 +11,10 @@ void main() {
   });
 
   group('Araçlar', () {
-    test('5 araç var, hepsinin id\'si ve görseli benzersiz', () {
-      expect(Arac.tumu.length, 5);
-      expect(Arac.tumu.map((a) => a.item.id).toSet().length, 5);
-      expect(Arac.tumu.map((a) => a.item.gorsel).toSet().length, 5);
+    test('11 araç var, hepsinin id\'si ve görseli benzersiz', () {
+      expect(Arac.tumu.length, 11);
+      expect(Arac.tumu.map((a) => a.item.id).toSet().length, 11);
+      expect(Arac.tumu.map((a) => a.item.gorsel).toSet().length, 11);
     });
 
     test('araçlar arac kategorisinde ve normal ürün havuzunda DEĞİL', () {
@@ -246,13 +246,111 @@ void main() {
     });
   });
 
-  group('Araç envanteri', () {
-    test('araç yokken aracVar false, eklenince true', () {
+  group('Araç sahipliği', () {
+    test('araç yokken aracVar false, sahiplik listesine girince true', () {
       final s = GameState();
       expect(s.aracVar, isFalse);
-      s.slotlar[0] = Arac.tumu.first.item;
+      s.sahipAracIdleri.add(Arac.tumu.first.item.id);
       expect(s.aracVar, isTrue);
       expect(s.sahipAraclar.length, 1);
+    });
+
+    test('v118/119 kaydındaki slottaki araç sahiplik listesine taşınır', () {
+      final s = GameState();
+      s.slotlar[0] = Arac.tumu.first.item;
+      final s2 = GameState.fromJson(s.toJson());
+      expect(s2.aracSahibi(Arac.tumu.first.item.id), isTrue);
+      // Slotta araç kalmamalı — envanter yalnızca CD/ekipman içindir.
+      expect(s2.slotlar.whereType<GameItem>()
+          .any((u) => u.category == ItemCategory.arac), isFalse);
+    });
+
+    test('araç satışı: alıcı kurulur, anlaşınca sahiplikten düşer', () {
+      final s = GameState()..para = 1000;
+      final a = Arac.tumu.first;
+      s.sahipAracIdleri.add(a.item.id);
+      s.aracSatisiBaslat(a);
+      expect(s.aktifMusteri, isNotNull);
+      expect(s.aktifMusteri!.musteriSatiyor, isFalse);
+      expect(s.satistakiAracId, a.item.id);
+      // Müşteri gitti (anlaşmasız) → araç sahipte kalır, bayrak temizlenir.
+      s.musteriAnimasyonBitti();
+      expect(s.satistakiAracId, isNull);
+      expect(s.aracSahibi(a.item.id), isTrue);
+    });
+
+    test('mekân değeri eşyayla artar', () {
+      final s = GameState()..para = 99999;
+      s.mekanSatinAl(Konum.ev);
+      final taban = s.mekanDegeri(Konum.ev);
+      final esya = EvEsyasi.konumun(Konum.ev).first;
+      s.evEsyasiAl(esya);
+      expect(s.mekanDegeri(Konum.ev), taban + esya.fiyat);
+    });
+  });
+
+  group('Yeni özel müşteriler', () {
+    test('Deli Bekir 30 replik, Yakup 100 soru, hepsi benzersiz', () {
+      expect(DeliBekirRepligi.tumu.length, 30);
+      expect(DeliBekirRepligi.tumu.map((r) => r.gelis).toSet().length, 30);
+      expect(DeliBekirRepligi.tumu.map((r) => r.evet).toSet().length, 30);
+      expect(DeliBekirRepligi.tumu.map((r) => r.hayir).toSet().length, 30);
+      expect(YakupSoru.tumu.length, greaterThanOrEqualTo(100));
+      expect(YakupSoru.tumu.map((s0) => s0.soru).toSet().length, YakupSoru.tumu.length);
+      for (final s0 in YakupSoru.tumu) {
+        expect(s0.dogru, isNot(s0.yanlis), reason: s0.soru);
+      }
+    });
+
+    test('rotasyon: Deli Bekir girer, diğer yeni tipler girmez', () {
+      final s = GameState();
+      final sira = (s.toJson()['ozelTipSirasi'] as List).cast<String>();
+      expect(sira.contains(OzelMusteriTip.delibekir.name), isTrue);
+      for (final t in [OzelMusteriTip.sezercik, OzelMusteriTip.seyma,
+                       OzelMusteriTip.palyaco, OzelMusteriTip.buyucu]) {
+        expect(sira.contains(t.name), isFalse, reason: t.name);
+      }
+    });
+
+    test('Sezercik cevabı Şeyma\'nın gününü kurar (en az 1 tam gün ara)', () {
+      final s = GameState()..para = 1000;
+      s.aktifOzelMusteri = OzelMusteri.sezercik(200);
+      s.sezercikCevapla(true);
+      expect(s.sezercikDurumu, 1);
+      expect(s.para, 800);
+      expect(s.seymaGunu, isNotNull);
+      expect(s.seymaGunu! - s.gun, greaterThanOrEqualTo(2));
+    });
+
+    test('Yakup yanlış cevapta para keser, doğruda kesmez', () {
+      final s = GameState()..para = 5000;
+      s.aktifOzelMusteri = OzelMusteri.buyucu();
+      final om = s.aktifOzelMusteri!;
+      // Doğru şık hangi taraftaysa onu seç.
+      expect(s.yakupCevapla(om.dogruA!), isTrue);
+      expect(s.para, 5000);
+      s.aktifOzelMusteri = OzelMusteri.buyucu();
+      final om2 = s.aktifOzelMusteri!;
+      expect(s.yakupCevapla(!om2.dogruA!), isFalse);
+      expect(s.para, lessThan(5000));
+    });
+
+    test('Şeyma ödülü: bakiyenin 2 katı para ya da sahip olunmayan araç', () {
+      final s = GameState()..para = 1000;
+      for (int i = 0; i < 20; i++) {
+        final (tip, aracId, tutar) = s.seymaOdulSec();
+        if (tip == 'para') {
+          expect(tutar, s.para * 2);
+        } else {
+          expect(s.aracSahibi(aracId), isFalse);
+        }
+      }
+    });
+
+    test('sezercik selamları placeholder içermez', () {
+      final om = OzelMusteri.sezercik(250);
+      expect(om.ilkMesaj.contains('{X}'), isFalse);
+      expect(om.ilkMesaj.contains('250'), isTrue);
     });
   });
 }

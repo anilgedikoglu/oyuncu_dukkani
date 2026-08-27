@@ -194,6 +194,98 @@ Sekme durumu `_GameScreenState._hedefSekme`'de; sekme butonu dialogun kendi
 
 ---
 
+---
+
+## 🚙 v120 — ARAÇLAR ENVANTERDEN ÇIKTI + SAHİP OLUNANLAR
+
+### Araç sahipliği artık ayrı liste
+`GameState.sahipAracIdleri` (List<String>). Araç **hiçbir zaman slota
+girmez** — müşterinin araç istemesi böylece kökten imkânsız (alıcı seçimi
+slotlardan yapılıyor). Galerici pazarlığı kazanılınca id listeye yazılır.
+Eski v118/119 kayıtlarının slotlarındaki araçlar `fromJson`'da taşınır.
+
+- Masada araç görseli GÖSTERİLMEZ (ekipman değil; balonda görünür).
+- Galerici artık **3. günden itibaren** 3'te bir gelir (bilgisayar 2. günde).
+- Tezgâhında sahip olunan araçlar listelenmez.
+- `Arac.tumu` 11 araca çıktı (arac6-7 bisiklet 130-150sn, arac8 Mavi Furya
+  26000/22sn, arac9 Çöl Kaplanı, arac10 Fıstık —beyaz tavanlı—, arac11 Vahşi At).
+
+### 💼 Sahip Olunanlar (browser menüsünün en üstü)
+3 sekme: **Ev / Araç / Eşya** (`_sahiplikSekme`). Kartlarda GERÇEK görseller.
+Karta dokun → satış onayı → browser kapanır ve:
+- **Araç** → Galerici Gürbüz ALICI olarak gelir, normal pazarlık.
+- **Ev** → **Emlakçı Necmi** (`emlakci.png`) alıcı gelir; piyasa fiyatı =
+  `mekanDegeri(k)` (mekân bedeli + alınan eşyaların bedeli). Satılırsa
+  **eşyalar da gider** (değere dahildi).
+- **Eşya (iMac)** → pazarlıksız anında 1200'e satılır, masa bg1'e döner.
+
+Alıcı kurulumunda `satistakiAracId` / `satistakiKonum` bayrakları var;
+`_anlasmayiTamamla`nın satış dalı bu bayraklar doluysa slottan ürün çıkarmak
+yerine sahiplikten düşer. Müşteri anlaşmasız giderse `musteriAnimasyonBitti`
+bayrakları temizler, varlık sahipte kalır.
+
+### Market: 3 sekme + gerçek görseller
+**Ev / Araç / Eşya**. Kartlar emoji değil gerçek görsel (mekânlarda arka plan
+cover, araçlarda ürün görseli contain). **Satın alınan şey listeden çıkar**
+("Alındı" rozetli ölü kart yok). Araç Market'ten liste fiyatına da alınabilir
+(`aracSatinAl`) — Gürbüz pazarlığı ucuza getirme yolu olarak durur.
+
+### ⛵ Tekne (4. mekân)
+`tekne_guvertesi_katmanli.ora` → `tekne_bos.jpg` + `tekne_01..09.png`
+(+`_k` ikonları). 9 eşya `t_` ön ekiyle; yazlık/dağ eviyle aynı tam katman
+düzeni. Fiyat 20000. `Mekan.satinAlinabilir` artık 4 mekân — Market kartı,
+konum kutusu, satın alma popup'ı hepsi bu listeden türüyor.
+
+### Diğer küçükler
+- Kiralık Dükkanlar: güncel dükkan yazısının altında "Büyük dükkan = Büyük envanter".
+- Kestirme: araç varken browser butonunun sağında şeffaf 🚗 butonu → konum seçimi.
+- Toptancı Rıza'da 3. sekme: **📚 Koleksiyon** (`_toptanciSekmeIdx`,
+  `_koleksiyonGovdesi` yeniden kullanılıyor).
+
+---
+
+## 🎭 v120 — BEŞ YENİ ÖZEL MÜŞTERİ
+
+| Tip | Program | Özet |
+|---|---|---|
+| 👦 Sezercik | 3-6 arası rastgele bir gün, BİR KEZ | Kasanın 1/5–1/2'si arası yardım ister; kasa <100 ise ertelenir |
+| 💎 Şeyma Koko | Sezercik + en az 2 gün sonra, BİR KEZ | Yardım edildiyse hediye (araba/motor/bakiyenin 2 katı), reddedildiyse sitem |
+| 🤪 Deli Bekir | NORMAL ROTASYONDA | 30 saçma soru + 30 evet + 30 hayır cevabı, indeksler eşleşik (`DeliBekirRepligi`) |
+| 🤡 Palyaço | 5-10 arası rastgele, BİR KEZ | EVET: bağış (%15, 100-600) karşılığı rastgele CD hediye; HAYIR: envanterden sessizce bir şey çalar |
+| 🧙 Büyücü Yakup | 3, 8, 13 ve 10'un katları | 110 soruluk `YakupSoru` arşivi; yanlışta 100-400 ceza |
+
+- Sezercik selamları `{X}` placeholder'lı (tek harf yasağı burada da geçerli).
+- Şeyma diyaloğu Hande gibi TEK geniş butonla (`seymaAdim`), hediye
+  `seymaOdulSec()` → araba=arac10 (beyaz tavanlı), motor=arac4/5, para=2×bakiye;
+  araç zaten sahipliyse paraya düşer. Reddedilen dalda `seymaKacirilanOdul()`.
+- Yakup: `OzelMusteri.cevapA/cevapB/dogruA` metinli şıklar; doğru şıkkın yeri
+  kuruluşta rastgele. Soru metni `kuryeAd` alanında taşınıyor (alan boş duruyordu).
+- Palyaço ziyareti BOŞ SLOT ister (hediye CD girecek); doluysa ertesi güne sarkar.
+- `_ozelGonder(om)` yardımcı metodu: özel müşteri gönderiminin ortak 7 satırı.
+- Rotasyon varsayılan listesine `delibekir` eklendi; diğer dördü `_rotasyonDisi`nde.
+
+## 🏆 v120 — LİDERLİK TABLOSU + DİĞER OYUNLAR
+
+- `games_services` 4.1.1: `LiderServisi.girisYap()` (ana menü initState),
+  başarılıysa "Şu adla giriş yapıldı: nick" bandı 4 sn görünür.
+- REKORLAR kutusuna tıklayınca platformun liderlik ekranı açılır
+  (sıralamadaki yer orada). Skor = en yüksek kazanç; rekor kırılınca
+  `KayitServisi.enYuksekParaGuncelle` içinden gönderilir.
+- ⚠️ KURULUM GEREKLİ: App Store Connect'te leaderboard ID `enzenginoyuncu`
+  oluşturulmalı; Play Console'da leaderboard açılıp ID'si
+  `LiderServisi._androidTabloId`ya, Play Games proje numarası da
+  `android/app/src/main/res/values/strings.xml` içindeki
+  `game_services_project_id`ye yazılmalı. (Yer tutucu değerlerle giriş
+  sessizce başarısız olur, OYUN ÇÖKMEZ — games-v2 SDK meta-data'sız açılışta
+  çökerdi, bu yüzden strings.xml'de sahte numerik değer var.)
+- "Diğer Oyunlar" ana menü butonu: iOS `apps.apple.com/developer/id1612979370`,
+  Android `play.google.com/store/apps/developer?id=Futurastic+Teknoloji+...`
+  (ikisi de mağazadan doğrulandı; `url_launcher` externalApplication).
+- ⚠️ AGP 8.7.0 → **8.9.1**, Gradle 8.10.2 → **8.11.1** (url_launcher'ın
+  androidx.browser 1.9.0'ı AGP 8.9.1 istiyor).
+
+---
+
 ## 🚗 v118 — GALERİCİ GÜRBÜZ + ARAÇLAR
 
 Yeni özel müşteri: **Galerici Gürbüz** (`galerici.png`, Gürbüz Oto Galeri).
@@ -2284,6 +2376,7 @@ Base ratio hâlâ `_clamp(0.18 - progress * 0.15, 0.02, 0.18)`.
 ## Versiyon Geçmişi (son)
 | Commit | Açıklama |
 |--------|----------|
+| v120 | **🚙 Araçlar envanterden çıktı**: `sahipAracIdleri` listesi, müşteri araç isteyemiyor, masada araç görseli yok; galerici 3. günden itibaren; araç sayısı 11. **💼 Sahip Olunanlar** (menü en üstü, 3 sekme): araç satışı→Gürbüz alıcı, ev satışı→**Emlakçı Necmi** (`mekanDegeri` = mekân+eşyalar; eşyalar evle gider), iMac→anında 1200. **Market 3 sekme** (Ev/Araç/Eşya) gerçek görsellerle, alınan listeden çıkar; adres `saticisindan_com`. **⛵ Tekne** 4. mekân (9 eşya, .ora tam katman). **5 yeni özel müşteri**: Sezercik (3-6. gün, kasanın 1/5–1/2'si), Şeyma Koko (Sezercik+2 gün; araba/motor/2×bakiye hediye ya da sitem), Deli Bekir (rotasyonda, 30×3 replik), Palyaço (5-10. gün bir kez; CD hediye / envanterden çalar), Büyücü Yakup (3/8/13 + 10'un katları, 110 soru). **🏆 Liderlik** (games_services; ID kurulumları CLAUDE.md v120 notunda) + **Diğer Oyunlar** butonu (mağaza geliştirici sayfaları). Rıza'da 3. sekme Koleksiyon; kestirme 🚗 butonu; kiralıklarda "Büyük dükkan = Büyük envanter". AGP 8.9.1 + Gradle 8.11.1. `test/arac_ev_test.dart` 33 test |
 | v118 | **🚗 Galerici Gürbüz + araçlar + 🏠 ev/yazlık**: yeni özel müşteri Gürbüz 4. günden itibaren 3 günde bir gelir, "Araç Seç" tezgâhından seçilen araç normal pazarlığa dönüşür, alınan araç envantere girer (5 araç, 3000-14000). Browser'da **Konum Değiştir** (araç yoksa kilitli); Market'te **Ev (10000)** ve **Yazlık (12000)**. Yolculukta solda araç + saat yönünün tersine dönen halka, süre aracın niteliğine göre (30-120 sn); bitince müşteri yokken "Eve geçmek istiyor musun?" popup'ı. Ev sahnesi: eşyalar doluev.png'den ölçülen oranlarla (9 eşya), Yazlık: .ora tam tuval katmanları birebir bindirme (12 eşya, tezgâh için kırpılmış ikonlar). `test/arac_ev_test.dart` 20 test. Rotasyon migrasyonuna `_rotasyonDisi` seti (hande sızması da kapandı) |
 | v117 | **📚 Koleksiyon artık kazanılıyor**: satılan ürün otomatik açılmıyor, envanterdeki ürüne dokunup "Koleksiyona Taşı" demek gerekiyor (geri dönüşü yok, ürün bir daha satılamaz). Hedefler sayfası **HEDEFLER / KOLEKSİYON** sekmelerine ayrıldı; tablo 8 değil **6 sütun**, sabit **60 kutu**; altında 12 koleksiyon hedefi ilerleme çubuğuyla, her biri bir kez para ödülü veriyor. **Süreli bildirim müşteriyi tutuyor** — seri/hedef toast'ı okunurken müşteri kayıp gidiyordu, artık toast kapanınca gitmeye başlıyor; toast süresi 2400→4200 ms. **Masadaki oynanabilir oyun belli**: büyütmede "⭐ Oynanabilir Oyun!" + açıklama. **Yeniden Başlat** artık ana menüye dönüyor, doğrudan yeni oyun açmıyor. **Banka** 3. günden önce kilitli, max taksit 3/6/9 → 6/8/10. Browser menüsünde Hedefler en üstte, Satılık Dükkanlar ikonu 🔑 → 🏡 |
 | v115 | **📳 Buton dokunuşunda haptik**: ana ekrandaki bütün önemli butonlar `_oyunButon`'dan geçtiği için haptik tek yerden veriliyor (`SesServisi.dokun()` — ses yok, sadece `selectionClick`). Pasif butonda titreşim yok. Kolonya Tut kendi CustomPaint'ini kullandığından haptiği elle veriliyor. **Titreşim artık ayrı ayar**: `sesAcik`e bağlıydı, kendi anahtarına (`titresimAcik`) alındı — sessiz oynayan biri titreşimi isteyebilir. Hem ana menü hem oyun içi Ayarlar'da Açık/Kapalı switch'i var. **Ayarlar kalıcı**: `AyarServisi` ile SharedPreferences'ta, oyun kaydından ayrı anahtarlarda; oyunu sıfırlamak tercihleri kaybettirmiyor. |
