@@ -11,10 +11,10 @@ void main() {
   });
 
   group('Araçlar', () {
-    test('11 araç var, hepsinin id\'si ve görseli benzersiz', () {
-      expect(Arac.tumu.length, 11);
-      expect(Arac.tumu.map((a) => a.item.id).toSet().length, 11);
-      expect(Arac.tumu.map((a) => a.item.gorsel).toSet().length, 11);
+    test('17 araç var, hepsinin id\'si ve görseli benzersiz', () {
+      expect(Arac.tumu.length, 17);
+      expect(Arac.tumu.map((a) => a.item.id).toSet().length, 17);
+      expect(Arac.tumu.map((a) => a.item.gorsel).toSet().length, 17);
     });
 
     test('araçlar arac kategorisinde ve normal ürün havuzunda DEĞİL', () {
@@ -78,143 +78,6 @@ void main() {
       expect(s.aktifMusteri!.item.id, arac.id);
       expect(s.aktifPazarlik, isNotNull);
       expect(s.aktifPazarlik!.musteriSatiyor, isTrue);
-    });
-  });
-
-  group('Ev', () {
-    test('para yetmiyorsa ev alınamaz', () {
-      final s = GameState()..para = 100;
-      expect(s.mekanSatinAl(Konum.ev), isFalse);
-      expect(s.evSahibi, isFalse);
-      expect(s.para, 100);
-    });
-
-    test('ev alınınca para düşer, ikinci kez alınamaz', () {
-      final s = GameState()..para = Mekan.ev.fiyat + 500;
-      expect(s.mekanSatinAl(Konum.ev), isTrue);
-      expect(s.evSahibi, isTrue);
-      expect(s.para, 500);
-      expect(s.mekanSatinAl(Konum.ev), isFalse);
-    });
-
-    test('eşya alınınca para düşer, aynı eşya ikinci kez alınamaz', () {
-      final e = EvEsyasi.tumu.first;
-      final s = GameState()..para = e.fiyat + 50;
-      expect(s.evEsyasiAl(e), isTrue);
-      expect(s.evEsyalari.contains(e.id), isTrue);
-      expect(s.para, 50);
-      expect(s.evEsyasiAl(e), isFalse);
-    });
-
-    test('eşya konumları 0..1 aralığında, id ve görseller benzersiz', () {
-      expect(EvEsyasi.tumu.map((e) => e.gorsel).toSet().length, EvEsyasi.tumu.length);
-      expect(EvEsyasi.tumu.map((e) => e.id).toSet().length, EvEsyasi.tumu.length);
-      for (final e in EvEsyasi.tumu) {
-        expect(e.sol, inInclusiveRange(0.0, 1.0), reason: e.id);
-        expect(e.ust, inInclusiveRange(0.0, 1.0), reason: e.id);
-        expect(e.gen, inInclusiveRange(0.0, 1.0), reason: e.id);
-        expect(e.sol + e.gen, lessThanOrEqualTo(1.0), reason: '${e.id} sağdan taşıyor');
-        expect(e.fiyat, greaterThan(0), reason: e.id);
-      }
-    });
-
-    test('ev ve eşyaları kayıt turunda korunur, konum hep dükkana döner', () {
-      final s = GameState()..para = 99999;
-      s.mekanSatinAl(Konum.ev);
-      s.evEsyasiAl(EvEsyasi.tumu.first);
-      s.konumaGec(Konum.ev);
-
-      final s2 = GameState.fromJson(s.toJson());
-      expect(s2.evSahibi, isTrue);
-      expect(s2.evEsyalari.contains(EvEsyasi.tumu.first.id), isTrue);
-      // Evde kapatılan oyun dükkanda açılır — yolculuk oturum içi bir durum.
-      expect(s2.aktifKonum, Konum.dukkan);
-    });
-  });
-
-  group('Yazlık', () {
-    test('12 yazlık eşyası var, hepsi tam katman ve kırpılmış ikonu var', () {
-      final y = EvEsyasi.konumun(Konum.yazlik);
-      expect(y.length, 12);
-      for (final e in y) {
-        expect(e.tamKatman, isTrue, reason: e.id);
-        expect(e.ikon, isNotNull, reason: '${e.id} tezgâhta görünmez');
-        expect(e.onizleme, isNot(e.gorsel), reason: e.id);
-      }
-    });
-
-    test('ev eşyaları tam katman DEĞİL, önizlemesi kendi görseli', () {
-      final ev = EvEsyasi.konumun(Konum.ev);
-      expect(ev.length, 9);
-      for (final e in ev) {
-        expect(e.tamKatman, isFalse, reason: e.id);
-        expect(e.onizleme, e.gorsel, reason: e.id);
-      }
-    });
-
-    test('yazlık ayrı satın alınır, ev sahipliğinden bağımsız', () {
-      final s = GameState()..para = 99999;
-      expect(s.konumSahibi(Konum.yazlik), isFalse);
-      expect(s.mekanSatinAl(Konum.yazlik), isTrue);
-      expect(s.yazlikSahibi, isTrue);
-      expect(s.evSahibi, isFalse);
-      expect(s.mekanSatinAl(Konum.yazlik), isFalse); // ikinci kez alınamaz
-    });
-
-    test('yazlık sahipliği kayıt turunda korunur', () {
-      final s = GameState()..para = 99999;
-      s.mekanSatinAl(Konum.yazlik);
-      s.evEsyasiAl(EvEsyasi.konumun(Konum.yazlik).first);
-      final s2 = GameState.fromJson(s.toJson());
-      expect(s2.yazlikSahibi, isTrue);
-      expect(s2.evEsyalari.contains(EvEsyasi.konumun(Konum.yazlik).first.id), isTrue);
-    });
-
-    test('her mekânın kendi arka planı ve oranı var', () {
-      expect(Mekan.bul(Konum.ev).arkaplan, isNot(Mekan.bul(Konum.yazlik).arkaplan));
-      expect(Mekan.bul(Konum.dukkan).arkaplan, Mekan.ev.arkaplan); // varsayılan ev
-      for (final m in Mekan.satinAlinabilir) {
-        expect(m.oran, greaterThan(0), reason: m.ad);
-        expect(m.fiyat, greaterThan(0), reason: m.ad);
-      }
-      expect(Mekan.satinAlinabilir.map((m) => m.arkaplan).toSet().length,
-          Mekan.satinAlinabilir.length);
-    });
-  });
-
-  group('Dağ Evi', () {
-    test('7 dağ evi eşyası var, hepsi tam katman ve ikonlu', () {
-      final d = EvEsyasi.konumun(Konum.dagevi);
-      expect(d.length, 7);
-      for (final e in d) {
-        expect(e.tamKatman, isTrue, reason: e.id);
-        expect(e.ikon, isNotNull, reason: e.id);
-        expect(e.id, startsWith('d_'), reason: e.id);
-      }
-    });
-
-    test('dağ evi ayrı satın alınır ve kayıtta korunur', () {
-      final s = GameState()..para = 99999;
-      expect(s.konumSahibi(Konum.dagevi), isFalse);
-      expect(s.mekanSatinAl(Konum.dagevi), isTrue);
-      expect(s.mekanSatinAl(Konum.dagevi), isFalse);
-      expect(s.evSahibi, isFalse);
-      s.evEsyasiAl(EvEsyasi.konumun(Konum.dagevi).first);
-      final s2 = GameState.fromJson(s.toJson());
-      expect(s2.konumSahibi(Konum.dagevi), isTrue);
-      expect(s2.evEsyalari.contains('d_somine'), isTrue);
-    });
-
-    test('v118 ara kayıt migrasyonu: evSahibi/yazlikSahibi boolları okunur', () {
-      final s = GameState();
-      final json = s.toJson();
-      json.remove('sahipMekanlar');
-      json['evSahibi'] = true;
-      json['yazlikSahibi'] = true;
-      final s2 = GameState.fromJson(json);
-      expect(s2.evSahibi, isTrue);
-      expect(s2.yazlikSahibi, isTrue);
-      expect(s2.konumSahibi(Konum.dagevi), isFalse);
     });
   });
 
@@ -297,13 +160,179 @@ void main() {
       expect(s.aracSahibi(a.item.id), isTrue);
     });
 
-    test('mekân değeri eşyayla artar', () {
-      final s = GameState()..para = 99999;
-      s.mekanSatinAl(Konum.ev);
-      final taban = s.mekanDegeri(Konum.ev);
-      final esya = EvEsyasi.konumun(Konum.ev).first;
-      s.evEsyasiAl(esya);
-      expect(s.mekanDegeri(Konum.ev), taban + esya.fiyat);
+    test('mekân değeri liste fiyatı kadar', () {
+      final s = GameState()..para = 999999;
+      s.mekanSatinAl(Konum.mutevaziev);
+      expect(s.mekanDegeri(Konum.mutevaziev), Mekan.mutevaziev.fiyat);
+    });
+  });
+
+  group('Mekânlar (v121)', () {
+    test('6 mekân var; id, ad, görsel benzersiz ve fiyat/gün artan', () {
+      final ms = Mekan.satinAlinabilir;
+      expect(ms.length, 6);
+      expect(ms.map((m) => m.konum).toSet().length, 6);
+      expect(ms.map((m) => m.ad).toSet().length, 6);
+      expect(ms.map((m) => m.arkaplan).toSet().length, 6);
+      for (int i = 1; i < ms.length; i++) {
+        expect(ms[i].fiyat, greaterThan(ms[i - 1].fiyat),
+            reason: '${ms[i].ad} fiyatı sıralı değil');
+        expect(ms[i].minGun, greaterThanOrEqualTo(ms[i - 1].minGun),
+            reason: '${ms[i].ad} gün kilidi sıralı değil');
+        expect(ms[i].konukCarpani, greaterThanOrEqualTo(ms[i - 1].konukCarpani),
+            reason: '${ms[i].ad} konuk çarpanı sıralı değil');
+      }
+    });
+
+    test('eski "ev" kaydı mütevazı eve taşınır', () {
+      final s = GameState()..para = 999999;
+      final json = s.toJson();
+      json['sahipMekanlar'] = ['ev'];
+      final s2 = GameState.fromJson(json);
+      expect(s2.konumSahibi(Konum.mutevaziev), isTrue);
+      expect(s2.sahipMekanlar.contains('ev'), isFalse);
+    });
+
+    test('mekân alınca sahiplik ve kayıt turu çalışır', () {
+      final s = GameState()..para = 999999;
+      expect(s.mekanSatinAl(Konum.tekne), isTrue);
+      expect(s.mekanSatinAl(Konum.tekne), isFalse); // iki kez alınmaz
+      expect(s.mekanSayisi, 1);
+      final s2 = GameState.fromJson(s.toJson());
+      expect(s2.konumSahibi(Konum.tekne), isTrue);
+      expect(s2.aktifKonum, Konum.dukkan); // kayıt hep dükkanda açılır
+    });
+  });
+
+  group('📱 Telefon', () {
+    test('para yetmiyorsa alınamaz, alınınca kayıtta kalır', () {
+      final s = GameState()..para = 100;
+      expect(s.telefonSatinAl(), isFalse);
+      s.para = GameState.telefonFiyati + 50;
+      expect(s.telefonSatinAl(), isTrue);
+      expect(s.para, 50);
+      expect(s.telefonSatinAl(), isFalse);
+      expect(GameState.fromJson(s.toJson()).telefonVar, isTrue);
+    });
+
+    test('bilgisayar popup bayrağı kayıtta saklanır (tekrar çıkmasın)', () {
+      final s = GameState();
+      expect(s.bilgisayarPopupGosterildi, isFalse);
+      s.bilgisayarPopupGosterildi = true;
+      expect(GameState.fromJson(s.toJson()).bilgisayarPopupGosterildi, isTrue);
+    });
+  });
+
+  group('📞 Çağrı dengesi', () {
+    test('günlük çağrı hakkı sınırlı ve gün sonunda yenilenir', () {
+      final s = GameState()..para = 999999;
+      s.mekanSatinAl(Konum.mutevaziev);
+      s.konumaGec(Konum.mutevaziev);
+      expect(s.kalanCagriHakki, GameState.gunlukCagriHakki);
+      for (int i = 0; i < GameState.gunlukCagriHakki; i++) {
+        expect(s.cagriYapilabilir, isTrue, reason: 'çağrı ');
+        s.misafirCagir(RehberKisi.hande);
+        // Ziyareti bitir ki bir sonrakine geçebilelim.
+        var t = 0;
+        while (!s.misafirCevapla(true) && t < 10) { t++; }
+      }
+      expect(s.cagriYapilabilir, isFalse);
+      // Hak bitince çağrı hiç kurulmuyor.
+      s.misafirCagir(RehberKisi.seyma);
+      expect(s.aktifZiyaret, isNull);
+    });
+
+    test('çağrı sayacı kayıtta saklanır', () {
+      final s = GameState()..para = 999999;
+      s.mekanSatinAl(Konum.mutevaziev);
+      s.konumaGec(Konum.mutevaziev);
+      s.misafirCagir(RehberKisi.hande);
+      expect(GameState.fromJson(s.toJson()).bugunYapilanCagri, 1);
+    });
+  });
+
+  group('📞 Telefon rehberi', () {
+    test('12 kişi var, her birinin adı/görseli/ipucu dolu', () {
+      expect(RehberKisi.values.length, 12);
+      for (final k in RehberKisi.values) {
+        expect(RehberSenaryo.ad(k), isNotEmpty);
+        expect(RehberSenaryo.gorsel(k), startsWith('assets/'));
+        expect(RehberSenaryo.ipucu(k), isNotEmpty);
+      }
+    });
+
+    test('her kişinin her mekânda en az 4 senaryosu var', () {
+      for (final k in RehberKisi.values) {
+        for (final m in Mekan.satinAlinabilir) {
+          final s = RehberSenaryo.senaryolar(k, m.konum);
+          expect(s.length, greaterThanOrEqualTo(4),
+              reason: '${RehberSenaryo.ad(k)} / ${m.ad}: ${s.length} senaryo');
+          for (final z in s) {
+            expect(z.adimlar, isNotEmpty);
+            // Her senaryo bir etkiyle ya da hayır dalıyla kapanmalı —
+            // yoksa oyuncu diyalogun sonunda boşlukta kalır.
+            final sonAdim = z.adimlar.last;
+            expect(sonAdim.etki != null || sonAdim.secimli, isTrue,
+                reason: '${RehberSenaryo.ad(k)} / ${m.ad}: senaryo kapanmıyor');
+          }
+        }
+      }
+    });
+
+    test('senaryo metinlerinde mekân adı geçiyor (mekâna özel)', () {
+      for (final k in RehberKisi.values) {
+        final tekne = RehberSenaryo.senaryolar(k, Konum.tekne);
+        final tumMetin = tekne.expand((z) => z.adimlar).map((a) => a.metin).join(' ');
+        expect(tumMetin.contains('Tekne'), isTrue,
+            reason: '${RehberSenaryo.ad(k)} teknede mekân adını anmıyor');
+      }
+    });
+
+    test('ziyaret akışı: adımlar ilerler, etki uygulanır, biter', () {
+      final s = GameState()..para = 5000;
+      s.mekanSatinAl(Konum.tekne);
+      s.konumaGec(Konum.tekne);
+      s.misafirCagir(RehberKisi.hande);
+      expect(s.aktifOzelMusteri, isNotNull);
+      expect(s.misafirAdimi, isNotNull);
+      // Hep "evet" diyerek sonuna kadar götür.
+      var tur = 0;
+      while (!s.misafirCevapla(true) && tur < 10) { tur++; }
+      expect(s.aktifZiyaret, isNull, reason: 'ziyaret kapanmadı');
+      expect(s.mesaj, isNotEmpty);
+    });
+
+    test('hayır dalı ziyareti anında bitirir', () {
+      final s = GameState()..para = 5000;
+      s.mekanSatinAl(Konum.yazlik);
+      s.konumaGec(Konum.yazlik);
+      s.misafirCagir(RehberKisi.sezercik);
+      // Seçimli adıma gelene kadar evet de, sonra hayır.
+      var tur = 0;
+      while (s.misafirAdimi != null && !s.misafirAdimi!.secimli && tur < 10) {
+        s.misafirCevapla(true); tur++;
+      }
+      if (s.misafirAdimi != null) {
+        expect(s.misafirCevapla(false), isTrue);
+        expect(s.aktifZiyaret, isNull);
+      }
+    });
+
+    test('lüks mekân konuğu daha cömert (konukCarpani ölçekliyor)', () {
+      int kazanc(Konum k) {
+        final s = GameState()..para = 999999;
+        s.mekanSatinAl(k);
+        s.konumaGec(k);
+        final onceki = s.para;
+        // Para kazancı olan sabit bir senaryo: Şeyma'nın ilk senaryosu.
+        final z = RehberSenaryo.senaryolar(RehberKisi.seyma, k).first;
+        s.aktifZiyaret = z;
+        s.ziyaretAdim = 0;
+        var tur = 0;
+        while (!s.misafirCevapla(true) && tur < 10) { tur++; }
+        return s.para - onceki;
+      }
+      expect(kazanc(Konum.tekne), greaterThan(kazanc(Konum.mutevaziev)));
     });
   });
 

@@ -1110,6 +1110,851 @@ class OzelMusteri {
 /// Deli Bekir'in saçma sapan ziyareti: [gelis] cümlesine EVET denirse [evet],
 /// HAYIR denirse [hayir] söylenir — üçü aynı indeksten okunur, espriler
 /// birbirine bağlı. Para/eşya alışverişi YOK, Bekir sadece renk.
+// ─── 📱 TELEFON REHBERİ — MEKÂN ZİYARETLERİ ─────────────────────────────────
+
+/// Rehberden çağrılabilecek kişiler. Her biri her mekân için ayrı diyalog
+/// setine sahip; mekânın lüksü ödülü/cezayı büyütür (`Mekan.konukCarpani`).
+enum RehberKisi {
+  hande, buyucu, delibekir, doktor, emlakci, galerici,
+  polis, vergici, sezercik, hirsiz, seyma, tamirci,
+}
+
+/// Ziyaret sırasında bir konuşma adımı: balondaki [metin] + alttaki buton(lar).
+/// [secimli] false ise tek geniş buton ([evetEtiket]) olur.
+///
+/// [etki] adım ONAYLANDIĞINDA (evet dalında) uygulanır; `secimli` adımlarda
+/// hayır dalı [hayirMetin] ile biter ve etki uygulanmaz.
+class ZiyaretAdimi {
+  final String metin;
+  final String evetEtiket;
+  final String hayirEtiket;
+  final bool secimli;
+  /// Bu adım seçilince uygulanacak etki (para çarpanı bazlı).
+  final ZiyaretEtki? etki;
+  /// Hayır dalında söylenip ziyaretin bittiği replik.
+  final String? hayirMetin;
+  const ZiyaretAdimi(this.metin, {
+    this.evetEtiket = 'Tamam',
+    this.hayirEtiket = 'Hayır',
+    this.secimli = false,
+    this.etki,
+    this.hayirMetin,
+  });
+}
+
+/// Ziyaretin oyuna dokunuşu. [taban] mekânın `konukCarpani` ile çarpılır.
+enum ZiyaretEtkiTip {
+  paraKazanc,      // kasaya para girer
+  paraKayip,       // kasadan para çıkar (vergi/ceza/hırsızlık)
+  urunHediye,      // envantere rastgele CD
+  urunKayip,       // envanterden rastgele bir şey gider
+  tamirSeti,       // tamir seti hediyesi
+  kolonya,         // kolonya kullanım hakkı
+  hepsiniTamirEt,  // envanterdeki çürükleri onarır
+  yok,
+}
+
+class ZiyaretEtki {
+  final ZiyaretEtkiTip tip;
+  final int taban;
+  /// Etki gerçekleştiğinde balonda gösterilecek kapanış repliği.
+  final String kapanis;
+  const ZiyaretEtki(this.tip, this.taban, this.kapanis);
+}
+
+/// Bir kişinin BİR mekândaki tam ziyaret senaryosu.
+class Ziyaret {
+  final List<ZiyaretAdimi> adimlar;
+  const Ziyaret(this.adimlar);
+}
+
+/// 📞 Rehber senaryoları. Her kişi × her mekân için ayrı liste; listeden
+/// rastgele biri oynanır.
+///
+/// ⚠️ Tasarım kuralı: mekân ne kadar lüksse konuk o kadar cömert
+/// (`konukCarpani` 1.0 → 2.5). Ama riskli kişiler (hırsız, vergici, polis)
+/// lüks mekânda daha ÇOK götürür — gösteriş bedeli. Oyuncu "kimi nereye
+/// çağırayım" diye düşünsün diye böyle kurgulandı.
+class RehberSenaryo {
+  static String ad(RehberKisi k) => switch (k) {
+    RehberKisi.hande     => 'Rehber Hande',
+    RehberKisi.buyucu    => 'Büyücü Yakup',
+    RehberKisi.delibekir => 'Deli Bekir',
+    RehberKisi.doktor    => 'Doktor',
+    RehberKisi.emlakci   => 'Emlakçı Necmi',
+    RehberKisi.galerici  => 'Galerici Gürbüz',
+    RehberKisi.polis     => 'Polis',
+    RehberKisi.vergici   => 'Vergi Memuru',
+    RehberKisi.sezercik  => 'Sezercik',
+    RehberKisi.hirsiz    => 'Hırsız',
+    RehberKisi.seyma     => 'Şeyma Koko',
+    RehberKisi.tamirci   => 'Tamirci',
+  };
+
+  static String gorsel(RehberKisi k) => switch (k) {
+    RehberKisi.hande     => 'assets/hande.png',
+    RehberKisi.buyucu    => 'assets/buyucu.png',
+    RehberKisi.delibekir => 'assets/delibekir.png',
+    RehberKisi.doktor    => 'assets/doktor.png',
+    RehberKisi.emlakci   => 'assets/emlakci.png',
+    RehberKisi.galerici  => 'assets/galerici.png',
+    RehberKisi.polis     => 'assets/polis.png',
+    RehberKisi.vergici   => 'assets/vergici.png',
+    RehberKisi.sezercik  => 'assets/sezercik.png',
+    RehberKisi.hirsiz    => 'assets/hirsiz.png',
+    RehberKisi.seyma     => 'assets/seymakoko.png',
+    RehberKisi.tamirci   => 'assets/tamirci.png',
+  };
+
+  /// Rehber listesinde görünen kısa tanıtım — oyuncu riski bilsin.
+  static String ipucu(RehberKisi k) => switch (k) {
+    RehberKisi.hande     => 'Yol gösterir, moral verir',
+    RehberKisi.buyucu    => 'Şansını dener: büyü tutar ya da tutmaz',
+    RehberKisi.delibekir => 'Ne diyeceği belli olmaz',
+    RehberKisi.doktor    => 'Kontrol eder, iyi haber pahalıdır',
+    RehberKisi.emlakci   => 'Mekânına değer biçer',
+    RehberKisi.galerici  => 'Araç muhabbeti, bazen komisyon',
+    RehberKisi.polis     => 'Ruhsat sorar — riskli',
+    RehberKisi.vergici   => 'Lüksü görür, vergi yazar — riskli',
+    RehberKisi.sezercik  => 'Sevinir, karşılığını verir',
+    RehberKisi.hirsiz    => 'Çok riskli. Gerçekten çağıracak mısın?',
+    RehberKisi.seyma     => 'Zengin dostluk, cömert hediye',
+    RehberKisi.tamirci   => 'Elindekileri onarır',
+  };
+
+  /// Kişinin [k] mekânındaki senaryoları. Boşsa `_genel` kullanılır.
+  static List<Ziyaret> senaryolar(RehberKisi kisi, Konum konum) {
+    final m = Mekan.bul(konum);
+    final yer = m.ad;
+    switch (kisi) {
+      // ── 👩‍🏫 REHBER HANDE — hep faydalı, mekâna göre moral + küçük hediye ──
+      case RehberKisi.hande:
+        return [
+          Ziyaret([
+            ZiyaretAdimi('Merhaba! Oo, $yer almışsın, hayırlı olsun! '
+                'Dükkandan buraya... yolu uzatmışsın ama değmiş.'),
+            ZiyaretAdimi('Burada çok özel insanlar ağırladığına eminim. '
+                'Doğru mu tahmin ediyorum?',
+                secimli: true, evetEtiket: 'Evet', hayirEtiket: 'Henüz',
+                hayirMetin: 'Olsun, ağırlarsın. Rehberinden tavsiye: '
+                    'buraya kimi çağırdığın, ne kazandığını belirler.'),
+            ZiyaretAdimi('Bak sana bir sır vereyim: buranın havası '
+                'misafirlerin cömertliğini artırıyor. Ne kadar lüks, o kadar bereket.',
+                etki: ZiyaretEtki(ZiyaretEtkiTip.paraKazanc, 700,
+                    'Yol masrafın benden. Ne zaman ihtiyacın olursa buradayım!')),
+          ]),
+          Ziyaret([
+            ZiyaretAdimi('Selam! $yer\'de seni görmek güzel. '
+                'Dükkan işleri nasıl gidiyor bakalım?'),
+            ZiyaretAdimi('Şunu unutma: envanterin ne kadar çeşitliyse, '
+                'müşteri o kadar çok yolu düşürür. Anladın mı?',
+                evetEtiket: 'Anladım'),
+            ZiyaretAdimi('Aferin sana. Bu da benden küçük bir destek — '
+                'kolonya hiç bitmesin, müşteriyi yumuşatır.',
+                etki: ZiyaretEtki(ZiyaretEtkiTip.kolonya, 0,
+                    'Görüşürüz! Sürprizlerin daha bitmedi...')),
+          ]),
+          Ziyaret([
+            ZiyaretAdimi('Merhaba! $yer... Vay be. '
+                'Seni ilk gördüğümde bodrum katta bir dükkanın vardı.'),
+            ZiyaretAdimi('O günden bugüne çok yol katettin. Gurur duyuyorum. '
+                'Devam etmek istiyor musun?',
+                secimli: true, evetEtiket: 'Elbette', hayirEtiket: 'Yoruldum',
+                hayirMetin: 'Dinlen o zaman. Ama unutma, en iyi tüccarlar '
+                    'yorulduklarında bile tezgâhı açık tutar...'),
+            ZiyaretAdimi('İşte bu ruh! Sana bir tamir seti bırakıyorum, '
+                'çürük mal elinde kalmasın.',
+                etki: ZiyaretEtki(ZiyaretEtkiTip.tamirSeti, 0,
+                    'Ne zaman ihtiyacın olursa buradayım. Görüşürüz...')),
+          ]),
+          Ziyaret([
+            ZiyaretAdimi('Selam! Rehberin olarak $yer\'i denetlemeye geldim. '
+                'Şaka şaka — sadece çay içmeye geldim.'),
+            ZiyaretAdimi('Bir çay içelim mi? Sohbetin faydası olur.',
+                secimli: true, evetEtiket: 'İçelim', hayirEtiket: 'Vaktim yok',
+                hayirMetin: 'Anlıyorum, tüccarın vakti dardır. '
+                    'Yine de ara sıra dinlen, tamam mı?'),
+            ZiyaretAdimi('Ooh, iyi geldi. Sohbetin bedeli olmaz ama '
+                'ben yine de boş gitmeyeyim...',
+                etki: ZiyaretEtki(ZiyaretEtkiTip.paraKazanc, 500,
+                    'Kendine iyi bak. Yine geleceğim!')),
+          ]),
+          Ziyaret([
+            ZiyaretAdimi('Merhabaa! $yer\'e ilk kez geliyorum, '
+                'içeriyi gezebilir miyim?',
+                secimli: true, evetEtiket: 'Buyur gez', hayirEtiket: 'Şimdi olmaz',
+                hayirMetin: 'Peki peki, mahremiyete saygı. '
+                    'Ben yine de uğrarım, kapını çalarım.'),
+            ZiyaretAdimi('Çok güzelmiş! Böyle bir yeri hak ediyorsun. '
+                'Sana bir hediyem var — rehberlik ikramiyem.',
+                etki: ZiyaretEtki(ZiyaretEtkiTip.paraKazanc, 900,
+                    'Görüşmek üzere, iyilikle kal!')),
+          ]),
+        ];
+
+      // ── 💎 ŞEYMA KOKO — en cömert konuk, lükste katlanır ──
+      case RehberKisi.seyma:
+        return [
+          Ziyaret([
+            ZiyaretAdimi('Şuna bak! $yer... Benim çevremde bile '
+                'böylesi az bulunur canım.'),
+            ZiyaretAdimi('Beni buraya çağırman büyük incelik. '
+                'Sana bir jest yapmak isterim, kabul eder misin?',
+                secimli: true, evetEtiket: 'Ederim', hayirEtiket: 'Gerek yok',
+                hayirMetin: 'Ay ne kadar da onurlusun! '
+                    'Böyle insanlar tükendi... Görüşürüz canım.'),
+            ZiyaretAdimi('İşte bu! Kartımı çıkarıyorum...',
+                etki: ZiyaretEtki(ZiyaretEtkiTip.paraKazanc, 4000,
+                    'Sen benim listemdesin artık. Öptüm!')),
+          ]),
+          Ziyaret([
+            ZiyaretAdimi('Cancağızım, $yer davetin için teşekkürler. '
+                'Milyarder olmak yalnızlık getiriyor, bilir misin?'),
+            ZiyaretAdimi('Bir dostluk kadar değerli bir şey yok. '
+                'Dost muyuz?',
+                evetEtiket: 'Dostuz'),
+            ZiyaretAdimi('O halde dostluğumuza yakışanı yapayım.',
+                etki: ZiyaretEtki(ZiyaretEtkiTip.paraKazanc, 3200,
+                    'Görüşmek üzere, iyilikle kal!')),
+          ]),
+          Ziyaret([
+            ZiyaretAdimi('$yer\'i çok beğendim! Burada bir '
+                'davet versem, tüm sosyeteyi çağırsam...'),
+            ZiyaretAdimi('Mekânını bir günlüğüne kiralayabilir miyim? '
+                'Bedelini fazlasıyla öderim.',
+                secimli: true, evetEtiket: 'Kirala', hayirEtiket: 'Olmaz',
+                hayirMetin: 'Ayy, mahremiyetine düşkünmüşsün. '
+                    'Saygı duyarım canım, başka zaman...'),
+            ZiyaretAdimi('Harika! Anahtarı bir günlüğüne alıyorum...',
+                etki: ZiyaretEtki(ZiyaretEtkiTip.paraKazanc, 5500,
+                    'Davet muhteşem geçecek. Öptüm, görüşürüz!')),
+          ]),
+          Ziyaret([
+            ZiyaretAdimi('Merhaba! Duydum ki $yer sahibi olmuşsun. '
+                'Ben de merak edip geldim.'),
+            ZiyaretAdimi('Bir de koleksiyonun varmış... Beni etkiledin. '
+                'Koleksiyonculara zaafım vardır.',
+                etki: ZiyaretEtki(ZiyaretEtkiTip.urunHediye, 0,
+                    'Koleksiyonuna bir katkı benden. Görüşürüz canım!')),
+          ]),
+          Ziyaret([
+            ZiyaretAdimi('Ayy $yer ne kadar da yakışmış sana! '
+                'Sezercik\'i hatırlıyor musun?'),
+            ZiyaretAdimi('İyi kalpli insanları takip ederim ben. '
+                'Sen de onlardan birisin.',
+                evetEtiket: 'Teşekkürler'),
+            ZiyaretAdimi('Kalbi zengin olana kesem de açıktır.',
+                etki: ZiyaretEtki(ZiyaretEtkiTip.paraKazanc, 3800,
+                    'Kendine iyi bak. Öptüm!')),
+          ]),
+        ];
+
+      // ── 👦 SEZERCİK — sevinir, hasılatını verir ──
+      case RehberKisi.sezercik:
+        return [
+          Ziyaret([
+            ZiyaretAdimi('Vay bee! Hayatımda hiç böyle bir $yer görmemiştim...'),
+            ZiyaretAdimi('Beni buraya çağırdığın için teşekkürler! '
+                'Burada bir meyve suyu içebilir miyim?',
+                secimli: true, evetEtiket: 'İç tabii', hayirEtiket: 'Olmaz',
+                hayirMetin: 'Canın sağ olsun, buraya çağırman yeter. '
+                    'Tekrar görüşmek üzere...'),
+            ZiyaretAdimi('Mmm! Bunu bana sağladığın için '
+                'bugünkü hasılatımı sana veriyorum!',
+                etki: ZiyaretEtki(ZiyaretEtkiTip.paraKazanc, 500,
+                    'Sen iyi birisin. Ben gidiyorum, kendine iyi bak!')),
+          ]),
+          Ziyaret([
+            ZiyaretAdimi('Burası $yer mi? Rüya gibi... '
+                'Ben hep böyle bir yerde yaşamayı hayal ettim.'),
+            ZiyaretAdimi('Bir gün ben de senin gibi olacağım. '
+                'Bana inanıyor musun?',
+                secimli: true, evetEtiket: 'İnanıyorum', hayirEtiket: 'Zor',
+                hayirMetin: 'Haklısın belki... Ama ben yine de deneyeceğim. '
+                    'Görüşürüz.'),
+            ZiyaretAdimi('Bunu duymak bana çok iyi geldi! '
+                'Biriktirdiğim harçlığı sana bırakıyorum, sen daha iyi kullanırsın.',
+                etki: ZiyaretEtki(ZiyaretEtkiTip.paraKazanc, 650,
+                    'İyi ki varsın! Görüşürüz abi!')),
+          ]),
+          Ziyaret([
+            ZiyaretAdimi('Selam! $yer\'e geldim ama üstüm başım kirli, '
+                'içeri girsem ayıp olur mu?',
+                secimli: true, evetEtiket: 'Gir gel', hayirEtiket: 'Dışarıda dur',
+                hayirMetin: 'Anladım... Ben burada beklerim o zaman. '
+                    'Yine de sağ ol, çağırdın ya...'),
+            ZiyaretAdimi('Teşekkür ederim! Kimse beni böyle ağırlamamıştı. '
+                'Sana bir şey vermek istiyorum.',
+                etki: ZiyaretEtki(ZiyaretEtkiTip.paraKazanc, 800,
+                    'Kalbin çok temiz. Görüşmek üzere!')),
+          ]),
+          Ziyaret([
+            ZiyaretAdimi('Buraya ilk gelişim! $yer diye buna derim işte.'),
+            ZiyaretAdimi('Bak ne diyeceğim, sokakta bir kutu buldum. '
+                'İçinde ne olduğunu bilmiyorum ama sende dursun.',
+                etki: ZiyaretEtki(ZiyaretEtkiTip.urunHediye, 0,
+                    'Sana yarasın! Ben kaçtım, görüşürüz!')),
+          ]),
+          Ziyaret([
+            ZiyaretAdimi('Abi selam! $yer\'de olmak çok tuhaf bir his...'),
+            ZiyaretAdimi('Sen bana yardım etmiştin ya, ben de sana '
+                'yardım etmek istiyorum. Kabul eder misin?',
+                secimli: true, evetEtiket: 'Ederim', hayirEtiket: 'Sen sakla',
+                hayirMetin: 'Sen gerçekten iyi birisin abi. '
+                    'Bunu hiç unutmayacağım!'),
+            ZiyaretAdimi('Al bakalım, bütün biriktirdiğim bu.',
+                etki: ZiyaretEtki(ZiyaretEtkiTip.paraKazanc, 900,
+                    'Görüşürüz abi, iyi ki varsın!')),
+          ]),
+        ];
+
+      // ── 🔧 TAMİRCİ — çürükleri onarır ──
+      case RehberKisi.tamirci:
+        return [
+          Ziyaret([
+            ZiyaretAdimi('Selamlar usta! $yer\'e çağırdın, '
+                'demek ki elinde bozuk bir şeyler var.'),
+            ZiyaretAdimi('Çantamı açayım mı? Ne varsa bakayım.',
+                secimli: true, evetEtiket: 'Aç bakalım', hayirEtiket: 'Gerek yok',
+                hayirMetin: 'Peki usta, ben kaçtım. '
+                    'Bozulan olursa haber et!'),
+            ZiyaretAdimi('Tamamdır! Elimden geleni yaptım.',
+                etki: ZiyaretEtki(ZiyaretEtkiTip.hepsiniTamirEt, 0,
+                    'Ne varsa çalışır hale getirdim. Kolay gelsin!')),
+          ]),
+          Ziyaret([
+            ZiyaretAdimi('$yer\'e servis çağırmak lüks iş usta! '
+                'Ama madem geldim, boş dönmeyeyim.'),
+            ZiyaretAdimi('Sana yedek tamir seti bırakayım, '
+                'her seferinde beni çağırma.',
+                etki: ZiyaretEtki(ZiyaretEtkiTip.tamirSeti, 0,
+                    'Kolay gelsin! Sıkışırsan ararsın.')),
+          ]),
+          Ziyaret([
+            ZiyaretAdimi('Merhaba! Yolu buraya kadar geldim, '
+                '$yer\'e servis ücreti işlemez mi?'),
+            ZiyaretAdimi('Şaka şaka. Ama bir bakayım şu elindekilere.',
+                evetEtiket: 'Bak bakalım'),
+            ZiyaretAdimi('Hepsi tamam. Bir de yedek bırakıyorum.',
+                etki: ZiyaretEtki(ZiyaretEtkiTip.hepsiniTamirEt, 0,
+                    'İşin rast gitsin usta!')),
+          ]),
+          Ziyaret([
+            ZiyaretAdimi('Usta selam! Kalemim yanımda, $yer için '
+                'bakım listesi çıkarayım dedim.'),
+            ZiyaretAdimi('Ama önce senin envanter... Ellerim kaşınıyor. '
+                'Bakayım mı?',
+                secimli: true, evetEtiket: 'Bak', hayirEtiket: 'Kalsın',
+                hayirMetin: 'İyi o zaman. Kolay gelsin, ben kaçtım!'),
+            ZiyaretAdimi('Bak işte, hepsi çalışıyor şimdi.',
+                etki: ZiyaretEtki(ZiyaretEtkiTip.hepsiniTamirEt, 0,
+                    'Görüşürüz usta, bereketli olsun!')),
+          ]),
+          Ziyaret([
+            ZiyaretAdimi('Vay be, $yer! Benim de bir gün böyle '
+                'bir yerim olur inşallah.'),
+            ZiyaretAdimi('Neyse, laf uzatmayayım. Setimi bırakıyorum, '
+                'hediyem olsun.',
+                etki: ZiyaretEtki(ZiyaretEtkiTip.tamirSeti, 0,
+                    'Hayırlı işler! Yine bekleriz.')),
+          ]),
+        ];
+
+      // ── 🩺 DOKTOR — kontrol eder; iyi haber para getirir, kötü haber götürür ──
+      case RehberKisi.doktor:
+        return [
+          Ziyaret([
+            ZiyaretAdimi('Merhaba! $yer\'e ev ziyareti... '
+                'Doktorluk mesleğinin en keyifli hali bu.'),
+            ZiyaretAdimi('Tansiyonuna bakayım mı? Tüccarlarda '
+                'stres yüksek olur.',
+                secimli: true, evetEtiket: 'Bak', hayirEtiket: 'İyiyim',
+                hayirMetin: 'İyisin diyorsan iyisindir. '
+                    'Ama ara ver bazen, dükkan kaçmaz!'),
+            ZiyaretAdimi('Turp gibisin! Bu haber sana enerji versin — '
+                'ben de muayene ücreti almıyorum.',
+                etki: ZiyaretEtki(ZiyaretEtkiTip.paraKazanc, 600,
+                    'Sağlıkla kal! Yılda bir kontrole gel.')),
+          ]),
+          Ziyaret([
+            ZiyaretAdimi('Selam! $yer güzelmiş ama havalandırma zayıf. '
+                'Doktor gözü işte, affet.'),
+            ZiyaretAdimi('Bir kontrol yapalım. Ücretim var ama '
+                'sonuçlar iyi çıkarsa almam.',
+                secimli: true, evetEtiket: 'Olur', hayirEtiket: 'Boşver',
+                hayirMetin: 'Peki. Ama sağlığı erteleyen çok tüccar gördüm, '
+                    'sen onlardan olma.'),
+            ZiyaretAdimi('Ufak bir sorun buldum, hemen tedavi ettik. '
+                'Ücretimi almam gerek.',
+                etki: ZiyaretEtki(ZiyaretEtkiTip.paraKayip, 400,
+                    'Geçmiş olsun. Şimdi çok daha iyisin!')),
+          ]),
+          Ziyaret([
+            ZiyaretAdimi('$yer\'e çağırdığın için sağ ol. '
+                'Şehirden uzakta olmak insanı dinlendiriyor.'),
+            ZiyaretAdimi('Sana bir tavsiye: dükkanda kolonya bulundur, '
+                'hijyen her şeydir. Al benden olsun.',
+                etki: ZiyaretEtki(ZiyaretEtkiTip.kolonya, 0,
+                    'Sağlıkla kal! Kolonyayı ihmal etme.')),
+          ]),
+          Ziyaret([
+            ZiyaretAdimi('Merhaba! Bu $yer havası ciğerlere iyi geliyor.'),
+            ZiyaretAdimi('Nabzına bakayım... Hmm. Çok çalışıyorsun. '
+                'Tatil yapman lazım. Yapacak mısın?',
+                secimli: true, evetEtiket: 'Yapacağım', hayirEtiket: 'Yapamam',
+                hayirMetin: 'Bunu bekliyordum zaten. '
+                    'Hiç değilse su iç, tamam mı?'),
+            ZiyaretAdimi('Aferin. Reçeteni yazdım: dinlenme. '
+                'Muayene ücretini de bağışlıyorum.',
+                etki: ZiyaretEtki(ZiyaretEtkiTip.paraKazanc, 450,
+                    'Kendine iyi bak, görüşürüz!')),
+          ]),
+          Ziyaret([
+            ZiyaretAdimi('Ooo, $yer! Benim hastalarım arasında '
+                'böyle yer sahibi çok az.'),
+            ZiyaretAdimi('Genel bir tarama yapalım mı? '
+                'Erken teşhis her şeydir.',
+                secimli: true, evetEtiket: 'Yapalım', hayirEtiket: 'Gerek yok',
+                hayirMetin: 'Peki. Kapım her zaman açık, unutma.'),
+            ZiyaretAdimi('Her şey yolunda! Ama tetkik masrafları var...',
+                etki: ZiyaretEtki(ZiyaretEtkiTip.paraKayip, 550,
+                    'Sağlığın yerinde, en önemlisi bu. Görüşürüz!')),
+          ]),
+        ];
+
+      // ── 🏠 EMLAKÇI NECMİ — mekâna değer biçer, komisyon ister ──
+      case RehberKisi.emlakci:
+        return [
+          Ziyaret([
+            ZiyaretAdimi('Merhaba! $yer için değerleme yapmaya geldim. '
+                'Piyasa hareketli, iyi zamanda aldın.'),
+            ZiyaretAdimi('Ekspertiz raporu çıkarayım mı? '
+                'Satmak istersen elinde belge olur.',
+                secimli: true, evetEtiket: 'Çıkar', hayirEtiket: 'Gerek yok',
+                hayirMetin: 'Nasıl istersen. Satmayı düşünürsen '
+                    'ilk beni ara, en iyi fiyatı ben veririm.'),
+            ZiyaretAdimi('Rapor hazır. Değeri düşündüğünden yüksek çıktı — '
+                'aradaki farkı avans olarak veriyorum!',
+                etki: ZiyaretEtki(ZiyaretEtkiTip.paraKazanc, 1800,
+                    'Belgeler sende. Hayırlı olsun!')),
+          ]),
+          Ziyaret([
+            ZiyaretAdimi('Selamlar! $yer\'in etrafı değerleniyor, '
+                'haberin var mı?'),
+            ZiyaretAdimi('Bir müşterim burayı çok beğendi. '
+                'Ona gezdirmeme izin verir misin? Komisyonumu paylaşırım.',
+                secimli: true, evetEtiket: 'Gezdir', hayirEtiket: 'Hayır',
+                hayirMetin: 'Anlıyorum, mahremiyet önemli. '
+                    'Yine de fikrin değişirse ara beni.'),
+            ZiyaretAdimi('Müşteri çok beğendi! Almadı ama '
+                'gezdirme ücretini bıraktı.',
+                etki: ZiyaretEtki(ZiyaretEtkiTip.paraKazanc, 1400,
+                    'İş yapmak seninle keyifli. Görüşürüz!')),
+          ]),
+          Ziyaret([
+            ZiyaretAdimi('$yer... Vallahi göz değecek. '
+                'Sen bu işi biliyorsun.'),
+            ZiyaretAdimi('Emlak vergisi dilekçeni ben vereyim, '
+                'ufak bir hizmet bedeliyle.',
+                secimli: true, evetEtiket: 'Ver', hayirEtiket: 'Kendim veririm',
+                hayirMetin: 'İyi o zaman, kolay gelsin. '
+                    'Ama son günü kaçırma, ceza yersin!'),
+            ZiyaretAdimi('Hallettim. Hizmet bedelim...',
+                etki: ZiyaretEtki(ZiyaretEtkiTip.paraKayip, 500,
+                    'İşin rast gitsin. Görüşmek üzere!')),
+          ]),
+          Ziyaret([
+            ZiyaretAdimi('Merhaba! Portföyüme $yer gibi bir yer lazımdı, '
+                'seninkini görünce dayanamadım.'),
+            ZiyaretAdimi('Fotoğraf çekip vitrinime asayım mı? '
+                'Reklamın olur, sana da katkısı olur.',
+                secimli: true, evetEtiket: 'As', hayirEtiket: 'Asma',
+                hayirMetin: 'Peki. Sessiz yaşamak da bir tercih.'),
+            ZiyaretAdimi('Vitrinimin yıldızı oldu! '
+                'Tanıtım payını sana veriyorum.',
+                etki: ZiyaretEtki(ZiyaretEtkiTip.paraKazanc, 1600,
+                    'Bereketli olsun. Görüşürüz!')),
+          ]),
+          Ziyaret([
+            ZiyaretAdimi('Ooo! $yer sahibi olmak kolay değil, '
+                'tebrik ederim.'),
+            ZiyaretAdimi('Bu arada elimde bir fırsat var, '
+                'sana özel bir kapora iadesi çıktı.',
+                etki: ZiyaretEtki(ZiyaretEtkiTip.paraKazanc, 2000,
+                    'Yine bekleriz! Emlak işi güven işidir.')),
+          ]),
+        ];
+
+      // ── 🚗 GALERİCİ GÜRBÜZ — araç muhabbeti, komisyon ──
+      case RehberKisi.galerici:
+        return [
+          Ziyaret([
+            ZiyaretAdimi('Selamın Aleyküm abi! $yer\'e kadar geldim, '
+                'yollar güzel ama araç şart burada.'),
+            ZiyaretAdimi('Sana özel bir teklifim var: '
+                'garajımdaki bir aracı burada sergileyeyim, kira vereyim.',
+                secimli: true, evetEtiket: 'Sergile', hayirEtiket: 'Olmaz',
+                hayirMetin: 'Olsun abi, kırılmadım. '
+                    'Araç lazım olursa galeriye bekleriz!'),
+            ZiyaretAdimi('Anlaştık! Aylık kirayı peşin veriyorum abime.',
+                etki: ZiyaretEtki(ZiyaretEtkiTip.paraKazanc, 2200,
+                    'Yolun açık olsun abi. Görüşürüz!')),
+          ]),
+          Ziyaret([
+            ZiyaretAdimi('Abi merhaba! $yer\'de araç muhabbeti '
+                'bir başka oluyor.'),
+            ZiyaretAdimi('Şu senin araçlar... Bakımını ben yaptırayım mı? '
+                'Masrafı bana, hatırın için.',
+                evetEtiket: 'Sağ ol'),
+            ZiyaretAdimi('Tamamdır. Bir de yol yardım paketi hediye.',
+                etki: ZiyaretEtki(ZiyaretEtkiTip.paraKazanc, 1200,
+                    'Ne zaman araç lazım olursa, Gürbüz Oto Galeri!')),
+          ]),
+          Ziyaret([
+            ZiyaretAdimi('Vay be abi! $yer... Sen bu işi çözmüşsün.'),
+            ZiyaretAdimi('Bir müşterim buraya gelmek istiyor, '
+                'aracıyla. Yolu tarif edeyim mi?',
+                secimli: true, evetEtiket: 'Tarif et', hayirEtiket: 'Hayır',
+                hayirMetin: 'Peki abi. Adres mahremdir, anlarım.'),
+            ZiyaretAdimi('Geldi, gördü, çok beğendi. '
+                'Aracılık payımı sana bırakıyorum.',
+                etki: ZiyaretEtki(ZiyaretEtkiTip.paraKazanc, 1700,
+                    'İş yapmak seninle güzel abi. Baay!')),
+          ]),
+          Ziyaret([
+            ZiyaretAdimi('Abi selam! Galeriden bir kasa meyve getirdim, '
+                '$yer\'e boş gelinmez.'),
+            ZiyaretAdimi('Bir de arabanın anahtarlığını unutmuşsun bende, '
+                'içinde para vardı, aynen getirdim.',
+                etki: ZiyaretEtki(ZiyaretEtkiTip.paraKazanc, 900,
+                    'Dürüstlük her şeyden önemli abi. Görüşürüz!')),
+          ]),
+          Ziyaret([
+            ZiyaretAdimi('Merhaba abi! $yer\'de garaj var mı? '
+                'Yok mu? Yaptır bence.'),
+            ZiyaretAdimi('Garaj yapımı için ustamı yollayayım mı? '
+                'Malzeme senden, işçilik benden.',
+                secimli: true, evetEtiket: 'Yolla', hayirEtiket: 'Gerek yok',
+                hayirMetin: 'Nasıl istersen abi. '
+                    'Araç lazım olursa biliyorsun yeri!'),
+            ZiyaretAdimi('Ustayı yolladım, malzeme parası lazım.',
+                etki: ZiyaretEtki(ZiyaretEtkiTip.paraKayip, 800,
+                    'Garajın hayırlı olsun abi! Görüşürüz.')),
+          ]),
+        ];
+
+      // ── 🧙 BÜYÜCÜ YAKUP — kumar: büyü tutar ya da tutmaz ──
+      case RehberKisi.buyucu:
+        return [
+          Ziyaret([
+            ZiyaretAdimi('Huww! $yer\'e çağrıldım demek. '
+                'Buranın enerjisi kuvvetli, büyüye elverişli.'),
+            ZiyaretAdimi('Bereket büyüsü yapayım mı? '
+                'Tutarsa kasan dolar, tutmazsa... şey.',
+                secimli: true, evetEtiket: 'Yap', hayirEtiket: 'Korkarım',
+                hayirMetin: 'Korkak tüccar zengin olamaz! '
+                    'Neyse, fikrini değiştirirsen ararsın. Huww!'),
+            ZiyaretAdimi('Abra kadabra! ...Tuttu! Bak nasıl tuttu!',
+                etki: ZiyaretEtki(ZiyaretEtkiTip.paraKazanc, 3000,
+                    'Gördün mü gücümü! Gene görüşeceğiz!')),
+          ]),
+          Ziyaret([
+            ZiyaretAdimi('Huww, selam! $yer... '
+                'Burada ruhlar huzurlu, hissediyorum.'),
+            ZiyaretAdimi('Sana bir tılsım bırakayım mı? '
+                'Bedeli var ama koruma sağlar.',
+                secimli: true, evetEtiket: 'Bırak', hayirEtiket: 'İstemem',
+                hayirMetin: 'Kısmet değilmiş. Huww! Kayboluyorum...'),
+            ZiyaretAdimi('Al bakalım. Tılsımın bedeli...',
+                etki: ZiyaretEtki(ZiyaretEtkiTip.paraKayip, 700,
+                    'Bu tılsım seni kötü müşteriden korur. Huww!')),
+          ]),
+          Ziyaret([
+            ZiyaretAdimi('$yer\'de büyü yapmak zordur, '
+                'enerjisi çok yüksek. Ama denerim.'),
+            ZiyaretAdimi('Bir CD çağırayım evrenden. Hazır mısın?',
+                evetEtiket: 'Hazırım'),
+            ZiyaretAdimi('Abra kadabra... İşte geldi!',
+                etki: ZiyaretEtki(ZiyaretEtkiTip.urunHediye, 0,
+                    'Evren cömert davrandı. Huww, görüşürüz!')),
+          ]),
+          Ziyaret([
+            ZiyaretAdimi('Huww! Beni $yer\'e çağırman cesaret ister.'),
+            ZiyaretAdimi('Bakalım cesaretin karşılığını alacak mısın... '
+                'Büyüye başlıyorum, dur deme sakın!',
+                evetEtiket: 'Başla'),
+            ZiyaretAdimi('Hmm. Büyü ters tepti. Bu bazen olur.',
+                etki: ZiyaretEtki(ZiyaretEtkiTip.paraKayip, 900,
+                    'Kusura bakma. Bir dahakine tutar, söz! Huww!')),
+          ]),
+          Ziyaret([
+            ZiyaretAdimi('Selam! $yer\'in duvarları bana bir şey fısıldıyor...'),
+            ZiyaretAdimi('Diyorlar ki bu evin sahibi cömert olursa '
+                'kat kat geri alırmış. Cömert misin?',
+                secimli: true, evetEtiket: 'Cömerdim', hayirEtiket: 'Cimriyim',
+                hayirMetin: 'Dürüstlüğün de bir değeri var. '
+                    'Huww! Kayboluyorum...'),
+            ZiyaretAdimi('Duvarlar seni sevdi! Bak ne çıktı ortaya...',
+                etki: ZiyaretEtki(ZiyaretEtkiTip.paraKazanc, 2400,
+                    'Gene görüşeceğiz! Huww!')),
+          ]),
+        ];
+
+      // ── 🤪 DELİ BEKİR — ne olacağı belli olmaz ──
+      case RehberKisi.delibekir:
+        return [
+          Ziyaret([
+            ZiyaretAdimi('Heyy! Ben Deli Bekir! '
+                '$yer\'e taksiyle geldim ama taksi yoktu, yürüdüm.'),
+            ZiyaretAdimi('Bir bardak su rica etsem? '
+                'Yolda susadım, dokuz kilometre.',
+                secimli: true, evetEtiket: 'Buyur', hayirEtiket: 'Yok',
+                hayirMetin: 'Susuz kaldım ama olsun! '
+                    'Yağmur yağınca öderim. Kaçtım!'),
+            ZiyaretAdimi('Ohh! Suyun karşılığında cebimdekini veriyorum. '
+                'Zaten sayamıyorum ben.',
+                etki: ZiyaretEtki(ZiyaretEtkiTip.paraKazanc, 1100,
+                    'Bay bay! Bir dahakine denizden gelirim!')),
+          ]),
+          Ziyaret([
+            ZiyaretAdimi('Selam! Duydum ki $yer almışsın. '
+                'Ben de bir tane alacaktım ama unuttum nereye koyduğumu.'),
+            ZiyaretAdimi('Sana bir kutu getirdim. İçinde ne var bilmiyorum, '
+                'sallayınca ses geliyor.',
+                etki: ZiyaretEtki(ZiyaretEtkiTip.urunHediye, 0,
+                    'Bende kalsaydı açardım merakımdan. Kaçtım!')),
+          ]),
+          Ziyaret([
+            ZiyaretAdimi('Heyy dostum! $yer\'de kayboldum. '
+                'Zaten hep kaybolurum, alıştım.'),
+            ZiyaretAdimi('Bana yol tarifi verir misin? '
+                'Ama tersten söyle, ben öyle anlıyorum.',
+                secimli: true, evetEtiket: 'Tersten söyle', hayirEtiket: 'Düz söyle',
+                hayirMetin: 'Düz söyleyince kafam karıştı, '
+                    'daha da kayboldum! Bay bay!'),
+            ZiyaretAdimi('Anladım! Teşekkür olarak cebimdeki bozuklukları...',
+                etki: ZiyaretEtki(ZiyaretEtkiTip.paraKazanc, 700,
+                    'Buldum yolu! Yanlış yön ama buldum. Kaçtım!')),
+          ]),
+          Ziyaret([
+            ZiyaretAdimi('Bekir geldi! $yer\'de sihirbazlık gösterisi yapacağım.'),
+            ZiyaretAdimi('Şimdi cebinden bir şey kaybolacak. '
+                'Hazır mısın?',
+                evetEtiket: 'Hazırım'),
+            ZiyaretAdimi('Taa-daa! ...Yanlış cepten kayboldu. Benimkinden.',
+                etki: ZiyaretEtki(ZiyaretEtkiTip.paraKazanc, 400,
+                    'Numara başarısız ama sen kazandın! Bay bay!')),
+          ]),
+          Ziyaret([
+            ZiyaretAdimi('Heyy! $yer güzelmiş. '
+                'Ben de böyle bir yer isterdim, sonra unuttum ne istediğimi.'),
+            ZiyaretAdimi('Sana bir yatırım tavsiyesi vereyim mi? '
+                'Ücretlidir ama kesin tutar.',
+                secimli: true, evetEtiket: 'Ver', hayirEtiket: 'İstemem',
+                hayirMetin: 'İyi ki almadın, tavsiyem "her şeyi sat" olacaktı. '
+                    'Kaçtım!'),
+            ZiyaretAdimi('Tavsiyem: hiçbir şeyi satma. Ücretim...',
+                etki: ZiyaretEtki(ZiyaretEtkiTip.paraKayip, 300,
+                    'Bedavaya danışmanlık olmaz dostum! Bay bay!')),
+          ]),
+        ];
+
+      // ── 👮 POLİS — riskli: ruhsat sorar, lüks mekânda ceza büyür ──
+      case RehberKisi.polis:
+        return [
+          Ziyaret([
+            ZiyaretAdimi('İyi günler. $yer için ruhsat kontrolü yapıyoruz. '
+                'Rutin bir işlem.'),
+            ZiyaretAdimi('Belgelerinizi görebilir miyim?',
+                secimli: true, evetEtiket: 'Buyurun', hayirEtiket: 'Yanımda yok',
+                hayirMetin: 'Bir dahakine hazır bulundurun. '
+                    'Bu seferlik uyarıyla geçiyorum. İyi günler.'),
+            ZiyaretAdimi('Her şey usulüne uygun. '
+                'Ama iskân harcı eksik kalmış.',
+                etki: ZiyaretEtki(ZiyaretEtkiTip.paraKayip, 800,
+                    'Harcı yatırdık, dosya kapandı. İyi günler.')),
+          ]),
+          Ziyaret([
+            ZiyaretAdimi('Merhaba. $yer\'de gürültü ihbarı aldık. '
+                'Şikâyetçi komşunuz.'),
+            ZiyaretAdimi('İçeri girip bakabilir miyim?',
+                secimli: true, evetEtiket: 'Girin', hayirEtiket: 'Giremezsiniz',
+                hayirMetin: 'Hakkınız. Arama izniyle döneriz. '
+                    'İyi günler dilerim...'),
+            ZiyaretAdimi('Ortada gürültü falan yok. '
+                'Asılsız ihbar tazminatı size ödenecek.',
+                etki: ZiyaretEtki(ZiyaretEtkiTip.paraKazanc, 1000,
+                    'Rahatsızlık için özür dileriz. İyi günler.')),
+          ]),
+          Ziyaret([
+            ZiyaretAdimi('İyi günler. Bölgede devriyeyiz, '
+                '$yer\'i de listeye almışlar.'),
+            ZiyaretAdimi('Bir kahve ikram eder misiniz? '
+                'Uzun vardiya.',
+                secimli: true, evetEtiket: 'Ederim', hayirEtiket: 'Meşgulüm',
+                hayirMetin: 'Anlıyorum. Kolay gelsin. '
+                    'Kapınız güvende, merak etmeyin.'),
+            ZiyaretAdimi('Sağ olun. Bu bölgeyi sıkı takibe alıyorum, '
+                'hırsız semtinize uğrayamaz.',
+                etki: ZiyaretEtki(ZiyaretEtkiTip.paraKazanc, 300,
+                    'İyi günler. Bir şey olursa 155.')),
+          ]),
+          Ziyaret([
+            ZiyaretAdimi('Merhaba. $yer sizin mi? '
+                'Tapu kayıtlarında bir tuhaflık var.'),
+            ZiyaretAdimi('Kayıtları düzelttirmek ister misiniz? '
+                'İşlem ücretli.',
+                secimli: true, evetEtiket: 'İsterim', hayirEtiket: 'Sonra',
+                hayirMetin: 'Ertelemeyin derim. '
+                    'Sorun büyürse ceza da büyür. İyi günler.'),
+            ZiyaretAdimi('Düzelttik. İşlem ücreti...',
+                etki: ZiyaretEtki(ZiyaretEtkiTip.paraKayip, 600,
+                    'Artık kayıtlar temiz. İyi günler.')),
+          ]),
+          Ziyaret([
+            ZiyaretAdimi('İyi günler. $yer gibi bir yerin sahibi olmak '
+                'göz doldurur, dikkat çeker. Bilginiz olsun.'),
+            ZiyaretAdimi('Güvenlik önerilerimi dinler misiniz?',
+                evetEtiket: 'Dinlerim'),
+            ZiyaretAdimi('Kapıyı kilitleyin, ışık açık bırakın, '
+                'komşuyla iyi geçinin. Bu kadar. Ücretsiz.',
+                etki: ZiyaretEtki(ZiyaretEtkiTip.yok, 0,
+                    'İyi günler. Güvende kalın.')),
+          ]),
+        ];
+
+      // ── 🧾 VERGİ MEMURU — lüksü görür, en riskli davetlerden ──
+      case RehberKisi.vergici:
+        return [
+          Ziyaret([
+            ZiyaretAdimi('Merhaba. Beni $yer\'e çağırmanız ilginç. '
+                'Genelde benden kaçarlar.'),
+            ZiyaretAdimi('Madem geldim, bir servet beyanı alalım mı?',
+                secimli: true, evetEtiket: 'Alalım', hayirEtiket: 'Almayalım',
+                hayirMetin: 'Peki. Ama kayıtlar hep açık, '
+                    'bir gün mutlaka bakılır. İyi günler.'),
+            ZiyaretAdimi('Beyan temiz çıktı. '
+                'Fazla ödediğiniz vergi iade ediliyor.',
+                etki: ZiyaretEtki(ZiyaretEtkiTip.paraKazanc, 1500,
+                    'Dürüst mükellef görmek güzel. İyi günler.')),
+          ]),
+          Ziyaret([
+            ZiyaretAdimi('İyi günler. $yer... '
+                'Bu kalibrede bir mülk, beyanınızda görünmüyor.'),
+            ZiyaretAdimi('Şimdi beyan etmek ister misiniz? '
+                'Gönüllü beyanda ceza indirimli olur.',
+                secimli: true, evetEtiket: 'Ederim', hayirEtiket: 'Etmem',
+                hayirMetin: 'Kaydı düştüm. '
+                    'Bir dahakine indirim olmaz, haberiniz olsun.'),
+            ZiyaretAdimi('Gönüllü beyan için teşekkürler. '
+                'İndirimli vergiyi tahsil ediyorum.',
+                etki: ZiyaretEtki(ZiyaretEtkiTip.paraKayip, 1200,
+                    'Kayıtlar temiz. İyi günler.')),
+          ]),
+          Ziyaret([
+            ZiyaretAdimi('Merhaba. $yer için emlak vergisi '
+                'dönemi geldi de.'),
+            ZiyaretAdimi('Şimdi ödemek ister misiniz? '
+                'Peşin ödemede indirim var.',
+                secimli: true, evetEtiket: 'Öderim', hayirEtiket: 'Sonra',
+                hayirMetin: 'Gecikme faizi işler, hatırlatayım. '
+                    'İyi günler.'),
+            ZiyaretAdimi('İndirimli tutar tahsil edildi.',
+                etki: ZiyaretEtki(ZiyaretEtkiTip.paraKayip, 900,
+                    'Makbuzunuz elinizde. İyi günler.')),
+          ]),
+          Ziyaret([
+            ZiyaretAdimi('İyi günler. Rutin denetim. '
+                '$yer\'in ısınma giderleri çok yüksek görünüyor.'),
+            ZiyaretAdimi('Fatura dökümünü inceleyebilir miyim?',
+                secimli: true, evetEtiket: 'İnceleyin', hayirEtiket: 'Hayır',
+                hayirMetin: 'Peki. Ama incelemeden geçmeyen dosya '
+                    'kapanmaz, biliyorsunuz.'),
+            ZiyaretAdimi('Fazla ödeme yapmışsınız! '
+                'İadesi hesabınıza geçiyor.',
+                etki: ZiyaretEtki(ZiyaretEtkiTip.paraKazanc, 1100,
+                    'Devlet hakkını da borcunu da öder. İyi günler.')),
+          ]),
+          Ziyaret([
+            ZiyaretAdimi('Merhaba. $yer\'i görünce '
+                'servet artışını sormam gerekti.'),
+            ZiyaretAdimi('Kaynak beyanı yapacak mısınız?',
+                evetEtiket: 'Yapacağım'),
+            ZiyaretAdimi('Kayıtlar tutuyor ama bir kalemde eksik var. '
+                'Tamamlayıcı vergi kesiliyor.',
+                etki: ZiyaretEtki(ZiyaretEtkiTip.paraKayip, 1400,
+                    'Dosyanız kapandı. İyi günler.')),
+          ]),
+        ];
+
+      // ── 🥷 HIRSIZ — en riskli; lükste kaybın büyük, bazen vicdanı tutar ──
+      case RehberKisi.hirsiz:
+        return [
+          Ziyaret([
+            ZiyaretAdimi('Sen... beni $yer\'e mi çağırdın? '
+                'Kafan mı iyi, yoksa çok mu cesursun?'),
+            ZiyaretAdimi('Madem geldim. Bir tur atayım mı içeride?',
+                secimli: true, evetEtiket: 'At bakalım', hayirEtiket: 'Dışarı!',
+                hayirMetin: 'Tamam tamam, gidiyorum! '
+                    'Ama bir daha çağırma, dayanamayabilirim...'),
+            ZiyaretAdimi('Güzel evmiş. Cebimde bir şeyler eksildi... '
+                'yani senin cebinde.',
+                etki: ZiyaretEtki(ZiyaretEtkiTip.paraKayip, 2000,
+                    'Beni çağırmasaydın! Kaçtım!')),
+          ]),
+          Ziyaret([
+            ZiyaretAdimi('Vay be, $yer! Ben bu semte '
+                'iş için gelirdim, misafir olarak ilk kez.'),
+            ZiyaretAdimi('Bana güveniyor musun gerçekten?',
+                secimli: true, evetEtiket: 'Güveniyorum', hayirEtiket: 'Hayır',
+                hayirMetin: 'Doğru cevap. Ben kendime bile güvenmem. '
+                    'Kayboldum!'),
+            ZiyaretAdimi('Bu güven bana dokundu. '
+                'Hayatımda ilk kez bir şey bırakıyorum...',
+                etki: ZiyaretEtki(ZiyaretEtkiTip.paraKazanc, 1800,
+                    'Bunu kimseye söyleme! İtibarım var. Kaçtım!')),
+          ]),
+          Ziyaret([
+            ZiyaretAdimi('Şşşt! $yer\'e girdim ama davetliyim, '
+                'tuhaf bir his.'),
+            ZiyaretAdimi('Envanterine bir göz atabilir miyim? '
+                'Meslekî merak.',
+                secimli: true, evetEtiket: 'Bak', hayirEtiket: 'Bakma',
+                hayirMetin: 'İyi yaptın. Bakınca dayanamıyorum çünkü. '
+                    'Kaçtım!'),
+            ZiyaretAdimi('Güzel mallar var... Bir tanesi bana lazım oldu.',
+                etki: ZiyaretEtki(ZiyaretEtkiTip.urunKayip, 0,
+                    'Hiçbir şey almadım! ...Diyeceğim ama aldım. Kaçtım!')),
+          ]),
+          Ziyaret([
+            ZiyaretAdimi('Beni $yer\'e çağırdın. '
+                'Ya çok akıllısın ya da hiç akıllı değilsin.'),
+            ZiyaretAdimi('Sana bir teklif: bu evi bir daha hiç soymam, '
+                'karşılığında ufak bir "abonelik".',
+                secimli: true, evetEtiket: 'Kabul', hayirEtiket: 'Asla',
+                hayirMetin: 'Cesursun. Hoşuma gitti. '
+                    'Belki de gerçekten uğramam. Belki...'),
+            ZiyaretAdimi('Anlaştık. İlk taksit peşin.',
+                etki: ZiyaretEtki(ZiyaretEtkiTip.paraKayip, 1200,
+                    'Sözüm söz. Bu ev bana yasak. Kaçtım!')),
+          ]),
+          Ziyaret([
+            ZiyaretAdimi('$yer... Burayı çoktan keşfetmiştim aslında. '
+                'Davetin işimi kolaylaştırdı.'),
+            ZiyaretAdimi('Ama bugün doğum günüm. '
+                'Doğum günümde çalmam. İnanıyor musun?',
+                secimli: true, evetEtiket: 'İnanıyorum', hayirEtiket: 'Yalancı',
+                hayirMetin: 'Haklısın, yalandı. '
+                    'Ama seni sevdim, bugünlük affettim. Kaçtım!'),
+            ZiyaretAdimi('İyi kalpli adamsın. Pasta parası bile verdin sanki...',
+                etki: ZiyaretEtki(ZiyaretEtkiTip.paraKayip, 700,
+                    'Doğum günüm kutlu olsun! Kaçtım!')),
+          ]),
+        ];
+    }
+  }
+}
+
 class DeliBekirRepligi {
   final String gelis, evet, hayir;
   const DeliBekirRepligi(this.gelis, this.evet, this.hayir);
@@ -2570,6 +3415,31 @@ class KoleksiyonHedefi {
     KoleksiyonHedefi(id: 'tam', baslik: 'Tüm koleksiyonu doldur',
       hedef: kKoleksiyonKutuSayisi, odul: 6000,
       ilerleme: (s) => s.koleksiyondakiler.length),
+
+    // ── 🏆 v121: SERVET HEDEFLERİ ──
+    // Koleksiyon tablosuyla ilgisi yok ama aynı ilerleme/ödül düzeninde
+    // duruyorlar; oyuncuya "sıradaki büyük satın alma" hedefi veriyorlar.
+    KoleksiyonHedefi(id: 'ilkmekan', baslik: 'İlk mekânını satın al',
+      hedef: 1, odul: 1000, ilerleme: (s) => s.mekanSayisi),
+    KoleksiyonHedefi(id: 'mekan3', baslik: '3 mekân sahibi ol',
+      hedef: 3, odul: 4000, ilerleme: (s) => s.mekanSayisi),
+    KoleksiyonHedefi(id: 'mekanhepsi', baslik: 'Tüm mekânlara sahip ol',
+      hedef: Mekan.satinAlinabilir.length, odul: 15000,
+      ilerleme: (s) => s.mekanSayisi),
+    KoleksiyonHedefi(id: 'dagevi', baslik: 'Dağ evi satın al',
+      hedef: 1, odul: 2500,
+      ilerleme: (s) => s.konumSahibi(Konum.dagevi) ? 1 : 0),
+    KoleksiyonHedefi(id: 'tekne', baslik: 'Tekne satın al',
+      hedef: 1, odul: 5000,
+      ilerleme: (s) => s.konumSahibi(Konum.tekne) ? 1 : 0),
+    KoleksiyonHedefi(id: 'arac2', baslik: '2 araç sahibi ol',
+      hedef: 2, odul: 1200, ilerleme: (s) => s.sahipAracIdleri.length),
+    KoleksiyonHedefi(id: 'arac5', baslik: '5 araç sahibi ol',
+      hedef: 5, odul: 4500, ilerleme: (s) => s.sahipAracIdleri.length),
+    KoleksiyonHedefi(id: 'telefon', baslik: 'Oyuncu Pro Max satın al',
+      hedef: 1, odul: 1500, ilerleme: (s) => s.telefonVar ? 1 : 0),
+    KoleksiyonHedefi(id: 'dukkansahip', baslik: 'Kendi dükkanının sahibi ol',
+      hedef: 1, odul: 3000, ilerleme: (s) => s.sahipDukkanlar.length),
   ];
 }
 
@@ -2649,144 +3519,46 @@ class KayitServisi {
 enum ItemCategory { cd, konsol, aksesuar, arac }
 
 /// Oyuncunun bulunduğu yer.
-enum Konum { dukkan, ev, yazlik, dagevi, tekne }
+enum Konum { dukkan, mutevaziev, yazlik, dagevi, ormanlikev, rezidans, tekne }
 
-/// Satın alınabilir bir mekân: ad/ikon/fiyat (Market kartı ve konum seçimi)
-/// + arka plan ve en-boy oranı (eşyalar bu kutuya oranla konumlanıyor).
+/// Satın alınabilir bir mekân. Görseller v121'de yenilendi: mekânlar artık
+/// DÖŞENMİŞ geliyor — tek tek eşya alma sistemi kaldırıldı, mekâna gidince
+/// oradaki iş cep telefonuyla yapılıyor.
 ///
-/// Yeni bir mekân eklemek: `Konum`'a değer, buraya bir sabit ve
-/// `satinAlinabilir` listesine bir satır — Market kartı, konum seçme kutusu
-/// ve satın alma popup'ı listeden kendiliğinden türüyor.
+/// Yeni mekân eklemek: `Konum`'a değer, buraya bir sabit, `satinAlinabilir`
+/// listesine bir satır. Market kartı, konum kutusu, satın alma popup'ı,
+/// hedefler ve telefon rehberi diyalogları hep bu listeden türüyor.
 class Mekan {
   final Konum konum;
   final String ad, ikon, arkaplan;
-  final double oran; // en / boy
   final int fiyat;
-  const Mekan(this.konum, this.ad, this.ikon, this.arkaplan, this.oran, this.fiyat);
+  /// Gün kilidi — pahalı mekânlar oyunun ilerisinde açılsın.
+  final int minGun;
+  /// Telefonla çağrılan kişilerin bahşiş/kazanç çarpanı. Lüks mekânda
+  /// misafirler daha cömert (Sezercik hasılatını verir, Şeyma daha çok
+  /// hediye eder); mütevazı evde çarpan 1.0.
+  final double konukCarpani;
+  const Mekan(this.konum, this.ad, this.ikon, this.arkaplan, this.fiyat,
+      this.minGun, this.konukCarpani);
 
-  static const ev     = Mekan(Konum.ev,     'Ev',      '🏠', 'assets/ev_bos.jpg',     719 / 1278, 10000);
-  static const yazlik = Mekan(Konum.yazlik, 'Yazlık',  '🏖️', 'assets/yazlik_bos.jpg', 719 / 1274, 12000);
-  static const dagevi = Mekan(Konum.dagevi, 'Dağ Evi', '🏔️', 'assets/dagevi_bos.jpg', 719 / 1274, 15000);
+  static const mutevaziev = Mekan(Konum.mutevaziev, 'Mütevazı Ev', '🏠',
+      'assets/mekan_mutevaziev.jpg', 10000, 6, 1.0);
+  static const yazlik = Mekan(Konum.yazlik, 'Yazlık', '🏖️',
+      'assets/mekan_yazlikev.jpg', 18000, 8, 1.3);
+  static const dagevi = Mekan(Konum.dagevi, 'Dağ Evi', '🏔️',
+      'assets/mekan_dagevi.jpg', 26000, 12, 1.5);
+  static const ormanlikev = Mekan(Konum.ormanlikev, 'Orman Evi', '🌲',
+      'assets/mekan_ormanlikev.jpg', 34000, 16, 1.7);
+  static const rezidans = Mekan(Konum.rezidans, 'Rezidans', '🏙️',
+      'assets/mekan_rezidans.jpg', 48000, 20, 2.0);
+  static const tekne = Mekan(Konum.tekne, 'Tekne', '⛵',
+      'assets/mekan_tekne.jpg', 65000, 25, 2.5);
 
-  static const tekne  = Mekan(Konum.tekne,  'Tekne',   '⛵', 'assets/tekne_bos.jpg',  719 / 1274, 20000);
-
-  static const List<Mekan> satinAlinabilir = [ev, yazlik, dagevi, tekne];
+  static const List<Mekan> satinAlinabilir =
+      [mutevaziev, yazlik, dagevi, ormanlikev, rezidans, tekne];
 
   static Mekan bul(Konum k) =>
-      satinAlinabilir.where((m) => m.konum == k).firstOrNull ?? ev;
-}
-
-/// 🏠 Ev ve 🏖️ yazlığın satın alınabilir eşyaları.
-///
-/// İki farklı yerleştirme biçimi var:
-/// - **Ev**: eşya PNG'leri alfa kutusuna kırpılmış; konumları `doluev.png`
-///   üzerinden ölçülüp arka planın kutusuna oranlandı (0..1).
-/// - **Yazlık**: kaynak bir OpenRaster (`.ora`) dosyası; her katman TAM TUVAL
-///   boyutunda geldiği için konum hesabına gerek yok — `tamKatman` ile
-///   arka planın üstüne birebir bindirilir.
-class EvEsyasi {
-  final String id, ad, gorsel;
-  final int fiyat;
-  /// Eşyanın arka plan içindeki yeri: sol kenar, ÜST kenar, genişlik (0..1).
-  /// Yükseklik en-boy oranından türetilir (`BoxFit.contain`).
-  final double sol, ust, gen;
-  final Konum konum;
-  /// true → görsel arka planla aynı boyutta, doğrudan üstüne serilir.
-  final bool tamKatman;
-  /// Tezgâhtaki küçük önizleme. Tam tuval katmanlar küçük bir kutuda
-  /// görünmezdi (çoğu şeffaf), onlara ayrı kırpılmış kopya üretildi.
-  final String? ikon;
-  const EvEsyasi(this.id, this.ad, this.gorsel, this.fiyat, this.sol, this.ust, this.gen,
-      {this.konum = Konum.ev, this.tamKatman = false, this.ikon});
-
-  String get onizleme => ikon ?? gorsel;
-
-  /// ⚠️ Sıra ÇİZİM SIRASI: arkadakiler önce. Duvardakiler → yan mobilyalar →
-  /// öndeki kanepe. Listeyi karıştırma, öndeki eşya arkadakinin altında kalır.
-  ///
-  /// Oranlar `doluev.png` üzerinde %5'lik ızgarayla okundu, sonra `bosev`
-  /// üstüne çizdirilip gözle doğrulandı (`tools/evkompozit.ps1`).
-  static const List<EvEsyasi> tumu = [
-    EvEsyasi('vazo',       'Çini Vazo',    'assets/ev_vazo.png',        400, 0.205, 0.235, 0.060),
-    EvEsyasi('tv',         'Televizyon',   'assets/ev_tv.png',         2600, 0.365, 0.255, 0.290),
-    EvEsyasi('lambader',   'Lambader',     'assets/ev_lambader.png',    900, 0.855, 0.295, 0.110),
-    EvEsyasi('teklibir',   'Tekli Koltuk', 'assets/ev_teklibir.png',   1400, 0.030, 0.425, 0.280),
-    EvEsyasi('tekliiki',   'Tekli Berjer', 'assets/ev_tekliiki.png',   1500, 0.725, 0.425, 0.260),
-    EvEsyasi('ortasehpa',  'Orta Sehpa',   'assets/ev_ortasehpa.png',  1100, 0.345, 0.468, 0.330),
-    EvEsyasi('sehpa2',     'Yan Sehpa',    'assets/ev_sehpa2.png',      700, 0.005, 0.535, 0.130),
-    EvEsyasi('sehpa1',     'Zigon Sehpa',  'assets/ev_sehpa1.png',      600, 0.865, 0.530, 0.130),
-    EvEsyasi('ikilikoltuk','İkili Koltuk', 'assets/ev_ikilikoltuk.png',2400, 0.105, 0.545, 0.790),
-
-    // ── 🏖️ YAZLIK ──
-    // Katmanlar `yazlik_ev_katmanli.ora`'dan geliyor; sıra stack.xml'in
-    // TERSİ (XML'de üstteki katman en önde, burada en sonda çizilmeli).
-    EvEsyasi('y_buzdolabi',  'Buzdolabı',           'assets/yazlik_01.png', 3500, 0, 0, 1,
-      konum: Konum.yazlik, tamKatman: true, ikon: 'assets/yazlik_01_k.png'),
-    EvEsyasi('y_bulasik',    'Bulaşık Makinesi',    'assets/yazlik_02.png', 2800, 0, 0, 1,
-      konum: Konum.yazlik, tamKatman: true, ikon: 'assets/yazlik_02_k.png'),
-    EvEsyasi('y_kahve',      'Kahve Makinesi',      'assets/yazlik_03.png',  900, 0, 0, 1,
-      konum: Konum.yazlik, tamKatman: true, ikon: 'assets/yazlik_03_k.png'),
-    EvEsyasi('y_mikrodalga', 'Mikrodalga Fırın',    'assets/yazlik_04.png', 1200, 0, 0, 1,
-      konum: Konum.yazlik, tamKatman: true, ikon: 'assets/yazlik_04_k.png'),
-    EvEsyasi('y_bardaklar',  'Bardaklar',           'assets/yazlik_05.png',  300, 0, 0, 1,
-      konum: Konum.yazlik, tamKatman: true, ikon: 'assets/yazlik_05_k.png'),
-    EvEsyasi('y_tabaklar',   'Tabaklar',            'assets/yazlik_06.png',  350, 0, 0, 1,
-      konum: Konum.yazlik, tamKatman: true, ikon: 'assets/yazlik_06_k.png'),
-    EvEsyasi('y_sandalye',   'Sandalyeler',         'assets/yazlik_07.png', 1800, 0, 0, 1,
-      konum: Konum.yazlik, tamKatman: true, ikon: 'assets/yazlik_07_k.png'),
-    EvEsyasi('y_masa',       'Yemek Masası',        'assets/yazlik_08.png', 2600, 0, 0, 1,
-      konum: Konum.yazlik, tamKatman: true, ikon: 'assets/yazlik_08_k.png'),
-    EvEsyasi('y_tv',         'Ayaklı TV',           'assets/yazlik_09.png', 3200, 0, 0, 1,
-      konum: Konum.yazlik, tamKatman: true, ikon: 'assets/yazlik_09_k.png'),
-    EvEsyasi('y_sezlong',    'İki Şezlong',         'assets/yazlik_10.png', 2200, 0, 0, 1,
-      konum: Konum.yazlik, tamKatman: true, ikon: 'assets/yazlik_10_k.png'),
-    EvEsyasi('y_saksi',      'Büyük Çiçekli Saksı', 'assets/yazlik_11.png',  700, 0, 0, 1,
-      konum: Konum.yazlik, tamKatman: true, ikon: 'assets/yazlik_11_k.png'),
-    EvEsyasi('y_simit',      'Pembe Şişme Simit',   'assets/yazlik_12.png',  250, 0, 0, 1,
-      konum: Konum.yazlik, tamKatman: true, ikon: 'assets/yazlik_12_k.png'),
-
-    // ── 🏔️ DAĞ EVİ ──
-    // Katmanlar `dag_evi_katmanli.ora`'dan; yazlıkla aynı düzen — tam tuval,
-    // sıra dosya numarasına göre (01 en arkada).
-    EvEsyasi('d_somine',   'Şömine',          'assets/dagevi_01.png', 4000, 0, 0, 1,
-      konum: Konum.dagevi, tamKatman: true, ikon: 'assets/dagevi_01_k.png'),
-    EvEsyasi('d_post',     'Hayvan Postu',    'assets/dagevi_02.png', 1600, 0, 0, 1,
-      konum: Konum.dagevi, tamKatman: true, ikon: 'assets/dagevi_02_k.png'),
-    EvEsyasi('d_koltuk',   'Sallanan Koltuk', 'assets/dagevi_03.png', 2000, 0, 0, 1,
-      konum: Konum.dagevi, tamKatman: true, ikon: 'assets/dagevi_03_k.png'),
-    EvEsyasi('d_sehpa',    'Sehpa',           'assets/dagevi_04.png', 1200, 0, 0, 1,
-      konum: Konum.dagevi, tamKatman: true, ikon: 'assets/dagevi_04_k.png'),
-    EvEsyasi('d_mumlar',   'Mumlar',          'assets/dagevi_05.png',  300, 0, 0, 1,
-      konum: Konum.dagevi, tamKatman: true, ikon: 'assets/dagevi_05_k.png'),
-    EvEsyasi('d_biblo',    'Ayı Biblosu',     'assets/dagevi_06.png',  450, 0, 0, 1,
-      konum: Konum.dagevi, tamKatman: true, ikon: 'assets/dagevi_06_k.png'),
-    EvEsyasi('d_pikap',    'Eski Pikap',      'assets/dagevi_07.png', 2800, 0, 0, 1,
-      konum: Konum.dagevi, tamKatman: true, ikon: 'assets/dagevi_07_k.png'),
-
-    // ── ⛵ TEKNE ──
-    // Katmanlar `tekne_guvertesi_katmanli.ora`'dan; dağ eviyle aynı düzen.
-    // Sıra dosya numarasına göre (01 en arkada — deri minderler önce çizilir).
-    EvEsyasi('t_minder',   'Deri Minderler',   'assets/tekne_01.png', 2400, 0, 0, 1,
-      konum: Konum.tekne, tamKatman: true, ikon: 'assets/tekne_01_k.png'),
-    EvEsyasi('t_olta',     'Olta Takımı',      'assets/tekne_02.png',  900, 0, 0, 1,
-      konum: Konum.tekne, tamKatman: true, ikon: 'assets/tekne_02_k.png'),
-    EvEsyasi('t_ocak',     'Ocak',             'assets/tekne_03.png', 1600, 0, 0, 1,
-      konum: Konum.tekne, tamKatman: true, ikon: 'assets/tekne_03_k.png'),
-    EvEsyasi('t_buzdolabi','Buzdolabı',        'assets/tekne_04.png', 3000, 0, 0, 1,
-      konum: Konum.tekne, tamKatman: true, ikon: 'assets/tekne_04_k.png'),
-    EvEsyasi('t_masa',     'Güverte Masası',   'assets/tekne_05.png', 2000, 0, 0, 1,
-      konum: Konum.tekne, tamKatman: true, ikon: 'assets/tekne_05_k.png'),
-    EvEsyasi('t_tabak',    'Tabak Çanak',      'assets/tekne_06.png',  500, 0, 0, 1,
-      konum: Konum.tekne, tamKatman: true, ikon: 'assets/tekne_06_k.png'),
-    EvEsyasi('t_dalgic',   'Dalgıç Takımı',    'assets/tekne_07.png', 2800, 0, 0, 1,
-      konum: Konum.tekne, tamKatman: true, ikon: 'assets/tekne_07_k.png'),
-    EvEsyasi('t_zipkin',   'Zıpkın',           'assets/tekne_08.png', 1200, 0, 0, 1,
-      konum: Konum.tekne, tamKatman: true, ikon: 'assets/tekne_08_k.png'),
-    EvEsyasi('t_caki',     'İsviçre Çakısı',   'assets/tekne_09.png',  350, 0, 0, 1,
-      konum: Konum.tekne, tamKatman: true, ikon: 'assets/tekne_09_k.png'),
-  ];
-
-  static List<EvEsyasi> konumun(Konum k) => tumu.where((e) => e.konum == k).toList();
+      satinAlinabilir.where((m) => m.konum == k).firstOrNull ?? mutevaziev;
 }
 
 /// 🚗 Gürbüz Oto Galeri'nin stoğu.
@@ -2831,6 +3603,19 @@ class Arac {
       category: ItemCategory.arac, basePrice: 8000, kondisyon: 4), 40, AracTip.otomobil),
     Arac(GameItem(id: 'arac11', name: 'Vahşi At', gorsel: 'assets/arac_11.png',       // kırmızı kas arabası
       category: ItemCategory.arac, basePrice: 21000, kondisyon: 5), 25, AracTip.otomobil),
+    // ── v121 araçları ──
+    Arac(GameItem(id: 'arac12', name: 'Gök Mavisi', gorsel: 'assets/arac_12.png',     // mavi spor sedan
+      category: ItemCategory.arac, basePrice: 32000, kondisyon: 5), 20, AracTip.otomobil),
+    Arac(GameItem(id: 'arac13', name: 'Sarı Öküz', gorsel: 'assets/arac_13.png',      // sarı pikap
+      category: ItemCategory.arac, basePrice: 16000, kondisyon: 4), 34, AracTip.otomobil),
+    Arac(GameItem(id: 'arac14', name: 'Beyaz Devsin', gorsel: 'assets/arac_14.png',   // beyaz SUV
+      category: ItemCategory.arac, basePrice: 29000, kondisyon: 5), 24, AracTip.otomobil),
+    Arac(GameItem(id: 'arac15', name: 'Dört Teker', gorsel: 'assets/arac_15.png',     // ATV
+      category: ItemCategory.arac, basePrice: 7000, kondisyon: 4), 65, AracTip.motosiklet),
+    Arac(GameItem(id: 'arac16', name: 'Bembeyaz', gorsel: 'assets/arac_16.png',       // beyaz coupe
+      category: ItemCategory.arac, basePrice: 38000, kondisyon: 5), 18, AracTip.otomobil),
+    Arac(GameItem(id: 'arac17', name: 'Şahin Baba', gorsel: 'assets/arac_17.png',     // bordo klasik hatchback
+      category: ItemCategory.arac, basePrice: 4500, kondisyon: 3), 55, AracTip.otomobil),
   ];
 
   /// Vitrin sırası: bisiklet → motosiklet → otomobil, her grupta fiyat artan.
@@ -3294,6 +4079,7 @@ class GameState extends ChangeNotifier {
     _rizaZiyaretSirasi = 2 + (ust > 1 ? Random().nextInt(ust) : 0);
     _galericiBugunGeldi = false;
     _yakupBugunGeldi = false;
+    bugunYapilanCagri = 0; // telefon rehberi hakkı yenilendi
   }
 
   // ── Galerici Gürbüz: Rıza gibi kendi programı var, rotasyona girmez.
@@ -3468,11 +4254,10 @@ class GameState extends ChangeNotifier {
   /// içlerine konan eşyalar. Eşya id'leri mekânlar arasında benzersiz
   /// (yazlıkta `y_`, dağ evinde `d_` ön eki), bu yüzden tek küme yetiyor.
   Set<String> sahipMekanlar = {};
-  Set<String> evEsyalari = {};
 
   bool konumSahibi(Konum k) => sahipMekanlar.contains(k.name);
-  bool get evSahibi => konumSahibi(Konum.ev);
-  bool get yazlikSahibi => konumSahibi(Konum.yazlik);
+  /// Kaç mekâna sahip — hedeflerde ve telefon rehberinde kullanılıyor.
+  int get mekanSayisi => sahipMekanlar.length;
 
   /// Oyuncu şu an nerede? Yolculuk bittikten sonra `ev` olabilir.
   Konum aktifKonum = Konum.dukkan;
@@ -3524,16 +4309,6 @@ class GameState extends ChangeNotifier {
     return true;
   }
 
-  /// Evdeki "Eşya Al" tezgâhından bir mobilya alınır.
-  bool evEsyasiAl(EvEsyasi e) {
-    if (evEsyalari.contains(e.id) || para < e.fiyat) return false;
-    para -= e.fiyat;
-    evEsyalari.add(e.id);
-    SesServisi.paraGirdi();
-    notifyListeners();
-    return true;
-  }
-
   void konumaGec(Konum k) {
     aktifKonum = k;
     notifyListeners();
@@ -3548,14 +4323,9 @@ class GameState extends ChangeNotifier {
   Konum? satistakiKonum;
   bool get _ozelSatisAktif => satistakiAracId != null || satistakiKonum != null;
 
-  /// Mekânın güncel değeri: kendi bedeli + içine alınan eşyaların bedeli.
-  /// Ev ne kadar döşenirse o kadar eder — eşyalar satışta evle birlikte gider.
-  int mekanDegeri(Konum k) {
-    final esyaToplam = EvEsyasi.konumun(k)
-        .where((e) => evEsyalari.contains(e.id))
-        .fold(0, (t, e) => t + e.fiyat);
-    return Mekan.bul(k).fiyat + esyaToplam;
-  }
+  /// Mekânın satış değeri. Mekânlar döşenmiş geliyor (v121), o yüzden
+  /// değer sabit — ama piyasa etkisi pazarlıkta zaten uygulanıyor.
+  int mekanDegeri(Konum k) => Mekan.bul(k).fiyat;
 
   /// [alici] ismi/görseliyle, [deger] piyasa fiyatlı bir ALICI müşteri kurar.
   void _aliciKur(String ad, String gorsel, GameItem urun, int deger) {
@@ -3610,6 +4380,153 @@ class GameState extends ChangeNotifier {
   int tamamlananKrediSayisi = 0; // kaç kredi tamamen ödendi (taksit limiti için)
   bool get aktifKrediVar => krediKalanTaksit > 0;
   bool imacSatinAlindi = false;
+
+  // ── 📱 CEP TELEFONU (Oyuncu Pro Max) ──────────────────────────────────────
+  /// 10. günden itibaren Market'ten alınır. Mekânlarda telefon açılır;
+  /// dükkandaki browser'ın yaptığı her şeyi orada da yapabilirsin, ayrıca
+  /// telefon rehberinden misafir çağırabilirsin.
+  /// Tek seferlik popup'ların kalıcı bayrakları — widget alanında tutulunca
+  /// "Devam Et" ile her girişte tekrar çıkıyorlardı.
+  bool bilgisayarPopupGosterildi = false;
+
+  bool telefonVar = false;
+  static const int telefonFiyati = 7500;
+  static const int telefonMinGun = 10;
+
+  bool telefonSatinAl() {
+    if (telefonVar || para < telefonFiyati) return false;
+    para -= telefonFiyati;
+    telefonVar = true;
+    SesServisi.paraGirdi();
+    notifyListeners();
+    return true;
+  }
+
+  // ── 📞 MEKÂNDA MİSAFİR ZİYARETİ ───────────────────────────────────────────
+  /// Aktif ziyaretin adımları ve nerede olduğumuz. Ziyaret bitince temizlenir.
+  Ziyaret? aktifZiyaret;
+  int ziyaretAdim = 0;
+  RehberKisi? ziyaretKisi;
+
+  ZiyaretAdimi? get misafirAdimi =>
+      (aktifZiyaret != null && ziyaretAdim < aktifZiyaret!.adimlar.length)
+          ? aktifZiyaret!.adimlar[ziyaretAdim] : null;
+
+  // ⚠️ DENGE: çağrılar günlük SINIRLI. Sınırsız olsaydı oyuncu mekânda
+  // oturup rehberi tarayarak dükkana hiç dönmeden zengin olurdu — dükkan
+  // oynanışı anlamsızlaşırdı. Gün sonunda hak yenilenir.
+  static const int gunlukCagriHakki = 3;
+  int bugunYapilanCagri = 0;
+  int get kalanCagriHakki => gunlukCagriHakki - bugunYapilanCagri;
+  bool get cagriYapilabilir => kalanCagriHakki > 0;
+
+  /// Rehberden bir kişi çağrılır: mekâna özel senaryolardan biri seçilir.
+  void misafirCagir(RehberKisi kisi) {
+    if (!cagriYapilabilir) return;
+    final senaryolar = RehberSenaryo.senaryolar(kisi, aktifKonum);
+    if (senaryolar.isEmpty) return;
+    bugunYapilanCagri++;
+    ziyaretKisi = kisi;
+    aktifZiyaret = senaryolar[Random().nextInt(senaryolar.length)];
+    ziyaretAdim = 0;
+    aktifOzelMusteri = OzelMusteri(
+      tip: OzelMusteriTip.hande, // sadece renk/kategori için; akış ayrı
+      gorsel: RehberSenaryo.gorsel(kisi),
+      ad: RehberSenaryo.ad(kisi),
+      ilkMiktar: 0,
+      ilkMesaj: aktifZiyaret!.adimlar.first.metin,
+    );
+    ozelMusteriGorunuyor = true;
+    mesaj = aktifZiyaret!.adimlar.first.metin;
+    notifyListeners();
+  }
+
+  /// Ziyaret adımına cevap. `false` → hayır dalı (ziyaret biter).
+  /// Dönen değer: ziyaret bitti mi?
+  bool misafirCevapla(bool evet) {
+    final adim = misafirAdimi;
+    if (adim == null) return true;
+    if (!evet && adim.secimli) {
+      mesaj = adim.hayirMetin ?? 'Görüşürüz.';
+      _ziyaretiKapat();
+      notifyListeners();
+      return true;
+    }
+    // Etki varsa uygula, kapanış replikini göster ve bitir.
+    if (adim.etki != null) {
+      _ziyaretEtkisiUygula(adim.etki!);
+      mesaj = adim.etki!.kapanis;
+      _ziyaretiKapat();
+      notifyListeners();
+      return true;
+    }
+    ziyaretAdim++;
+    final sonraki = misafirAdimi;
+    if (sonraki == null) {
+      mesaj = 'Görüşürüz!';
+      _ziyaretiKapat();
+      notifyListeners();
+      return true;
+    }
+    mesaj = sonraki.metin;
+    notifyListeners();
+    return false;
+  }
+
+  void _ziyaretiKapat() {
+    aktifZiyaret = null;
+    ziyaretAdim = 0;
+    ziyaretKisi = null;
+  }
+
+  /// Ziyaret sonu ödülü/cezası. Tutarlar mekânın `konukCarpani`sıyla ölçekleniyor
+  /// — lüks mekân hem daha cömert hem daha pahalı.
+  int sonZiyaretTutari = 0;
+  void _ziyaretEtkisiUygula(ZiyaretEtki e) {
+    final carpan = Mekan.bul(aktifKonum).konukCarpani;
+    final tutar = (e.taban * carpan).round();
+    sonZiyaretTutari = tutar;
+    switch (e.tip) {
+      case ZiyaretEtkiTip.paraKazanc:
+        para += tutar;
+        SesServisi.paraGirdi();
+        break;
+      case ZiyaretEtkiTip.paraKayip:
+        final kesinti = tutar.clamp(0, para);
+        sonZiyaretTutari = kesinti;
+        para -= kesinti;
+        SesServisi.paraGirdi();
+        break;
+      case ZiyaretEtkiTip.urunHediye:
+        final cdler = koleksiyonUrunleri
+            .where((u) => u.category == ItemCategory.cd && !u.oynanabilir)
+            .toList();
+        if (cdler.isNotEmpty) {
+          urunEkle(cdler[Random().nextInt(cdler.length)].kopyaWith(maliyet: 0));
+        }
+        break;
+      case ZiyaretEtkiTip.urunKayip:
+        final dolular = <int>[];
+        for (int i = 0; i < acikSlotSayisi; i++) {
+          if (slotlar[i] != null) dolular.add(i);
+        }
+        if (dolular.isNotEmpty) {
+          urunCikarOrnek(slotlar[dolular[Random().nextInt(dolular.length)]]!);
+        }
+        break;
+      case ZiyaretEtkiTip.tamirSeti:
+        tamirSetiAdet += 5;
+        break;
+      case ZiyaretEtkiTip.kolonya:
+        kolonyaKullanim = 10;
+        break;
+      case ZiyaretEtkiTip.hepsiniTamirEt:
+        yemegiYe(); // aynı işi yapıyor: tüm çürükleri onarır
+        break;
+      case ZiyaretEtkiTip.yok:
+        break;
+    }
+  }
   int kolonyaKullanim = 0;      // mevcut kolonya kullanım hakkı (0 = yok)
   bool kolonyaIkramEdildi = false; // bu müşteriye ikram edildi mi
   double _kolonyaPendingBonus = 0.0; // pazarlık başlamadan ikram edildiyse bekleyen bonus
@@ -3956,6 +4873,15 @@ class GameState extends ChangeNotifier {
     GameItem(id: 'cd44',     name: 'NÖRÜN',              gorsel: 'assets/CD_44.png',               category: ItemCategory.cd,      basePrice: 150,  kondisyon: 4),
     GameItem(id: 'cd45',     name: 'ÇAYYNİİZ',           gorsel: 'assets/CD_45.png',               category: ItemCategory.cd,      basePrice: 105,  kondisyon: 3),
     GameItem(id: 'cd46',     name: 'CUMBURLOP',          gorsel: 'assets/CD_46.png',               category: ItemCategory.cd,      basePrice: 160,  kondisyon: 5),
+    // ── v121: 7 yeni CD. Fiyatlar mevcut ortalamayı (~135) korur —
+    //    "oynanabilir = normal CD ortalamasının 2 katı" dengesi bozulmasın.
+    GameItem(id: 'cd47',     name: 'BAYIR ASSA',         gorsel: 'assets/CD_47.png',               category: ItemCategory.cd,      basePrice: 120,  kondisyon: 4),
+    GameItem(id: 'cd48',     name: 'CİTİZEN',            gorsel: 'assets/CD_48.png',               category: ItemCategory.cd,      basePrice: 175,  kondisyon: 5),
+    GameItem(id: 'cd49',     name: 'LAZİO',              gorsel: 'assets/CD_49.png',               category: ItemCategory.cd,      basePrice: 145,  kondisyon: 4),
+    GameItem(id: 'cd50',     name: 'PEKMEZ',             gorsel: 'assets/CD_50.png',               category: ItemCategory.cd,      basePrice: 95,   kondisyon: 3),
+    GameItem(id: 'cd51',     name: 'ŞOFEER',             gorsel: 'assets/CD_51.png',               category: ItemCategory.cd,      basePrice: 130,  kondisyon: 4),
+    GameItem(id: 'cd52',     name: 'TARKAN',             gorsel: 'assets/CD_52.png',               category: ItemCategory.cd,      basePrice: 190,  kondisyon: 5),
+    GameItem(id: 'cd53',     name: 'TÖVBEKAR',           gorsel: 'assets/CD_53.png',               category: ItemCategory.cd,      basePrice: 110,  kondisyon: 3),
     GameItem(id: 'konsol1',  name: 'PlayStatyon',          gorsel: 'assets/konsol_1.png',          category: ItemCategory.konsol,  basePrice: 900,  kondisyon: 4),
     GameItem(id: 'konsol2',  name: 'Ninetendo',            gorsel: 'assets/konsol_2.png',          category: ItemCategory.konsol,  basePrice: 750,  kondisyon: 3),
     GameItem(id: 'konsol3',  name: 'Ateri',                gorsel: 'assets/konsol_3.png',          category: ItemCategory.konsol,  basePrice: 500,  kondisyon: 2),
@@ -4355,6 +5281,18 @@ class GameState extends ChangeNotifier {
     {'gorsel': 'assets/musteri_44.png', 'cinsiyet': 'E', 'yas': 'cocuk',    'ad': 'Kahraman Memo'},  // çocuk süper kahraman
     {'gorsel': 'assets/musteri_45.png', 'cinsiyet': 'E', 'yas': 'yetiskin', 'ad': 'Şakir Oneyıl'},   // basketbolcu, mor forma
     {'gorsel': 'assets/musteri_46.png', 'cinsiyet': 'E', 'yas': 'yetiskin'},                          // takım elbiseli bey
+    // ── v121: 9 yeni karakter ──
+    {'gorsel': 'assets/musteri_47.png', 'cinsiyet': 'E', 'yas': 'yetiskin'},                          // robocop kostumlu
+    {'gorsel': 'assets/musteri_48.png', 'cinsiyet': 'E', 'yas': 'genc'},                              // ucube/karikatur tip
+    {'gorsel': 'assets/musteri_49.png', 'cinsiyet': 'K', 'yas': 'yetiskin'},                          // koylu kadin, sepetli
+    {'gorsel': 'assets/musteri_50.png', 'cinsiyet': 'E', 'yas': 'genc'},                              // lacivert ceketli genc
+    {'gorsel': 'assets/musteri_51.png', 'cinsiyet': 'E', 'yas': 'yetiskin'},                          // sarisin, keten gomlek
+    {'gorsel': 'assets/musteri_52.png', 'cinsiyet': 'E', 'yas': 'yetiskin'},                          // kivircik sakalli ressam
+    {'gorsel': 'assets/musteri_53.png', 'cinsiyet': 'K', 'yas': 'genc'},                              // esofmanli sarisin
+    {'gorsel': 'assets/musteri_54.png', 'cinsiyet': 'E', 'yas': 'yasli'},                             // gri sacli beyefendi
+    {'gorsel': 'assets/musteri_55.png', 'cinsiyet': 'K', 'yas': 'yetiskin', 'ad': 'Ayselina Coli'},   // sabit ad
+    {'gorsel': 'assets/musteri_56.png', 'cinsiyet': 'E', 'yas': 'yasli', 'ad': 'Kumaralı Babil'},     // sabit ad, bordo ceket
+    {'gorsel': 'assets/musteri_57.png', 'cinsiyet': 'E', 'yas': 'yetiskin', 'ad': 'Tayfur Kombat'},   // sabit ad, hawaii
   ];
   List<int> _musteriSira = [];
 
@@ -4455,6 +5393,10 @@ class GameState extends ChangeNotifier {
     _galericiBugunGeldi    = (j['galericiBugunGeldi'] as bool?) ?? false;
     sahipMekanlar          = ((j['sahipMekanlar'] as List?) ?? []).map((e) => e as String).toSet();
     sahipAracIdleri        = ((j['sahipAracIdleri'] as List?) ?? []).map((e) => e as String).toList();
+    telefonVar             = (j['telefonVar'] as bool?) ?? false;
+    bugunYapilanCagri      = (j['bugunYapilanCagri'] as int?) ?? 0;
+    // Eski kayıtlar: 2. günü geçmişse popup zaten görülmüştür.
+    bilgisayarPopupGosterildi = (j['bilgisayarPopupGosterildi'] as bool?) ?? (gun >= 2);
     sezercikGunu           = (j['sezercikGunu'] as int?) ?? (3 + Random().nextInt(4));
     sezercikDurumu         = (j['sezercikDurumu'] as int?) ?? 0;
     seymaGunu              = j['seymaGunu'] as int?;
@@ -4471,10 +5413,11 @@ class GameState extends ChangeNotifier {
       }
     }
     _slotlariSikistir();
-    // v118 ara kayıtları mekân sahipliğini iki ayrı bool'da tutuyordu.
-    if ((j['evSahibi'] as bool?) ?? false) sahipMekanlar.add(Konum.ev.name);
+    // ⚠️ v118-v120 kayıtları: eski 'ev' mekânı v121'de 'mutevaziev' oldu,
+    // eşya sistemi kalktı. Eski ev sahipliği yeni mütevazı eve taşınır.
+    if (sahipMekanlar.remove('ev')) sahipMekanlar.add(Konum.mutevaziev.name);
+    if ((j['evSahibi'] as bool?) ?? false) sahipMekanlar.add(Konum.mutevaziev.name);
     if ((j['yazlikSahibi'] as bool?) ?? false) sahipMekanlar.add(Konum.yazlik.name);
-    evEsyalari             = ((j['evEsyalari'] as List?) ?? []).map((e) => e as String).toSet();
     // ⚠️ Kayıt her zaman DÜKKANDA açılır: geçiş yolculuğu oturum içi bir
     // durum, oyunu evde kapatıp açan biri dükkanına dönmüş sayılır.
     aktifKonum = Konum.dukkan;
@@ -4535,6 +5478,9 @@ class GameState extends ChangeNotifier {
     'galericiBugunGeldi': _galericiBugunGeldi,
     'sahipMekanlar': sahipMekanlar.toList(),
     'sahipAracIdleri': sahipAracIdleri,
+    'telefonVar': telefonVar,
+    'bugunYapilanCagri': bugunYapilanCagri,
+    'bilgisayarPopupGosterildi': bilgisayarPopupGosterildi,
     'sezercikGunu': sezercikGunu,
     'sezercikDurumu': sezercikDurumu,
     if (seymaGunu != null) 'seymaGunu': seymaGunu,
@@ -4542,7 +5488,7 @@ class GameState extends ChangeNotifier {
     'palyacoGunu': palyacoGunu,
     'palyacoGeldi': palyacoGeldi,
     'yakupBugunGeldi': _yakupBugunGeldi,
-    'evEsyalari': evEsyalari.toList(),
+
     'aktifKonum': aktifKonum.name,
     'rizaZiyaretSirasi': _rizaZiyaretSirasi,
     'yarinkiOlayId': yarinkiOlayId,
@@ -5043,10 +5989,6 @@ class GameState extends ChangeNotifier {
       if (satistakiKonum != null) {
         final k = satistakiKonum!;
         sahipMekanlar.remove(k.name);
-        // Eşyalar evle birlikte gitti (değerleri fiyata dahildi).
-        for (final e in EvEsyasi.konumun(k)) {
-          evEsyalari.remove(e.id);
-        }
         if (aktifKonum == k) aktifKonum = Konum.dukkan;
       }
       ozelSatisiTemizle();
@@ -5311,7 +6253,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   // çevresinde SAAT YÖNÜNÜN TERSİNE dönen bir halka. Süre aracın niteliğinden
   // gelir (motosiklet uzun, otomobil kısa) — `Arac.gecisSaniye`.
   bool _gecisAktif = false;
-  Konum _gecisHedef = Konum.ev;
+  Konum _gecisHedef = Konum.mutevaziev;
   String? _gecisAracGorsel;
   int _gecisToplamSn = 0;
   DateTime? _gecisBaslangic;
@@ -5344,7 +6286,9 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   bool _urunAsagiKayiyor = false;
   bool _gunBitiPopupGosterildi = false;
   bool _pazarlikBekleniyor = false;
-  bool _bilgisayarGeldiGosterildi = false;
+  /// ⚠️ Widget alanı DEĞİL, artık GameState.bilgisayarPopupGosterildi
+  /// kullanılıyor — widget alanı her oyun açılışında sıfırlandığı için
+  /// "Devam Et" ile girildiğinde popup HER SEFERİNDE çıkıyordu.
   bool _gameOverGosterildi = false; // game over popup gösterildiyse diğer popup'ları engelle
   String? _kolonyaGeciciMesaj; // 3 saniyeliğine gösterilecek özel mesaj
   Timer? _kolonyaMesajTimer;
@@ -5851,8 +6795,8 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       });
       return;
     }
-    if (_state.gun >= 2 && !_bilgisayarGeldiGosterildi) {
-      _bilgisayarGeldiGosterildi = true;
+    if (_state.gun >= 2 && !_state.bilgisayarPopupGosterildi) {
+      _state.bilgisayarPopupGosterildi = true;
       Future.delayed(const Duration(milliseconds: 500), () {
         if (!mounted) return;
         _bilgisayarGeldiPopup();
@@ -6128,6 +7072,8 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                     isim: m.ad,
                     fiyat: m.fiyat,
                     gorselYolu: m.arkaplan,
+                    kilitli: _state.gun < m.minGun,
+                    kilitYazi: '${m.minGun}. gün',
                     onTap: () { Navigator.pop(ctx); _mekanSatinAlPopup(m.konum); },
                   ),
             if (_marketSekme == 2)
@@ -6145,6 +7091,16 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                 isim: 'iMac',
                 fiyat: 2000,
                 onTap: () { Navigator.pop(ctx); _imacDetayPopup(); },
+              ),
+            // 📱 Oyuncu Pro Max — mekânlarda her şeyi cebe taşır.
+            if (_marketSekme == 3 && !_state.telefonVar)
+              _marketUrunKart(
+                isim: 'Oyuncu Pro Max',
+                fiyat: GameState.telefonFiyati,
+                gorselYolu: 'assets/telefon.png',
+                kilitli: _state.gun < GameState.telefonMinGun,
+                kilitYazi: '${GameState.telefonMinGun}. gün',
+                onTap: () { Navigator.pop(ctx); _telefonSatinAlPopup(); },
               ),
           ];
           if (kartlar.isEmpty) {
@@ -6493,10 +7449,14 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     required VoidCallback onTap,
     String ikon = '',
     String? gorselYolu,
+    bool kilitli = false,
+    String kilitYazi = '',
   }) {
     final kapak = gorselYolu != null && gorselYolu.endsWith('.jpg');
-    return GestureDetector(
-      onTap: onTap,
+    return Opacity(
+      opacity: kilitli ? 0.45 : 1.0,
+      child: GestureDetector(
+      onTap: kilitli ? null : onTap,
       child: Container(
         decoration: BoxDecoration(
           color: const Color(0xFF161b22),
@@ -6524,10 +7484,59 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
               style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white70),
               textAlign: TextAlign.center),
             const SizedBox(height: 4),
-            Text('$fiyat', style: const TextStyle(fontSize: 11, color: Color(0xFFf78166), fontWeight: FontWeight.bold)),
+            if (kilitli)
+              Text('🔒 $kilitYazi', style: const TextStyle(fontSize: 10,
+                color: Colors.white38, fontWeight: FontWeight.bold))
+            else
+              Text('$fiyat', style: const TextStyle(fontSize: 11, color: Color(0xFFf78166), fontWeight: FontWeight.bold)),
             const SizedBox(height: 6),
           ],
         ),
+      ),
+      ),
+    );
+  }
+
+  /// 📱 Telefon satın alma onayı.
+  void _telefonSatinAlPopup() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Panel.zemin,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: Color(0xFF4f8bd6), width: 1.5),
+        ),
+        title: const Text('📱 Oyuncu Pro Max', textAlign: TextAlign.center,
+          style: TextStyle(color: Color(0xFF90caf9), fontSize: 18, fontWeight: FontWeight.bold)),
+        content: Column(mainAxisSize: MainAxisSize.min, children: [
+          Image.asset('assets/telefon.png', height: 170, fit: BoxFit.contain),
+          const SizedBox(height: 10),
+          Text('${GameState.telefonFiyati} lira.\n'
+              'Ev, yazlık, tekne… gittiğin her yerde market, banka, envanter, '
+              'koleksiyon ve mini oyunlar cebinde. Üstelik telefon rehberinden '
+              'özel misafirler çağırabilirsin.',
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Panel.yazi, fontSize: 13, height: 1.35)),
+        ]),
+        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+        actions: [
+          dialogButonlari(
+            anaEtiket: 'Satın Al',
+            anaRenk: const Color(0xFF4f8bd6),
+            anaYazi: Colors.white,
+            anaOnTap: _state.para < GameState.telefonFiyati ? null : () {
+              Navigator.pop(ctx);
+              if (_state.telefonSatinAl()) {
+                _toastGoster('OYUNCU PRO MAX SENİN!',
+                  altYazi: 'Mekânlarda "Cep Telefonu" ile aç',
+                  emoji: '📱', renk: const Color(0xFF4FC3F7), ms: 3200);
+              }
+            },
+            ikincilEtiket: 'Kapat',
+            ikincilOnTap: () => Navigator.pop(ctx),
+          ),
+        ],
       ),
     );
   }
@@ -8193,7 +9202,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
         _gunBitiKontrol();
         // 🏠 Oyuncu evdeyse dükkan sahnesi hiç çizilmez — header aynı kalır,
         // gövde ve alt bar evin kendi düzenine geçer.
-        if (_state.aktifKonum != Konum.dukkan) return _buildEvEkrani();
+        if (_state.aktifKonum != Konum.dukkan) return _buildMekanEkrani();
         return Scaffold(
           body: Stack(
             children: [
@@ -8434,7 +9443,484 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   ///
   /// Eşyalar arka planın ekrandaki `BoxFit.cover` kutusuna göre konumlanır;
   /// sabit piksel yok (sahne metriğiyle aynı felsefe).
-  Widget _buildEvEkrani() {
+  // ═══════════════════════════════════════════════════════════════════════════
+  //  📱 CEP TELEFONU — Oyuncu Pro Max
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Telefon iki katmanlı çiziliyor:
+  //   1. `telefon_bos.png` (kasa + başlık + home tuşu, ekranı ŞEFFAF)
+  //   2. ekran alanına bizim içeriğimiz (menü ızgarası ya da açılan sayfa)
+  // Menü ızgarası da bizim çizdiğimiz — `tel.png`'deki hazır ikonların
+  // üstüne görünmez kutu koymak yerine, aynı düzeni kendimiz kuruyoruz.
+  // Böylece ikonlar tıklanabilir, gün kilidi/pasiflik gösterilebiliyor.
+  //
+  // ⚠️ Ekran dikdörtgeni ölçülerek bulundu: `telefon_bos.png`'in dış siyah
+  // zemini ve ekranı `tools/siyahsil.ps1` ile ŞEFFAFLAŞTIRILDI, sonra
+  // `tools/seffafkutu.ps1` merkezden dışa tarayıp sınırları verdi.
+  // Bu yüzden çizim sırası: ÖNCE içerik, SONRA kasa (kasa üstte kalsın).
+  static const double _telEkranSol = 0.1724;
+  static const double _telEkranUst = 0.2094;
+  static const double _telEkranGen = 0.6697;
+  static const double _telEkranYuk = 0.5947;
+
+  /// Telefon açıkken hangi sayfadayız? null → ana menü ızgarası.
+  String? _telSayfa;
+
+  void _telefonuAc() {
+    _telSayfa = null;
+    showDialog(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.86),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setTel) => ListenableBuilder(
+          listenable: _state,
+          builder: (c, __) => _telefonGovdesi(ctx, setTel),
+        ),
+      ),
+    ).then((_) => _telSayfa = null);
+  }
+
+  Widget _telefonGovdesi(BuildContext ctx, void Function(VoidCallback) setTel) {
+    return Center(
+      // ⚠️ Material ŞART: dialog içinde Material yoksa Text'ler sarı çift
+      // altı çizili çıkıyor (Flutter'ın "no Material ancestor" görünümü).
+      child: Material(
+        type: MaterialType.transparency,
+        child: LayoutBuilder(builder: (c, kis) {
+        // Telefon ekranı olabildiğince büyük ama taşmadan.
+        const oran = 760 / 1347; // telefon_bos.png en/boy
+        double w = kis.maxWidth * 0.94;
+        double h = w / oran;
+        if (h > kis.maxHeight * 0.94) { h = kis.maxHeight * 0.94; w = h * oran; }
+        return SizedBox(
+          width: w, height: h,
+          child: Stack(children: [
+            // ── Ekran içeriği (kasanın ALTINDA: ekran alanı şeffaf) ──
+            Positioned(
+              left: w * _telEkranSol,
+              top: h * _telEkranUst,
+              width: w * _telEkranGen,
+              height: h * _telEkranYuk,
+              child: ClipRect(child: Container(
+                color: const Color(0xFF0d1117),
+                child: _telSayfa == null
+                    ? _telMenu(ctx, setTel)
+                    : _telIcerik(ctx, setTel),
+              )),
+            ),
+            // ── Telefon kasası (içeriğin ÜSTÜNDE, çerçeve görünsün) ──
+            Positioned.fill(child: IgnorePointer(
+              child: Image.asset('assets/telefon_bos.png', fit: BoxFit.fill))),
+            // ── Home tuşu ──
+            Positioned(
+              left: w * 0.40, top: h * 0.845,
+              width: w * 0.20, height: h * 0.085,
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () { SesServisi.dokun(); _telAnaMenuSor(ctx); },
+              ),
+            ),
+            // ── Kapat (sağ üst köşe) ──
+            Positioned(
+              right: 0, top: 0,
+              child: GestureDetector(
+                onTap: () => Navigator.pop(ctx),
+                child: Container(
+                  margin: const EdgeInsets.all(6),
+                  padding: const EdgeInsets.all(7),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.6),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white30),
+                  ),
+                  child: const Icon(Icons.close, size: 18, color: Colors.white70),
+                ),
+              ),
+            ),
+          ]),
+        );
+      }),
+      ),
+    );
+  }
+
+  /// Telefonun 9 ikonlu ana ekranı (3×3).
+  Widget _telMenu(BuildContext ctx, void Function(VoidCallback) setTel) {
+    final kalemler = <(String, String, String, bool)>[
+      ('📇', 'TELEFON\nREHBERİ', 'rehber', true),
+      ('💼', 'SAHİP\nOLUNANLAR', 'sahiplik', true),
+      ('🛒', 'MARKET', 'market', true),
+      ('🏆', 'HEDEFLER', 'hedefler', true),
+      ('🎒', 'ENVANTER', 'envanter', true),
+      ('📚', 'KOLEKSİYON', 'koleksiyon', true),
+      ('🏦', 'BANKA', 'banka', _state.gun >= 3),
+      ('🚗', 'ARAÇ', 'arac', _state.aracVar),
+      ('🎮', 'OYUNLAR', 'oyunlar', true),
+    ];
+    return Column(children: [
+      Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 5),
+        color: const Color(0xFF1b2430),
+        child: Text('${Mekan.bul(_state.aktifKonum).ikon}  '
+            '${Mekan.bul(_state.aktifKonum).ad}',
+          textAlign: TextAlign.center,
+          style: const TextStyle(color: Colors.white54, fontSize: 9,
+            fontWeight: FontWeight.bold, letterSpacing: 1)),
+      ),
+      Expanded(child: GridView.count(
+        crossAxisCount: 3,
+        padding: const EdgeInsets.all(8),
+        mainAxisSpacing: 4, crossAxisSpacing: 4,
+        childAspectRatio: 0.82,
+        children: kalemler.map((k) {
+          final (emoji, ad, sayfa, aktif) = k;
+          return Opacity(
+            opacity: aktif ? 1.0 : 0.35,
+            child: GestureDetector(
+              onTap: aktif ? () { SesServisi.dokun(); setTel(() => _telSayfa = sayfa); } : null,
+              child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF2b3a4d), Color(0xFF1b2430)],
+                      begin: Alignment.topLeft, end: Alignment.bottomRight),
+                    borderRadius: BorderRadius.circular(9),
+                    border: Border.all(color: Colors.white24),
+                  ),
+                  child: Text(emoji, style: const TextStyle(fontSize: 20)),
+                ),
+                const SizedBox(height: 3),
+                FittedBox(fit: BoxFit.scaleDown, child: Text(ad,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 7.5, height: 1.15,
+                    fontWeight: FontWeight.bold, color: Colors.white70))),
+              ]),
+            ),
+          );
+        }).toList(),
+      )),
+    ]);
+  }
+
+  /// Açılan uygulama sayfası — üstte geri çubuğu, altta içerik.
+  Widget _telIcerik(BuildContext ctx, void Function(VoidCallback) setTel) {
+    final basliklar = {
+      'rehber': '📇 Telefon Rehberi', 'sahiplik': '💼 Sahip Olunanlar',
+      'market': '🛒 Market', 'hedefler': '🏆 Hedefler',
+      'envanter': '🎒 Envanter', 'koleksiyon': '📚 Koleksiyon',
+      'banka': '🏦 Banka', 'arac': '🚗 Araç', 'oyunlar': '🎮 Oyunlar',
+    };
+    return Column(children: [
+      Container(
+        color: const Color(0xFF1b2430),
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+        child: Row(children: [
+          GestureDetector(
+            onTap: () { SesServisi.dokun(); setTel(() => _telSayfa = null); },
+            child: const Padding(padding: EdgeInsets.all(3),
+              child: Icon(Icons.arrow_back, size: 15, color: Color(0xFFE6A800))),
+          ),
+          const SizedBox(width: 4),
+          Expanded(child: Text(basliklar[_telSayfa] ?? '',
+            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold,
+              color: Colors.white70))),
+        ]),
+      ),
+      Expanded(child: SingleChildScrollView(
+        padding: const EdgeInsets.all(8),
+        child: DefaultTextStyle(
+          style: const TextStyle(fontSize: 10, color: Panel.yazi),
+          // ⚠️ Telefon ekranı dar: dükkandaki sayfalar burada %62 ölçekle
+          // çiziliyor. `Transform.scale` yerine `FittedBox` kullanılamaz —
+          // içerik dikeyde uzun, sığdırmak yerine küçültüp kaydırmak lazım.
+          child: _telSayfaGovdesi(ctx, setTel),
+        ),
+      )),
+    ]);
+  }
+
+  Widget _telSayfaGovdesi(BuildContext ctx, void Function(VoidCallback) setTel) {
+    switch (_telSayfa) {
+      case 'rehber':      return _telRehber(ctx, setTel);
+      case 'oyunlar':     return _telOyunlar(ctx);
+      case 'envanter':    return _telKucult(_envanterGovdesi(baslikGoster: false));
+      case 'koleksiyon':  return _telKucult(_koleksiyonGovdesi(setTel));
+      case 'hedefler':    return _telKucult(_hedeflerGovdesi(setTel));
+      case 'sahiplik':    return _telKucult(_sahiplikGovdesi(ctx, setTel));
+      case 'market':      return _telKucult(_marketGovdesi(ctx, setTel));
+      case 'banka':       return _telKucult(_bankaGovdesi(ctx, setTel));
+      case 'arac':        return _telArac(ctx);
+      default:            return const SizedBox.shrink();
+    }
+  }
+
+  /// Dükkandaki geniş sayfaları telefon ekranına sığdırır.
+  Widget _telKucult(Widget cocuk) {
+    const o = 0.62;
+    return LayoutBuilder(builder: (c, kis) => SizedBox(
+      width: kis.maxWidth,
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        alignment: Alignment.topCenter,
+        child: SizedBox(width: kis.maxWidth / o, child: cocuk),
+      ),
+    ));
+  }
+
+  /// 📇 Telefon rehberi — mekâna özel misafir çağırma.
+  Widget _telRehber(BuildContext ctx, void Function(VoidCallback) setTel) {
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      const Text('Buraya en özel insanları çağırabilirsin.',
+        textAlign: TextAlign.center,
+        style: TextStyle(fontSize: 9, color: Color(0xFF00E5D0),
+          fontWeight: FontWeight.bold, height: 1.3)),
+      const SizedBox(height: 2),
+      Text('Kimi nereye çağırdığın önemli — herkesin her mekânda '
+          'farklı bir hikâyesi var.',
+        textAlign: TextAlign.center,
+        style: TextStyle(fontSize: 7.5, color: Colors.white.withValues(alpha: 0.45), height: 1.25)),
+      const SizedBox(height: 5),
+      // Günlük çağrı hakkı — dengeyi oyuncu da görsün.
+      Container(
+        padding: const EdgeInsets.symmetric(vertical: 3, horizontal: 6),
+        decoration: BoxDecoration(
+          color: _state.cagriYapilabilir
+              ? const Color(0xFF14200f) : const Color(0xFF2a1010),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: _state.cagriYapilabilir
+              ? const Color(0xFF3fb950) : const Color(0xFFcc3311)),
+        ),
+        child: Text(_state.cagriYapilabilir
+            ? '📞 Bugün kalan çağrı hakkı: ${_state.kalanCagriHakki}'
+            : '📞 Bugünlük çağrı hakkın bitti — yarın gel',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold,
+            color: _state.cagriYapilabilir
+                ? const Color(0xFF3fb950) : const Color(0xFFff7043))),
+      ),
+      const SizedBox(height: 8),
+      ...RehberKisi.values.map((k) => Padding(
+        padding: const EdgeInsets.only(bottom: 5),
+        child: Opacity(
+        opacity: _state.cagriYapilabilir ? 1.0 : 0.4,
+        child: GestureDetector(
+          onTap: !_state.cagriYapilabilir ? null : () {
+            SesServisi.dokun();
+            Navigator.pop(ctx); // telefon kapansın
+            _state.misafirCagir(k);
+            SesServisi.kapiyiCal();
+            _slideController.forward(from: 0);
+          },
+          child: Container(
+            padding: const EdgeInsets.all(5),
+            decoration: BoxDecoration(
+              color: const Color(0xFF161b22),
+              borderRadius: BorderRadius.circular(7),
+              border: Border.all(color: Colors.white12),
+            ),
+            child: Row(children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(5),
+                child: Container(
+                  width: 26, height: 26, color: Colors.black26,
+                  child: Image.asset(RehberSenaryo.gorsel(k), fit: BoxFit.contain),
+                ),
+              ),
+              const SizedBox(width: 6),
+              Expanded(child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(RehberSenaryo.ad(k),
+                    style: const TextStyle(fontSize: 9.5,
+                      fontWeight: FontWeight.bold, color: Panel.yazi)),
+                  Text(RehberSenaryo.ipucu(k),
+                    maxLines: 1, overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 7, color: Panel.yaziSoluk)),
+                ])),
+              const Icon(Icons.call, size: 13, color: Color(0xFF3fb950)),
+            ]),
+          ),
+        ),
+        ),
+      )),
+    ]);
+  }
+
+  /// 🎮 Telefonda mini oyun: envanterdeki oynanabilir CD'ler burada çalışır.
+  Widget _telOyunlar(BuildContext ctx) {
+    final oyunlar = <GameItem>[];
+    for (int i = 0; i < _state.acikSlotSayisi; i++) {
+      final u = _state.slotlar[i];
+      if (u != null && u.oynanabilir && !u.curuk) oyunlar.add(u);
+    }
+    if (oyunlar.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 24),
+        child: Text('Envanterinde oynanabilir oyun bulunmuyor.',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 9.5, color: Panel.yaziSoluk, height: 1.4)),
+      );
+    }
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      const Text('Telefonda oyna — kazandığın puan paraya çevrilir.',
+        textAlign: TextAlign.center,
+        style: TextStyle(fontSize: 8, color: Color(0xFF00E5D0))),
+      const SizedBox(height: 8),
+      ...oyunlar.map((u) => Padding(
+        padding: const EdgeInsets.only(bottom: 6),
+        child: GestureDetector(
+          onTap: () {
+            Navigator.pop(ctx);
+            final idx = _state.slotlar.indexOf(u);
+            if (idx >= 0) _oyunuAcPopup(idx);
+          },
+          child: Container(
+            padding: const EdgeInsets.all(5),
+            decoration: BoxDecoration(
+              color: const Color(0xFF10262b),
+              borderRadius: BorderRadius.circular(7),
+              border: Border.all(color: const Color(0xFF00E5D0).withValues(alpha: 0.5)),
+            ),
+            child: Row(children: [
+              SizedBox(width: 26, height: 34,
+                child: Image.asset(u.gorsel, fit: BoxFit.contain)),
+              const SizedBox(width: 6),
+              Expanded(child: Text(u.name,
+                style: const TextStyle(fontSize: 9.5,
+                  fontWeight: FontWeight.bold, color: Panel.yazi))),
+              const Icon(Icons.play_circle_fill, size: 15, color: Color(0xFF00E5D0)),
+            ]),
+          ),
+        ),
+      )),
+    ]);
+  }
+
+  /// 🚗 Telefondan konum değiştirme.
+  Widget _telArac(BuildContext ctx) {
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      const Text('Buradan başka bir konuma geçebilirsin.',
+        textAlign: TextAlign.center,
+        style: TextStyle(fontSize: 8.5, color: Color(0xFF4FC3F7))),
+      const SizedBox(height: 8),
+      for (final m in Mekan.satinAlinabilir)
+        if (m.konum != _state.aktifKonum)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 5),
+            child: Opacity(
+              opacity: _state.konumSahibi(m.konum) ? 1.0 : 0.35,
+              child: GestureDetector(
+                onTap: _state.konumSahibi(m.konum) ? () {
+                  Navigator.pop(ctx);
+                  _gecisBaslat(m.konum);
+                } : null,
+                child: Container(
+                  padding: const EdgeInsets.all(5),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF11202f),
+                    borderRadius: BorderRadius.circular(7),
+                    border: Border.all(color: const Color(0xFF4f8bd6).withValues(alpha: 0.5)),
+                  ),
+                  child: Row(children: [
+                    Text(m.ikon, style: const TextStyle(fontSize: 15)),
+                    const SizedBox(width: 6),
+                    Expanded(child: Text(m.ad,
+                      style: const TextStyle(fontSize: 9.5,
+                        fontWeight: FontWeight.bold, color: Panel.yazi))),
+                    if (!_state.konumSahibi(m.konum))
+                      const Text('🔒', style: TextStyle(fontSize: 10)),
+                  ]),
+                ),
+              ),
+            ),
+          ),
+      const SizedBox(height: 4),
+      Padding(
+        padding: const EdgeInsets.only(top: 4),
+        child: GestureDetector(
+          onTap: () { Navigator.pop(ctx); _state.konumaGec(Konum.dukkan); },
+          child: Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: const Color(0xFF2a1a0a),
+              borderRadius: BorderRadius.circular(7),
+              border: Border.all(color: const Color(0xFFFFD700).withValues(alpha: 0.5)),
+            ),
+            child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+              Text('🏪  Dükkana Dön',
+                style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.bold,
+                  color: Color(0xFFFFD700))),
+            ]),
+          ),
+        ),
+      ),
+    ]);
+  }
+
+  /// Home tuşu → telefon ekranı içinde ana menü sorusu.
+  void _telAnaMenuSor(BuildContext telCtx) {
+    showDialog(
+      context: telCtx,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Panel.zemin,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: const BorderSide(color: Color(0xFF4f8bd6), width: 1.4),
+        ),
+        title: const Text('Ana menüye dönmek ister misin?',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: Color(0xFF90caf9), fontSize: 15,
+            fontWeight: FontWeight.bold)),
+        content: const Text('Oyunun kayıtlı — "Devam Et" ile geri dönebilirsin.',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: Panel.yazi, fontSize: 12.5)),
+        actionsPadding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
+        actions: [
+          dialogButonlari(
+            anaEtiket: 'Evet',
+            anaRenk: const Color(0xFF4f8bd6),
+            anaYazi: Colors.white,
+            anaOnTap: () {
+              Navigator.pop(ctx);       // soru
+              Navigator.pop(telCtx);    // telefon
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(builder: (_) => const AnaMenuEkrani()),
+                (route) => false,
+              );
+            },
+            ikincilEtiket: 'Hayır',
+            ikincilOnTap: () => Navigator.pop(ctx),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Mekândaki misafirin diyalog cevabı.
+  void _misafirCevap(bool evet) {
+    final bitti = _state.misafirCevapla(evet);
+    setState(() {});
+    if (bitti) {
+      _yazimBitinceCik(() {
+        if (!mounted) return;
+        _slideController.reverse().then((_) {
+          if (!mounted) return;
+          _state.aktifOzelMusteri = null;
+          _state.ozelMusteriGorunuyor = false;
+          _state.mesaj = '';
+          _state.notifyListeners();
+        });
+      });
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  //  🏠 MEKÂN EKRANI (ev / yazlık / dağ evi / orman evi / rezidans / tekne)
+  // ═══════════════════════════════════════════════════════════════════════════
+  /// Mekânlar v121'de DÖŞENMİŞ görsellerle geliyor — tek tek eşya alma yok.
+  /// Alt barda "Cep Telefonu" (telefon varsa aktif) ve "Çıkış" var.
+  Widget _buildMekanEkrani() {
     final mekan = Mekan.bul(_state.aktifKonum);
     return Scaffold(
       body: Stack(
@@ -8443,64 +9929,113 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
             child: Image.asset(mekan.arkaplan,
               fit: BoxFit.cover, alignment: Alignment.center),
           ),
-          Positioned.fill(child: _buildEvEsyalari(mekan)),
+          // Üstte hafif karartma — header yazıları her görselde okunur kalsın.
+          Positioned.fill(
+            child: IgnorePointer(child: DecoratedBox(decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter, end: Alignment.center,
+                colors: [Colors.black.withValues(alpha: 0.55), Colors.transparent]),
+            ))),
+          ),
           SafeArea(
             child: Column(children: [
               _buildHeader(),
+              const SizedBox(height: 6),
+              // Mekân adı rozeti
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.55),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: Colors.white24),
+                ),
+                child: Text('${mekan.ikon}  ${mekan.ad}',
+                  style: const TextStyle(color: Colors.white, fontSize: 13,
+                    fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+              ),
               const Spacer(),
-              _buildEvAltBar(),
+              // Telefonla çağrılan misafir buradan gelir.
+              if (_state.aktifOzelMusteri != null) _buildMekanMisafiri(),
+              _buildMekanAltBar(),
             ]),
           ),
+          if (_toastMetin != null) _buildToast(),
         ],
       ),
     );
   }
 
-  /// Satın alınmış eşyaları arka planın cover kutusuna oranlayarak çizer.
-  /// Liste sırası çizim sırası — `EvEsyasi.tumu` arkadan öne dizili.
-  Widget _buildEvEsyalari(Mekan mekan) {
-    return LayoutBuilder(builder: (context, kis) {
-      final oran = mekan.oran;
-      final ekranOrani = kis.maxWidth / kis.maxHeight;
-      // BoxFit.cover: hangi kenar taşıyorsa ona göre ölçeklenir.
-      final double bgW, bgH;
-      if (ekranOrani > oran) { bgW = kis.maxWidth; bgH = bgW / oran; }
-      else { bgH = kis.maxHeight; bgW = bgH * oran; }
-      final ofsX = (kis.maxWidth - bgW) / 2;
-      final ofsY = (kis.maxHeight - bgH) / 2;
-      return Stack(children: [
-        for (final e in EvEsyasi.konumun(_state.aktifKonum))
-          if (_state.evEsyalari.contains(e.id))
-            // Tam tuval katmanlar (yazlık) arka planın kutusuna birebir
-            // oturur — konum hesabı yok, sadece aynı kutuya serilir.
-            Positioned(
-              left: ofsX + e.sol * bgW,
-              top: ofsY + e.ust * bgH,
-              width: e.gen * bgW,
-              height: e.tamKatman ? bgH : null,
-              child: Image.asset(e.gorsel,
-                fit: e.tamKatman ? BoxFit.fill : BoxFit.contain),
+  /// Mekâna telefonla çağrılan kişi: sağdan kayarak girer, balonu üstte.
+  Widget _buildMekanMisafiri() {
+    final om = _state.aktifOzelMusteri!;
+    final renk = _ozelMusteriRengi(om.tip);
+    return Expanded(
+      flex: 6,
+      child: AnimatedBuilder(
+        animation: _slideAnim,
+        builder: (context, child) {
+          final w = MediaQuery.of(context).size.width;
+          return Transform.translate(
+            offset: Offset(w * _slideAnim.value, 0), child: child);
+        },
+        child: Column(children: [
+          // Konuşma balonu
+          if (_state.mesaj.isNotEmpty)
+            Container(
+              margin: const EdgeInsets.symmetric(horizontal: 10),
+              padding: const EdgeInsets.all(9),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.78),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: renk.withValues(alpha: 0.75), width: 1.4),
+              ),
+              child: TypewriterText(
+                key: ValueKey(_state.mesajSayaci),
+                text: _state.mesaj,
+                style: TextStyle(fontSize: 14, color: renk),
+              ),
             ),
-      ]);
-    });
+          const SizedBox(height: 6),
+          Expanded(child: Image.asset(om.gorsel, fit: BoxFit.contain)),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.65),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: renk.withValues(alpha: 0.6)),
+            ),
+            child: Text(om.ad, style: TextStyle(color: renk,
+              fontSize: 12, fontWeight: FontWeight.bold)),
+          ),
+          const SizedBox(height: 4),
+        ]),
+      ),
+    );
   }
 
-  Widget _buildEvAltBar() {
+  Widget _buildMekanAltBar() {
+    // Misafir konuşurken alt barda onun seçenekleri olur.
+    // ⚠️ `misafirAdimi` null ise (ör. dükkandan sarkan bir özel müşteri)
+    // normal alt bara düşülür — yoksa ekranda hiç buton kalmıyor ve
+    // oyuncu mekânda kilitleniyordu.
+    if (_state.aktifOzelMusteri != null && _state.misafirAdimi != null) {
+      return _buildMisafirButonlari();
+    }
+    final telVar = _state.telefonVar;
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 6, 12, 10),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [Colors.black.withValues(alpha: 0.0), Colors.black.withValues(alpha: 0.70)],
+          colors: [Colors.black.withValues(alpha: 0.0), Colors.black.withValues(alpha: 0.72)],
           begin: Alignment.topCenter, end: Alignment.bottomCenter,
         ),
       ),
       child: Row(children: [
         Expanded(child: _oyunButon(
-          emoji: '🛋️', label: 'Eşya Al',
-          onTap: _evEsyaTezgahi,
-          gradyan: const [Color(0xFFffd740), Color(0xFF9a6f00)],
-          kenar: const Color(0xFFFFD700),
-          yaziRenk: Colors.black,
+          emoji: '📱', label: 'Cep Telefonu',
+          onTap: telVar ? _telefonuAc : null,
+          gradyan: const [Color(0xFF4f8bd6), Color(0xFF16324f)],
+          kenar: const Color(0xFF90caf9),
         )),
         const SizedBox(width: 12),
         Expanded(child: _oyunButon(
@@ -8513,96 +10048,40 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     );
   }
 
-  /// Evin eşya tezgâhı — her eşya adı, görseli ve fiyatıyla listelenir.
-  /// Alınan eşya "Evde" olarak işaretlenir, tekrar alınamaz.
-  void _evEsyaTezgahi() {
-    showDialog(
-      context: context,
-      builder: (ctx) => ListenableBuilder(
-        listenable: _state,
-        builder: (c, __) => Dialog(
-          backgroundColor: Panel.zemin,
-          insetPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 40),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-            side: const BorderSide(color: Color(0xFFd29922), width: 1.5),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(14, 16, 14, 14),
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
-              Text('${Mekan.bul(_state.aktifKonum).ikon} '
-                   '${Mekan.bul(_state.aktifKonum).ad.toUpperCase()} EŞYALARI',
-                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold,
-                  color: Color(0xFFd29922), letterSpacing: 1)),
-              const SizedBox(height: 3),
-              Text('Kasanda ${_state.para} lira var',
-                style: const TextStyle(fontSize: 11, color: Panel.yaziSoluk)),
-              const SizedBox(height: 12),
-              Flexible(
-                child: SingleChildScrollView(
-                  child: Column(children: EvEsyasi.konumun(_state.aktifKonum).map((e) {
-                    final alindi = _state.evEsyalari.contains(e.id);
-                    final parayeter = _state.para >= e.fiyat;
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: Opacity(
-                        opacity: alindi ? 0.5 : 1.0,
-                        child: GestureDetector(
-                          onTap: (alindi || !parayeter) ? null : () {
-                            SesServisi.dokun();
-                            _state.evEsyasiAl(e);
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.all(9),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF1f1710),
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(
-                                color: alindi
-                                  ? const Color(0xFF3fb950).withValues(alpha: 0.7)
-                                  : const Color(0xFFd29922).withValues(alpha: 0.55)),
-                            ),
-                            child: Row(children: [
-                              SizedBox(width: 56, height: 48,
-                                child: Image.asset(e.onizleme, fit: BoxFit.contain)),
-                              const SizedBox(width: 10),
-                              Expanded(child: Text(e.ad,
-                                style: const TextStyle(fontSize: 13,
-                                  fontWeight: FontWeight.bold, color: Panel.yazi))),
-                              Text(alindi ? '✅ Evde' : '${e.fiyat}',
-                                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold,
-                                  color: alindi
-                                    ? const Color(0xFF3fb950)
-                                    : (parayeter ? const Color(0xFFd29922) : Colors.white24))),
-                            ]),
-                          ),
-                        ),
-                      ),
-                    );
-                  }).toList()),
-                ),
-              ),
-              const SizedBox(height: 10),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () => Navigator.pop(ctx),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Panel.ikincilZemin,
-                    foregroundColor: Colors.white70,
-                    minimumSize: const Size(0, 44),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      side: const BorderSide(color: Panel.ikincilKenar)),
-                  ),
-                  child: const Text('Kapat',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                ),
-              ),
-            ]),
-          ),
+  /// Telefonla çağrılan misafirin diyalog butonları.
+  Widget _buildMisafirButonlari() {
+    final adim = _state.misafirAdimi;
+    if (adim == null) return const SizedBox.shrink();
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 6, 12, 10),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Colors.black.withValues(alpha: 0.0), Colors.black.withValues(alpha: 0.72)],
+          begin: Alignment.topCenter, end: Alignment.bottomCenter,
         ),
       ),
+      child: adim.secimli
+          ? Row(children: [
+              Expanded(child: _oyunButon(
+                emoji: '✅', label: adim.evetEtiket,
+                onTap: () => _misafirCevap(true),
+                gradyan: const [Color(0xFF43c468), Color(0xFF1a6b32)],
+                kenar: const Color(0xFF81c784),
+              )),
+              const SizedBox(width: 12),
+              Expanded(child: _oyunButon(
+                emoji: '❌', label: adim.hayirEtiket,
+                onTap: () => _misafirCevap(false),
+                gradyan: const [Color(0xFFe53935), Color(0xFF7f0000)],
+                kenar: const Color(0xFFef9a9a),
+              )),
+            ])
+          : _oyunButon(
+              emoji: '', label: adim.evetEtiket,
+              onTap: () => _misafirCevap(true),
+              gradyan: const [Color(0xFF43c468), Color(0xFF1a6b32)],
+              kenar: const Color(0xFF81c784),
+            ),
     );
   }
 
@@ -10808,8 +12287,14 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     _gecisSorusuGoster();
   }
 
+  /// Yolculuk bitti: "Aracın hazır!" — üstte araç → ok → hedef görseli.
   void _gecisSorusuGoster() {
     final hedef = _gecisHedef;
+    final m = Mekan.bul(hedef);
+    final aracGorsel = _gecisAracGorsel ?? 'assets/arac_1.png';
+    final aracAd = Arac.tumu
+        .where((a) => a.item.gorsel == aracGorsel)
+        .map((a) => a.item.name).firstOrNull ?? 'Aracın';
     setState(() { _gecisAktif = false; _gecisAracGorsel = null; });
     showDialog(
       context: context,
@@ -10819,13 +12304,28 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
           borderRadius: BorderRadius.circular(16),
           side: const BorderSide(color: Color(0xFF4f8bd6), width: 1.5),
         ),
-        title: const Text('🚗 Yolculuk tamam', textAlign: TextAlign.center,
-          style: TextStyle(color: Color(0xFF90caf9), fontSize: 17, fontWeight: FontWeight.bold)),
-        content: Text(
-          'Geçiş işlemleri gerçekleşti. '
-          '${Mekan.bul(hedef).ad} konumuna geçmek istiyor musun?',
-          textAlign: TextAlign.center,
-          style: const TextStyle(color: Panel.yazi, fontSize: 14, height: 1.3)),
+        title: const Text('🚗 Aracın hazır!', textAlign: TextAlign.center,
+          style: TextStyle(color: Color(0xFF90caf9), fontSize: 19, fontWeight: FontWeight.bold)),
+        content: Column(mainAxisSize: MainAxisSize.min, children: [
+          // Araç → ok → hedef
+          Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+            SizedBox(width: 92, height: 66,
+              child: Image.asset(aracGorsel, fit: BoxFit.contain)),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 8),
+              child: Text('➡️', style: TextStyle(fontSize: 24)),
+            ),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: SizedBox(width: 78, height: 66,
+                child: Image.asset(m.arkaplan, fit: BoxFit.cover)),
+            ),
+          ]),
+          const SizedBox(height: 14),
+          Text('$aracAd ile ${m.ad} konumuna şimdi geçmek istiyor musun?',
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Panel.yazi, fontSize: 14, height: 1.35)),
+        ]),
         actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
         actions: [
           dialogButonlari(

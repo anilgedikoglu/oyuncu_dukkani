@@ -142,9 +142,6 @@ flutter:
     - assets/arac_3.png
     - assets/arac_4.png
     - assets/arac_5.png
-    - assets/ev_bos.jpg
-    - assets/yazlik_bos.jpg
-    - assets/dagevi_bos.jpg
     - assets/sezercik.png
     - assets/seymakoko.png
     - assets/delibekir.png
@@ -157,9 +154,40 @@ flutter:
     - assets/arac_9.png
     - assets/arac_10.png
     - assets/arac_11.png
+    - assets/telefon.png
+    - assets/telefon_bos.png
+    - assets/doktor.png
+    - assets/tamirci.png
+    - assets/mekan_mutevaziev.jpg
+    - assets/mekan_yazlikev.jpg
+    - assets/mekan_dagevi.jpg
+    - assets/mekan_ormanlikev.jpg
+    - assets/mekan_rezidans.jpg
+    - assets/mekan_tekne.jpg
+    - assets/arac_12.png
+    - assets/arac_13.png
+    - assets/arac_14.png
+    - assets/arac_15.png
+    - assets/arac_16.png
+    - assets/arac_17.png
+    - assets/musteri_49.png
+    - assets/musteri_50.png
+    - assets/musteri_51.png
+    - assets/musteri_52.png
+    - assets/musteri_53.png
+    - assets/musteri_54.png
+    - assets/musteri_55.png
+    - assets/musteri_56.png
+    - assets/musteri_57.png
+    - assets/CD_47.png
+    - assets/CD_48.png
+    - assets/CD_49.png
+    - assets/CD_50.png
+    - assets/CD_51.png
+    - assets/CD_52.png
+    - assets/CD_53.png
     - assets/musteri_47.png
     - assets/musteri_48.png
-    - assets/tekne_bos.jpg
     - assets/hande.png
     - assets/CD_1.png
     - assets/CD_2.png

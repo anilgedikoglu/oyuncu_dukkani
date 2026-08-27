@@ -196,6 +196,105 @@ Sekme durumu `_GameScreenState._hedefSekme`'de; sekme butonu dialogun kendi
 
 ---
 
+---
+
+## 📱 v121 — CEP TELEFONU + MEKÂN MİMARİSİ DEĞİŞTİ
+
+### Mekânlar artık DÖŞENMİŞ geliyor — eşya sistemi kaldırıldı
+`EvEsyasi` sınıfı ve 66 eşya katmanı SİLİNDİ. Mekânlar tek bir döşenmiş
+görselle geliyor (`assets/mekan_<ad>.jpg`, 719px JPEG q90).
+
+| Mekân | Fiyat | Gün | Konuk çarpanı |
+|---|---|---|---|
+| 🏠 Mütevazı Ev | 10.000 | 6 | 1.0 |
+| 🏖️ Yazlık | 18.000 | 8 | 1.3 |
+| 🏔️ Dağ Evi | 26.000 | 12 | 1.5 |
+| 🌲 Orman Evi | 34.000 | 16 | 1.7 |
+| 🏙️ Rezidans | 48.000 | 20 | 2.0 |
+| ⛵ Tekne | 65.000 | 25 | 2.5 |
+
+`Mekan.konukCarpani` telefonla çağrılan misafirin ödülünü/cezasını ölçekler
+— lüks mekânda hem kazanç hem risk büyür. Yeni mekân eklemek: `Konum`'a
+değer + `Mekan` sabiti + `satinAlinabilir` listesine satır; Market kartı,
+konum kutusu, hedefler ve rehber diyalogları listeden türüyor.
+
+> ⚠️ Eski `Konum.ev` → `Konum.mutevaziev` oldu. `fromJson` eski
+> `sahipMekanlar` içindeki `'ev'` kaydını ve v118'in `evSahibi` bool'unu
+> yeni mekâna taşıyor.
+
+### 📱 Oyuncu Pro Max (Market → Eşya, 7500, **10. gün**)
+Mekânlarda alt bardaki **"Cep Telefonu"** butonuyla açılır (telefon yoksa
+pasif). Dükkandaki browser'ın yaptığı her şeyi mekânda yapar.
+
+```
+telefon_bos.png  → kasa (ekran alanı ŞEFFAF)
+_telEkranSol/Ust/Gen/Yuk = 0.1724 / 0.2094 / 0.6697 / 0.5947
+```
+
+> ⚠️ Çizim sırası: **ÖNCE içerik, SONRA kasa**. Kaynak PNG'nin hem dış
+> zemini hem ekranı siyahtı; `tools/siyahsil.ps1` (kenardan flood-fill)
+> ikisini de şeffaflaştırdı, `tools/seffafkutu.ps1` merkezden dışa tarayıp
+> ekran dikdörtgenini ölçtü. Kasa üstte olunca çerçeve içeriği çevreliyor.
+
+> ⚠️ Dialog içinde **`Material` ŞART** — yoksa bütün `Text`'ler sarı çift
+> altı çizili çıkıyor ("no Material ancestor" görünümü).
+
+9 ikon: Telefon Rehberi · Sahip Olunanlar · Market · Hedefler · Envanter ·
+Koleksiyon · Banka (3. gün) · Araç (araç varsa) · Oyunlar.
+Dükkan sayfaları `_telKucult()` ile %62 ölçekte gösteriliyor.
+**Oyunlar** telefonda çalışıyor; envanterde oynanabilir CD yoksa uyarı çıkar.
+**Home tuşu** → "Ana menüye dönmek ister misin?" (telefon ekranı içinde).
+
+### 📞 Telefon Rehberi — 12 kişi × 6 mekân
+`RehberKisi` (hande, buyucu, delibekir, doktor, emlakci, galerici, polis,
+vergici, sezercik, hirsiz, seyma, tamirci). Her kişinin her mekân için
+**5 ayrı senaryosu** var; rastgele biri oynanır.
+
+```dart
+class ZiyaretAdimi { metin, evetEtiket, hayirEtiket, secimli, etki, hayirMetin }
+enum ZiyaretEtkiTip { paraKazanc, paraKayip, urunHediye, urunKayip,
+                      tamirSeti, kolonya, hepsiniTamirEt, yok }
+```
+
+Akış: balon → buton(lar) → balon → … → etkili adım (uygular + kapanış
+repliği) **ya da** hayır dalı (`hayirMetin` ile biter).
+
+**Risk/ödül kurgusu:** Şeyma/Sezercik/Hande cömert; Doktor/Emlakçı/Galerici
+karışık; **Polis, Vergici, Hırsız riskli** — lüks mekânda kaybettirdikleri de
+`konukCarpani` ile büyüyor. Rehber listesinde her kişinin ipucu satırı var.
+
+> ⚠️ **DENGE — günlük çağrı hakkı 3** (`GameState.gunlukCagriHakki`).
+> Sınırsız olsaydı oyuncu mekânda oturup rehberi tarayarak dükkana hiç
+> dönmeden zengin olurdu. Hak gün sonunda yenilenir, rehberde gösterilir.
+
+> ⚠️ `_buildMekanAltBar` `misafirAdimi == null` ise normal alt bara düşer —
+> dükkandan sarkan bir özel müşteri varken ekranda hiç buton kalmıyordu.
+
+### 🚗 "Aracın hazır!" popup'ı
+Yolculuk bitince: başlıkta **"Aracın hazır!"**, üstte **araç görseli → ➡️ →
+mekân görseli**, altında *"X ile Y konumuna şimdi geçmek istiyor musun?"*
+
+### 🐛 Tek seferlik popup her açılışta çıkıyordu
+`_bilgisayarGeldiGosterildi` **widget alanıydı** — "Devam Et" ile girilen her
+oturumda sıfırlanıp popup tekrar çıkıyordu. `GameState.bilgisayarPopupGosterildi`
+oldu, kayıtta saklanıyor (eski kayıtlarda `gun >= 2` ise görülmüş sayılır).
+
+### İçerik
+- **17 araç** (6 yeni: Gök Mavisi, Sarı Öküz, Beyaz Devsin, Dört Teker/ATV,
+  Bembeyaz, Şahin Baba). Vitrin sırası bisiklet → motosiklet → otomobil.
+- **57 karakter** (11 yeni; 3'ü sabit adlı: Ayselina Coli, Kumaralı Babil,
+  Tayfur Kombat) + doktor ve tamirci rehber görselleri.
+- **53 CD** (7 yeni: BAYIR ASSA, CİTİZEN, LAZİO, PEKMEZ, ŞOFEER, TARKAN,
+  TÖVBEKAR). Fiyatlar 95-190, ortalama korundu.
+- **9 yeni hedef**: ilk mekân, 3 mekân, tüm mekânlar, dağ evi, tekne,
+  2 araç, 5 araç, Oyuncu Pro Max, kendi dükkanın.
+
+`test/arac_ev_test.dart` **34 test** — mekân sıralaması/fiyat-gün tutarlılığı,
+eski kayıt migrasyonu, telefon, 12×6 rehber senaryosu (her senaryonun
+kapandığı ve mekân adını andığı), lüks çarpanı, çağrı limiti.
+
+---
+
 ## 🚙 v120 — ARAÇLAR ENVANTERDEN ÇIKTI + SAHİP OLUNANLAR
 
 ### Araç sahipliği artık ayrı liste
@@ -2376,6 +2475,7 @@ Base ratio hâlâ `_clamp(0.18 - progress * 0.15, 0.02, 0.18)`.
 ## Versiyon Geçmişi (son)
 | Commit | Açıklama |
 |--------|----------|
+| v121 | **📱 Cep telefonu + mekân mimarisi**: mekânlar döşenmiş görsellerle geliyor (eşya sistemi ve 66 katman SİLİNDİ), 6 mekân (Mütevazı Ev/Yazlık/Dağ Evi/Orman Evi/Rezidans/Tekne; 10.000→65.000, gün 6→25, `konukCarpani` 1.0→2.5). **Oyuncu Pro Max** (Market→Eşya, 7500, 10. gün): mekânlarda "Cep Telefonu" ile açılır, 9 ikon (rehber/sahiplik/market/hedefler/envanter/koleksiyon/banka/araç/oyunlar), mini oyunlar telefonda çalışır, home tuşu ana menüyü sorar. **Telefon Rehberi**: 12 kişi × 6 mekân × 5 senaryo; adım adım diyalog, mekâna özel replik ve ödül/ceza — Şeyma/Sezercik cömert, Polis/Vergici/Hırsız riskli, lüks mekânda ikisi de büyür. **Günlük çağrı hakkı 3** (yoksa sınırsız para kaynağı olurdu). "Aracın hazır!" popup'ı (araç→ok→mekân görseli). **🐛 Tek seferlik popup her "Devam Et"te tekrar çıkıyordu** — bayrak widget'tan `GameState`'e taşındı. İçerik: 17 araç, 57 karakter, 53 CD, 9 yeni hedef. `test/arac_ev_test.dart` 34 test |
 | v120 | **🚙 Araçlar envanterden çıktı**: `sahipAracIdleri` listesi, müşteri araç isteyemiyor, masada araç görseli yok; galerici 3. günden itibaren; araç sayısı 11. **💼 Sahip Olunanlar** (menü en üstü, 3 sekme): araç satışı→Gürbüz alıcı, ev satışı→**Emlakçı Necmi** (`mekanDegeri` = mekân+eşyalar; eşyalar evle gider), iMac→anında 1200. **Market 3 sekme** (Ev/Araç/Eşya) gerçek görsellerle, alınan listeden çıkar; adres `saticisindan_com`. **⛵ Tekne** 4. mekân (9 eşya, .ora tam katman). **5 yeni özel müşteri**: Sezercik (3-6. gün, kasanın 1/5–1/2'si), Şeyma Koko (Sezercik+2 gün; araba/motor/2×bakiye hediye ya da sitem), Deli Bekir (rotasyonda, 30×3 replik), Palyaço (5-10. gün bir kez; CD hediye / envanterden çalar), Büyücü Yakup (3/8/13 + 10'un katları, 110 soru). **🏆 Liderlik** (games_services; ID kurulumları CLAUDE.md v120 notunda) + **Diğer Oyunlar** butonu (mağaza geliştirici sayfaları). Rıza'da 3. sekme Koleksiyon; kestirme 🚗 butonu; kiralıklarda "Büyük dükkan = Büyük envanter". AGP 8.9.1 + Gradle 8.11.1. `test/arac_ev_test.dart` 33 test |
 | v118 | **🚗 Galerici Gürbüz + araçlar + 🏠 ev/yazlık**: yeni özel müşteri Gürbüz 4. günden itibaren 3 günde bir gelir, "Araç Seç" tezgâhından seçilen araç normal pazarlığa dönüşür, alınan araç envantere girer (5 araç, 3000-14000). Browser'da **Konum Değiştir** (araç yoksa kilitli); Market'te **Ev (10000)** ve **Yazlık (12000)**. Yolculukta solda araç + saat yönünün tersine dönen halka, süre aracın niteliğine göre (30-120 sn); bitince müşteri yokken "Eve geçmek istiyor musun?" popup'ı. Ev sahnesi: eşyalar doluev.png'den ölçülen oranlarla (9 eşya), Yazlık: .ora tam tuval katmanları birebir bindirme (12 eşya, tezgâh için kırpılmış ikonlar). `test/arac_ev_test.dart` 20 test. Rotasyon migrasyonuna `_rotasyonDisi` seti (hande sızması da kapandı) |
 | v117 | **📚 Koleksiyon artık kazanılıyor**: satılan ürün otomatik açılmıyor, envanterdeki ürüne dokunup "Koleksiyona Taşı" demek gerekiyor (geri dönüşü yok, ürün bir daha satılamaz). Hedefler sayfası **HEDEFLER / KOLEKSİYON** sekmelerine ayrıldı; tablo 8 değil **6 sütun**, sabit **60 kutu**; altında 12 koleksiyon hedefi ilerleme çubuğuyla, her biri bir kez para ödülü veriyor. **Süreli bildirim müşteriyi tutuyor** — seri/hedef toast'ı okunurken müşteri kayıp gidiyordu, artık toast kapanınca gitmeye başlıyor; toast süresi 2400→4200 ms. **Masadaki oynanabilir oyun belli**: büyütmede "⭐ Oynanabilir Oyun!" + açıklama. **Yeniden Başlat** artık ana menüye dönüyor, doğrudan yeni oyun açmıyor. **Banka** 3. günden önce kilitli, max taksit 3/6/9 → 6/8/10. Browser menüsünde Hedefler en üstte, Satılık Dükkanlar ikonu 🔑 → 🏡 |
