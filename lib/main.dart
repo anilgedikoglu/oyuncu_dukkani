@@ -3541,18 +3541,21 @@ class Mekan {
   const Mekan(this.konum, this.ad, this.ikon, this.arkaplan, this.fiyat,
       this.minGun, this.konukCarpani);
 
+  // ⚠️ Gün kilitleri TELEFONLA hizalı (telefon 10. günde açılıyor).
+  // Daha erken açılsalardı oyuncu mekâna gidip yapacak bir şey bulamazdı:
+  // eşya sistemi kalktı, mekândaki tek etkileşim cep telefonu.
   static const mutevaziev = Mekan(Konum.mutevaziev, 'Mütevazı Ev', '🏠',
-      'assets/mekan_mutevaziev.jpg', 10000, 6, 1.0);
+      'assets/mekan_mutevaziev.jpg', 10000, 10, 1.0);
   static const yazlik = Mekan(Konum.yazlik, 'Yazlık', '🏖️',
-      'assets/mekan_yazlikev.jpg', 18000, 8, 1.3);
+      'assets/mekan_yazlikev.jpg', 18000, 13, 1.3);
   static const dagevi = Mekan(Konum.dagevi, 'Dağ Evi', '🏔️',
-      'assets/mekan_dagevi.jpg', 26000, 12, 1.5);
+      'assets/mekan_dagevi.jpg', 26000, 16, 1.5);
   static const ormanlikev = Mekan(Konum.ormanlikev, 'Orman Evi', '🌲',
-      'assets/mekan_ormanlikev.jpg', 34000, 16, 1.7);
+      'assets/mekan_ormanlikev.jpg', 34000, 19, 1.7);
   static const rezidans = Mekan(Konum.rezidans, 'Rezidans', '🏙️',
-      'assets/mekan_rezidans.jpg', 48000, 20, 2.0);
+      'assets/mekan_rezidans.jpg', 48000, 22, 2.0);
   static const tekne = Mekan(Konum.tekne, 'Tekne', '⛵',
-      'assets/mekan_tekne.jpg', 65000, 25, 2.5);
+      'assets/mekan_tekne.jpg', 65000, 26, 2.5);
 
   static const List<Mekan> satinAlinabilir =
       [mutevaziev, yazlik, dagevi, ormanlikev, rezidans, tekne];
@@ -10030,7 +10033,27 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
           begin: Alignment.topCenter, end: Alignment.bottomCenter,
         ),
       ),
-      child: Row(children: [
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        // Telefon yoksa mekân bomboş bir oda gibi kalıyor — ne yapması
+        // gerektiğini söyle.
+        if (!telVar)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.6),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFF4FC3F7).withValues(alpha: 0.45)),
+              ),
+              child: const Text(
+                'Burada yapacak bir şey yok. Market\'ten "Oyuncu Pro Max" '
+                'alırsan her şey cebine gelir.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 10.5, color: Color(0xFF9fd8f5), height: 1.3)),
+            ),
+          ),
+        Row(children: [
         Expanded(child: _oyunButon(
           emoji: '📱', label: 'Cep Telefonu',
           onTap: telVar ? _telefonuAc : null,
@@ -10044,6 +10067,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
           gradyan: const [Color(0xFFe53935), Color(0xFF7f0000)],
           kenar: const Color(0xFFef9a9a),
         )),
+        ]),
       ]),
     );
   }
