@@ -8779,7 +8779,10 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
         children: [
           // ── Sol: Gün (yeni güne geçişte canlanır) ──
           Expanded(
-            child: AnimatedBuilder(
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => _easterEggDokunus(true),
+              child: AnimatedBuilder(
               animation: _gunController,
               builder: (context, _) {
                 final t = _gunController.value;
@@ -8817,6 +8820,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                 );
               },
             ),
+            ),
           ),
           // ── Orta: Daire geri sayım (CustomPaint) ──
           Padding(
@@ -8828,7 +8832,10 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
           ),
           // ── Sağ: Bakiye (para değişiminde canlanır) ──
           Expanded(
-            child: AnimatedBuilder(
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => _easterEggDokunus(false),
+              child: AnimatedBuilder(
               animation: _paraController,
               builder: (context, _) {
                 final t = _paraController.value;
@@ -8874,10 +8881,41 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                 );
               },
             ),
+            ),
           ),
         ],
       ),
     );
+  }
+
+  // ── 🥚 EASTER EGG ─────────────────────────────────────────────────────────
+  // Header'daki kutulara gizli bir ritimle dokununca 99.000 lira:
+  // GÜN×2 → PARA×6 → GÜN×4 → PARA×5. Son 17 dokunuşun deseni tutuluyor —
+  // araya yanlış dokunuş girerse dizi kendiliğinden bozulur, sıfırlama
+  // mantığına gerek yok. Menüde/oyunda hiçbir yerde bahsi geçmez.
+  static const List<bool> _eeDesen = [
+    true, true,                            // gün ×2
+    false, false, false, false, false, false, // para ×6
+    true, true, true, true,                // gün ×4
+    false, false, false, false, false,     // para ×5
+  ];
+  final List<bool> _eeDokunuslar = [];
+
+  void _easterEggDokunus(bool gunKutusu) {
+    _eeDokunuslar.add(gunKutusu);
+    if (_eeDokunuslar.length > _eeDesen.length) {
+      _eeDokunuslar.removeRange(0, _eeDokunuslar.length - _eeDesen.length);
+    }
+    if (_eeDokunuslar.length < _eeDesen.length) return;
+    for (int i = 0; i < _eeDesen.length; i++) {
+      if (_eeDokunuslar[i] != _eeDesen[i]) return;
+    }
+    _eeDokunuslar.clear();
+    _state.para += 99000;
+    SesServisi.paraGirdi();
+    _state.notifyListeners(); // para sayacı animasyonu tetiklensin
+    _toastGoster('GİZLİ HAZİNE!', altYazi: '+99000 lira', emoji: '🥚',
+      renk: const Color(0xFF00FF88), ms: 3000);
   }
 
   Widget _buildSahne() {
