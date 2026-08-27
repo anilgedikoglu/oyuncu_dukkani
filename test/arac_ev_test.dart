@@ -246,6 +246,24 @@ void main() {
     });
   });
 
+  group('Araç sıralaması', () {
+    test('vitrin sırası: bisiklet → motosiklet → otomobil, fiyat artan', () {
+      final s = Arac.sirali;
+      expect(s.length, Arac.tumu.length);
+      for (int i = 1; i < s.length; i++) {
+        final once = s[i - 1], sonra = s[i];
+        expect(once.tip.index <= sonra.tip.index, isTrue,
+            reason: '${once.item.id} → ${sonra.item.id} tip sırası bozuk');
+        if (once.tip == sonra.tip) {
+          expect(once.item.basePrice <= sonra.item.basePrice, isTrue,
+              reason: '${once.item.id} → ${sonra.item.id} fiyat sırası bozuk');
+        }
+      }
+      expect(s.first.tip, AracTip.bisiklet);
+      expect(s.last.tip, AracTip.otomobil);
+    });
+  });
+
   group('Araç sahipliği', () {
     test('araç yokken aracVar false, sahiplik listesine girince true', () {
       final s = GameState();

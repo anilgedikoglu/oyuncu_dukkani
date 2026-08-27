@@ -2797,36 +2797,52 @@ class EvEsyasi {
 ///
 /// [gecisSaniye] "Konum Değiştir"deki yolculuk süresi. Motosiklet uzun,
 /// otomobil kısa — aracın niteliği geçişe yansısın.
+/// Araç sınıfları — listeleme sırası da bu sırayla: önce bisikletler,
+/// sonra motosikletler, en son otomobiller.
+enum AracTip { bisiklet, motosiklet, otomobil }
+
 class Arac {
   final GameItem item;
   final int gecisSaniye;
-  const Arac(this.item, this.gecisSaniye);
+  final AracTip tip;
+  const Arac(this.item, this.gecisSaniye, this.tip);
 
   static final List<Arac> tumu = [
     Arac(GameItem(id: 'arac1', name: 'Kızıl Şimşek', gorsel: 'assets/arac_1.png',
-      category: ItemCategory.arac, basePrice: 9000, kondisyon: 4), 35),
+      category: ItemCategory.arac, basePrice: 9000, kondisyon: 4), 35, AracTip.otomobil),
     Arac(GameItem(id: 'arac2', name: 'Amiral 500', gorsel: 'assets/arac_2.png',
-      category: ItemCategory.arac, basePrice: 14000, kondisyon: 5), 30),
+      category: ItemCategory.arac, basePrice: 14000, kondisyon: 5), 30, AracTip.otomobil),
     Arac(GameItem(id: 'arac3', name: 'Sarı Melek', gorsel: 'assets/arac_3.png',
-      category: ItemCategory.arac, basePrice: 6000, kondisyon: 3), 45),
+      category: ItemCategory.arac, basePrice: 6000, kondisyon: 3), 45, AracTip.otomobil),
     Arac(GameItem(id: 'arac4', name: 'Vınn Motor', gorsel: 'assets/arac_4.png',
-      category: ItemCategory.arac, basePrice: 3000, kondisyon: 4), 120),
+      category: ItemCategory.arac, basePrice: 3000, kondisyon: 4), 120, AracTip.motosiklet),
     Arac(GameItem(id: 'arac5', name: 'Yol Kartalı', gorsel: 'assets/arac_5.png',
-      category: ItemCategory.arac, basePrice: 11000, kondisyon: 5), 75),
+      category: ItemCategory.arac, basePrice: 11000, kondisyon: 5), 75, AracTip.motosiklet),
     // ── v120 araçları ──
     Arac(GameItem(id: 'arac6', name: 'Dağ Keçisi', gorsel: 'assets/arac_6.png',       // elektrikli dağ bisikleti
-      category: ItemCategory.arac, basePrice: 2200, kondisyon: 4), 150),
+      category: ItemCategory.arac, basePrice: 2200, kondisyon: 4), 150, AracTip.bisiklet),
     Arac(GameItem(id: 'arac7', name: 'Yarış Tayı', gorsel: 'assets/arac_7.png',       // yol bisikleti
-      category: ItemCategory.arac, basePrice: 2600, kondisyon: 4), 130),
+      category: ItemCategory.arac, basePrice: 2600, kondisyon: 4), 130, AracTip.bisiklet),
     Arac(GameItem(id: 'arac8', name: 'Mavi Furya', gorsel: 'assets/arac_8.png',       // mavi üstü açık spor
-      category: ItemCategory.arac, basePrice: 26000, kondisyon: 5), 22),
+      category: ItemCategory.arac, basePrice: 26000, kondisyon: 5), 22, AracTip.otomobil),
     Arac(GameItem(id: 'arac9', name: 'Çöl Kaplanı', gorsel: 'assets/arac_9.png',      // bej arazi aracı
-      category: ItemCategory.arac, basePrice: 18000, kondisyon: 5), 32),
+      category: ItemCategory.arac, basePrice: 18000, kondisyon: 5), 32, AracTip.otomobil),
     Arac(GameItem(id: 'arac10', name: 'Fıstık', gorsel: 'assets/arac_10.png',         // beyaz tavanlı yeşil mini
-      category: ItemCategory.arac, basePrice: 8000, kondisyon: 4), 40),
+      category: ItemCategory.arac, basePrice: 8000, kondisyon: 4), 40, AracTip.otomobil),
     Arac(GameItem(id: 'arac11', name: 'Vahşi At', gorsel: 'assets/arac_11.png',       // kırmızı kas arabası
-      category: ItemCategory.arac, basePrice: 21000, kondisyon: 5), 25),
+      category: ItemCategory.arac, basePrice: 21000, kondisyon: 5), 25, AracTip.otomobil),
   ];
+
+  /// Vitrin sırası: bisiklet → motosiklet → otomobil, her grupta fiyat artan.
+  /// Market, galerici tezgâhı ve Sahip Olunanlar hep bu sırayı kullanır.
+  static List<Arac> get sirali {
+    final liste = [...tumu];
+    liste.sort((a, b) {
+      final t = a.tip.index.compareTo(b.tip.index);
+      return t != 0 ? t : a.item.basePrice.compareTo(b.item.basePrice);
+    });
+    return liste;
+  }
 
   /// Bir ürün id'sinin geçiş süresi. Araç değilse null.
   static int? gecisSuresi(String id) =>
@@ -4965,6 +4981,8 @@ class GameState extends ChangeNotifier {
     _kolonyaPendingBonus = 0.0;
     // Satış görüşmesi anlaşmasız bittiyse varlık sahipte kalır.
     ozelSatisiTemizle();
+    // Karakter ekrandan tamamen çıktı → balon da onunla birlikte kaybolsun.
+    mesaj = '';
     notifyListeners();
   }
 
@@ -5450,7 +5468,9 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       return;
     }
     _state.musteriReddetGirisSafhasinda();
-    _slideController.reverse().then((_) { if (mounted) _state.musteriAnimasyonBitti(); });
+    _yazimBitinceCik(() {
+      _slideController.reverse().then((_) { if (mounted) _state.musteriAnimasyonBitti(); });
+    });
   }
 
   void _musteriEvet() {
@@ -6070,7 +6090,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                     onTap: () { Navigator.pop(ctx); _mekanSatinAlPopup(m.konum); },
                   ),
             if (_marketSekme == 1)
-              for (final a in Arac.tumu)
+              for (final a in Arac.sirali)
                 if (!_state.aracSahibi(a.item.id))
                   _marketUrunKart(
                     isim: a.item.name,
@@ -6145,7 +6165,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                     onTap: () => _mekanSatOnay(ctx, m),
                   ),
             if (_sahiplikSekme == 1)
-              for (final a in Arac.tumu)
+              for (final a in Arac.sirali)
                 if (_state.aracSahibi(a.item.id))
                   _sahiplikKart(
                     isim: a.item.name,
@@ -8402,13 +8422,17 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                 child: GestureDetector(
                   onTap: _browserPopup,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    // Sabit genişlik: yandaki 🚗 kestirmesiyle aynı boyda
+                    // dursunlar, üst üste binmesinler.
+                    width: 92,
+                    padding: const EdgeInsets.symmetric(vertical: 6),
                     decoration: BoxDecoration(
                       color: Colors.black.withValues(alpha: 0.65),
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(color: const Color(0xFFFFD700).withValues(alpha: 0.5)),
                     ),
-                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    child: Row(mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisSize: MainAxisSize.min, children: [
                       const Text('🖥️', style: TextStyle(fontSize: 18)),
                       const SizedBox(width: 4),
                       Text(_state.aktifDukkan.yildizlar, style: const TextStyle(fontSize: 12, color: Color(0xFFFFD700))),
@@ -8418,14 +8442,18 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
               ),
               // 🚗 Kestirme: Konum Değiştir aktifse browser butonunun sağında
               // şeffaf zeminli bir araç butonu — menüye girmeden yolculuk.
+              // Menü butonuyla AYNI genişlikte ve onun tam sağında (16 + 92
+              // buton + 10 boşluk) — eskiden left:96'da üst üste biniyorlardı.
               if (_state.gun >= 2 && _state.aracVar && !_gecisAktif)
                 Positioned(
-                  left: 96,
+                  left: 118,
                   bottom: 300,
                   child: GestureDetector(
                     onTap: () { SesServisi.dokun(); _konumSecPopup(); },
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                      width: 92,
+                      alignment: Alignment.center,
+                      padding: const EdgeInsets.symmetric(vertical: 6),
                       decoration: BoxDecoration(
                         color: Colors.black.withValues(alpha: 0.35),
                         borderRadius: BorderRadius.circular(8),
@@ -8446,7 +8474,13 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
               // katmanı/SafeArea tarafından yutuluyor, güvenliğe basılamıyordu.
               // Kutu küçük ve sahnenin üst kısmında; alt bardaki butonlarla,
               // header'la ya da browser düğmesiyle çakışmıyor.
+              //
+              // ⚠️ Envanter overlay'i AÇIKKEN katman devre dışı: en sonda
+              // olduğu için envanterin de üstünde kalıyor ve envanterdeki
+              // karta basınca arkadaki güvenlik de "tıklanmış" oluyordu —
+              // popup kapanınca güvenlik tezgâha gelmiş görünüyordu.
               if (_state.guvenlikVar &&
+                  !_envanterAcik &&
                   _state.aktifMusteri == null &&
                   _state.aktifOzelMusteri == null)
                 Positioned.fill(child: _buildGuvenlikDokunmaAlani()),
@@ -9012,6 +9046,12 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
         // ║                      > Center > TypewriterText                ║
         // ║         -15 = metni 15px sola kaydır (SON DEĞER — DOKUNMA!)  ║
         // ╚═══════════════════════════════════════════════════════════════╝
+        // Balon, gösterecek metin YOKKEN tamamen gizli — karakter ekrandan
+        // çıktığı anda `musteriAnimasyonBitti` mesajı temizliyor, balon da
+        // onunla birlikte kayboluyor. (Boş metinle siyah kutu asılı kalıyordu;
+        // ayrıca çıkış sonrası yeniden çizimde yazının baştan oynaması da
+        // böylece görünmez oldu.)
+        if ((_kolonyaGeciciMesaj ?? _state.mesaj).isNotEmpty)
         Positioned(
           top: 6, left: 6, right: 6,
           child: Container(
@@ -10410,13 +10450,28 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   /// Özel müşteriyi sağdan çıkarır. [bitince] çıkış animasyonu BİTTİKTEN sonra
   /// çalışır — arka planı değiştiren işler (güvenlik istifası) buraya verilmeli,
   /// yoksa karakter daha ekrandayken sahne altından değişir.
+  /// Karakter, balondaki yazı BİTMEDEN yola çıkmaz: kalan yazım süresi kadar
+  /// bekler, son kelimeden 1 sn sonra [cikis] çalışır. Yazım çoktan bittiyse
+  /// hiç bekletmez — Hande'nin "Tamam"ları gibi metni çoktan okunmuş akışlar
+  /// yavaşlamasın.
+  void _yazimBitinceCik(VoidCallback cikis) {
+    final kalan = TypewriterText.kalanYazimSuresi();
+    final beklet = kalan > Duration.zero
+        ? kalan + const Duration(seconds: 1)
+        : Duration.zero;
+    if (beklet == Duration.zero) { cikis(); return; }
+    Future.delayed(beklet, () { if (mounted) cikis(); });
+  }
+
   void _ozelMusteriGonder({VoidCallback? bitince}) {
-    _toastBitinceCalistir(() {
-      if (!mounted) return;
-      _slideController.reverse().then((_) {
+    _yazimBitinceCik(() {
+      _toastBitinceCalistir(() {
         if (!mounted) return;
-        _state.musteriAnimasyonBitti();
-        bitince?.call();
+        _slideController.reverse().then((_) {
+          if (!mounted) return;
+          _state.musteriAnimasyonBitti();
+          bitince?.call();
+        });
       });
     });
   }
@@ -10925,7 +10980,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
             Flexible(
               child: SingleChildScrollView(
                 // Sahip olunan araçlar tezgâhta listelenmez.
-                child: Column(children: Arac.tumu
+                child: Column(children: Arac.sirali
                     .where((a) => !_state.aracSahibi(a.item.id))
                     .map((a) => Padding(
                   padding: const EdgeInsets.only(bottom: 9),
@@ -11077,14 +11132,12 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   }
 
   /// 🧙 Yakup'un sorusu cevaplandı — doğruysa kurtuluş, yanlışsa büyü + ceza.
+  /// Çıkış gecikmesi `_ozelMusteriGonder`ün yazım-bekleme kuralından geliyor.
   void _yakupCevapVer(bool soldaki) {
     final dogru = _state.yakupCevapla(soldaki);
     if (!dogru) SesServisi.hata();
     setState(() {});
-    // Replik okunabilsin diye kısa bekleyip gönder.
-    Future.delayed(const Duration(milliseconds: 1600), () {
-      if (mounted) _ozelMusteriGonder();
-    });
+    _ozelMusteriGonder();
   }
 
   void _ozelMusteriHayirPopup(OzelMusteri om) {
@@ -11276,11 +11329,10 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
           setState(() => _urunAsagiKayiyor = true);
           _urunKayipController.forward(from: 0);
         }
-        // Kabul mesajı balonda görünsün, 1.5 sn sonra müşteri gitsin.
-        // ⚠️ Ekranda seri/hedef bildirimi varsa çıkış onu BEKLER; bildirim
+        // Kabul mesajı balonda TAMAMEN yazılsın, 1 sn sonra müşteri gitsin.
+        // ⚠️ Ekranda seri/hedef bildirimi varsa çıkış onu da BEKLER; bildirim
         // kapanır kapanmaz müşteri gitmeye başlar.
-        Future.delayed(const Duration(milliseconds: 1500), () {
-          if (!mounted) return;
+        _yazimBitinceCik(() {
           _toastBitinceCalistir(() {
             if (!mounted) return;
             _slideController.reverse().then((_) {
@@ -11293,7 +11345,10 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
         });
       } else {
         setState(() => _pazarlikBekleniyor = false);
-        _slideController.reverse().then((_) { if (mounted) _state.musteriAnimasyonBitti(); });
+        // Küsme/gitme repliği yazılmadan karakter yola çıkmasın.
+        _yazimBitinceCik(() {
+          _slideController.reverse().then((_) { if (mounted) _state.musteriAnimasyonBitti(); });
+        });
       }
     });
   }
@@ -11361,8 +11416,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     if (p == null) return;
     setState(() => _pazarlikBekleniyor = false);
     _state.teklifVer(p.musteriTeklif); // musteriSatiyor + oyuncuTeklif == musteriTeklif → anlasildi
-    Future.delayed(const Duration(milliseconds: 1500), () {
-      if (!mounted) return;
+    _yazimBitinceCik(() {
       _toastBitinceCalistir(() {
         if (!mounted) return;
         _slideController.reverse().then((_) { if (mounted) _state.musteriAnimasyonBitti(); });
@@ -11373,7 +11427,9 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   void _pazarlikVazgec() {
     setState(() => _pazarlikBekleniyor = false);
     _state.musteriReddet();
-    _slideController.reverse().then((_) { if (mounted) _state.musteriAnimasyonBitti(); });
+    _yazimBitinceCik(() {
+      _slideController.reverse().then((_) { if (mounted) _state.musteriAnimasyonBitti(); });
+    });
   }
 }
 
@@ -11822,6 +11878,21 @@ class TypewriterText extends StatefulWidget {
 
   const TypewriterText({super.key, required this.text, this.style, this.textAlign = TextAlign.center});
 
+  /// Balondaki son yazımın tahmini bitiş anı. Karakter çıkışları buna bakar:
+  /// "son kelime yazılana kadar bekle, 1 sn sonra harekete başla" kuralı
+  /// (`_GameScreenState._yazimBitinceCik`) süreyi buradan okur.
+  ///
+  /// ⚠️ Statik — ekranda tek konuşma balonu olduğu varsayımıyla. İkinci bir
+  /// TypewriterText (ör. mini oyun ekranı) yazarsa tahmin onunkine kayar;
+  /// balon dışında kullanılacaksa bu takibe yeni bir yol gerekir.
+  static DateTime _tahminiBitis = DateTime.fromMillisecondsSinceEpoch(0);
+  static const Duration _harfSuresi = Duration(milliseconds: 32);
+
+  static Duration kalanYazimSuresi() {
+    final fark = _tahminiBitis.difference(DateTime.now());
+    return fark.isNegative ? Duration.zero : fark;
+  }
+
   @override
   State<TypewriterText> createState() => _TypewriterTextState();
 }
@@ -11850,7 +11921,9 @@ class _TypewriterTextState extends State<TypewriterText> {
 
   void _baslat(String metin) {
     if (metin.isEmpty) return;
-    _timer = Timer.periodic(const Duration(milliseconds: 32), (timer) {
+    TypewriterText._tahminiBitis =
+        DateTime.now().add(TypewriterText._harfSuresi * metin.length);
+    _timer = Timer.periodic(TypewriterText._harfSuresi, (timer) {
       if (!mounted) { timer.cancel(); return; }
       if (_index < metin.length) {
         setState(() => _gorunen = metin.substring(0, ++_index));
