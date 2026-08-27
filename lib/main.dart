@@ -6056,7 +6056,11 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   /// Market — browser sayfası gövdesi.
   /// Market sekmesi: 0 = Ev / Araç (mekânlar), 1 = Eşya (iMac vb.)
   /// ⚠️ Browser gövdesi her karede baştan çalışır — sekme State'te durur.
+  /// Market ana sekmesi: 0=Dükkan, 1=Ev, 2=Araç, 3=Eşya.
+  /// Dükkan sekmesinin kendi alt sekmeleri var: 0=Satılık, 1=Kiralık.
+  /// ⚠️ İkisi de State'te — browser gövdesi her karede baştan çalışıyor.
   int _marketSekme = 0;
+  int _dukkanAltSekme = 0;
 
   Widget _marketGovdesi(BuildContext ctx, void Function(VoidCallback) setDlg) {
     return Column(
@@ -6068,19 +6072,56 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
           Text('MARKET', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Color(0xFFf78166), letterSpacing: 2)),
         ]),
         const SizedBox(height: 12),
+        // ── Ana sekmeler: Dükkan / Ev / Araç / Eşya ──
         Row(children: [
-          Expanded(child: _marketSekmeButonu('🏠 Ev', 0, setDlg)),
-          const SizedBox(width: 8),
-          Expanded(child: _marketSekmeButonu('🚗 Araç', 1, setDlg)),
-          const SizedBox(width: 8),
-          Expanded(child: _marketSekmeButonu('🖥️ Eşya', 2, setDlg)),
+          for (int i = 0; i < 4; i++) ...[
+            if (i > 0) const SizedBox(width: 6),
+            Expanded(child: _guzelSekme(
+              emoji: const ['🏬', '🏠', '🚗', '🖥️'][i],
+              etiket: const ['Dükkan', 'Ev', 'Araç', 'Eşya'][i],
+              aktif: _marketSekme == i,
+              renk: const Color(0xFFf78166),
+              onTap: () => setDlg(() => _marketSekme = i),
+            )),
+          ],
         ]),
         const SizedBox(height: 12),
-        // Satın alınan şey listeden ÇIKAR — "Alındı" rozetli ölü kart yok,
-        // sahip olunanlar artık kendi sayfasında (Sahip Olunanlar).
+        // ── Dükkan sekmesi: Satılık / Kiralık alt sekmeleri ──
+        if (_marketSekme == 0) ...[
+          Row(children: [
+            Expanded(child: _guzelSekme(
+              emoji: '🏡', etiket: 'Satılık Dükkanlar',
+              aktif: _dukkanAltSekme == 0,
+              renk: const Color(0xFF3fb950),
+              onTap: () => setDlg(() => _dukkanAltSekme = 0),
+            )),
+            const SizedBox(width: 6),
+            Expanded(child: _guzelSekme(
+              emoji: '🔑', etiket: 'Kiralık Dükkanlar',
+              aktif: _dukkanAltSekme == 1,
+              renk: const Color(0xFF58a6ff),
+              onTap: () => setDlg(() => _dukkanAltSekme = 1),
+            )),
+          ]),
+          const SizedBox(height: 12),
+          if (_dukkanAltSekme == 0)
+            (_state.gun < 5
+              ? const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 28),
+                  child: Text('🔒 Satılık dükkanlar 5. günde açılır.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 13, color: Panel.yaziSoluk)),
+                )
+              : _satilikDukkanlarGovdesi(ctx, setDlg))
+          else
+            _dukkanlarGovdesi(() => Navigator.pop(ctx)),
+        ]
+        // ── Ev / Araç / Eşya: satın alınan listeden ÇIKAR ("Alındı" rozetli
+        //    ölü kart yok, sahip olunanlar kendi sayfasında). ──
+        else
         Builder(builder: (_) {
           final kartlar = <Widget>[
-            if (_marketSekme == 0)
+            if (_marketSekme == 1)
               for (final m in Mekan.satinAlinabilir)
                 if (!_state.konumSahibi(m.konum))
                   _marketUrunKart(
@@ -6089,7 +6130,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                     gorselYolu: m.arkaplan,
                     onTap: () { Navigator.pop(ctx); _mekanSatinAlPopup(m.konum); },
                   ),
-            if (_marketSekme == 1)
+            if (_marketSekme == 2)
               for (final a in Arac.sirali)
                 if (!_state.aracSahibi(a.item.id))
                   _marketUrunKart(
@@ -6098,7 +6139,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                     gorselYolu: a.item.gorsel,
                     onTap: () { Navigator.pop(ctx); _aracSatinAlPopup(a); },
                   ),
-            if (_marketSekme == 2 && !_state.imacSatinAlindi)
+            if (_marketSekme == 3 && !_state.imacSatinAlindi)
               _marketUrunKart(
                 ikon: '🖥️',
                 isim: 'iMac',
@@ -6125,6 +6166,49 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
           );
         }),
       ],
+    );
+  }
+
+  /// Süslü sekme düğmesi: emoji üstte, etiket altta; aktif olan kendi
+  /// rengiyle dolar ve hafif parlar. Market'in iki sekme katmanı da bunu
+  /// kullanıyor — yeni sekme eklerken elle stil verme.
+  Widget _guzelSekme({
+    required String emoji,
+    required String etiket,
+    required bool aktif,
+    required Color renk,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: () { SesServisi.dokun(); onTap(); },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 2),
+        decoration: BoxDecoration(
+          gradient: aktif
+              ? LinearGradient(
+                  colors: [renk.withValues(alpha: 0.28), renk.withValues(alpha: 0.10)],
+                  begin: Alignment.topCenter, end: Alignment.bottomCenter)
+              : null,
+          color: aktif ? null : Panel.ikincilZemin,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: aktif ? renk : Panel.ikincilKenar,
+            width: aktif ? 1.6 : 1),
+          boxShadow: aktif
+              ? [BoxShadow(color: renk.withValues(alpha: 0.35), blurRadius: 8)]
+              : null,
+        ),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Text(emoji, style: TextStyle(fontSize: aktif ? 18 : 15)),
+          const SizedBox(height: 2),
+          FittedBox(fit: BoxFit.scaleDown, child: Text(etiket,
+            maxLines: 1,
+            style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold,
+              letterSpacing: 0.3,
+              color: aktif ? renk : Panel.yaziSoluk))),
+        ]),
+      ),
     );
   }
 
@@ -6399,27 +6483,6 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     );
   }
 
-  Widget _marketSekmeButonu(String etiket, int idx, void Function(VoidCallback) setDlg) {
-    final aktif = _marketSekme == idx;
-    return GestureDetector(
-      onTap: () { SesServisi.dokun(); setDlg(() => _marketSekme = idx); },
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 9),
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: aktif ? const Color(0xFF3a1f16) : Panel.ikincilZemin,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: aktif ? const Color(0xFFf78166) : Panel.ikincilKenar,
-            width: aktif ? 1.5 : 1),
-        ),
-        child: FittedBox(fit: BoxFit.scaleDown, child: Text(etiket,
-          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold,
-            letterSpacing: 1,
-            color: aktif ? const Color(0xFFf78166) : Panel.yaziSoluk))),
-      ),
-    );
-  }
 
   /// Market kartı. [gorselYolu] verilirse emoji yerine gerçek görsel
   /// gösterilir — mekânlarda arka plan fotoğrafı (cover), araçlarda ürün
@@ -7140,100 +7203,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     );
   }
 
-  /// Ayarlar satırı: solda etiket, sağda iki segmentli Açık/Kapalı switch.
-  /// "AÇIK/KAPALI" tek kelimeyken hangi durumda olduğu ve dokununca ne
-  /// olacağı belirsizdi; iki segment yan yana, aktif olan renkli duruyor.
-  static Widget _ayarSatiri({
-    required String etiket,
-    required bool deger,
-    required ValueChanged<bool> onDegis,
-  }) {
-    Widget segment(String metin, bool bu, Color renk) {
-      final secili = deger == bu;
-      return GestureDetector(
-        onTap: () => onDegis(bu),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          decoration: BoxDecoration(
-            color: secili ? renk : Colors.transparent,
-            borderRadius: BorderRadius.circular(6),
-          ),
-          child: Text(metin,
-            style: TextStyle(
-              color: secili ? Colors.white : Colors.white38,
-              fontWeight: FontWeight.bold, fontSize: 13)),
-        ),
-      );
-    }
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(etiket, style: const TextStyle(fontSize: 16, color: Color(0xFFF0DFC4), fontWeight: FontWeight.bold)),
-        Container(
-          padding: const EdgeInsets.all(3),
-          decoration: BoxDecoration(
-            // Switch yuvası: panelden bir ton koyu kahve (lacivert gri değil).
-            color: const Color(0xFF2A2018),
-            borderRadius: BorderRadius.circular(9),
-            border: Border.all(color: Colors.black26),
-          ),
-          child: Row(mainAxisSize: MainAxisSize.min, children: [
-            segment('Açık', true, const Color(0xFF2E9E2E)),
-            segment('Kapalı', false, const Color(0xFFA02020)),
-          ]),
-        ),
-      ],
-    );
-  }
 
-  void _ayarlarPopup() {
-    showDialog(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => AlertDialog(
-          backgroundColor: Panel.zemin,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-            side: const BorderSide(color: Color(0xFFd2a679), width: 1.5),
-          ),
-          title: const Text('⚙️ Ayarlar', textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFFF0DFC4), letterSpacing: 1)),
-          // Ses ve Titreşim AYRI ayarlar: sessiz oynayan biri titreşimi
-          // isteyebilir. İkisi de aynı iki segmentli switch dilinde.
-          content: Column(mainAxisSize: MainAxisSize.min, children: [
-            _ayarSatiri(
-              etiket: '🔊 Ses:',
-              deger: SesServisi.sesAcik,
-              onDegis: (v) => setDialogState(() { SesServisi.sesAcik = v; AyarServisi.kaydet(); }),
-            ),
-            const SizedBox(height: 14),
-            _ayarSatiri(
-              etiket: '📳 Titreşim:',
-              deger: SesServisi.titresimAcik,
-              // Açılırken hemen bir titreşim ver: ayarın ne yaptığı anlaşılsın.
-              onDegis: (v) => setDialogState(() {
-                SesServisi.titresimAcik = v;
-                AyarServisi.kaydet();
-                if (v) SesServisi.dokun();
-              }),
-            ),
-          ]),
-          actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-          // Ana eylem SOLDA: buradaki asıl çıkış "Kapat" (Ayarlar'ı VE altındaki
-          // browser'ı birlikte kapatır); "Geri" sadece Ayarlar'ı kapatıp
-          // browser menüsüne döner.
-          actions: [dialogButonlari(
-            anaEtiket: 'Kapat',
-            anaRenk: const Color(0xFFd2a679),
-            anaOnTap: () { Navigator.pop(ctx); Navigator.pop(context); },
-            ikincilEtiket: 'Geri',
-            ikincilOnTap: () => Navigator.pop(ctx),
-          )],
-        ),
-      ),
-    );
-  }
 
   /// Browser'da açık olan sayfa. Menü dışındaki sayfalar aynı pencerede
   /// açılır; geri oku menüye döndürür.
@@ -7385,11 +7355,21 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   }
 
   /// Browser ana sayfası — bölüm listesi.
+  /// Browser ana menüsü — 5 kalem: Market / Sahip Olunanlar / Hedefler /
+  /// Banka / Ana Menü. Kiralık-Satılık Dükkanlar Market'in "Dükkan"
+  /// sekmesine taşındı; Ayarlar ve Yeniden Başlat giriş menüsünde.
   Widget _browserMenuGovdesi(BuildContext ctx, void Function(_BrowserSayfa) git) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // 💼 Sahip Olunanlar EN ÜSTTE — evler, araçlar, eşyalar burada.
+        _browserMenuItem(
+          ikon: '🛒',
+          baslik: 'Market',
+          altyazi: 'Dükkan, Ev, Araç ve Eşya alım satım',
+          renk: const Color(0xFFf78166),
+          onTap: () => git(_BrowserSayfa.market),
+        ),
+        const SizedBox(height: 10),
         _browserMenuItem(
           ikon: '💼',
           baslik: 'Sahip Olunanlar',
@@ -7410,30 +7390,8 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
         ),
         const SizedBox(height: 10),
         _browserMenuItem(
-          ikon: '🏠',
-          baslik: 'Kiralık Dükkanlar',
-          altyazi: 'DükkanKirala.com — ${_state.aktifDukkan.isim}',
-          renk: const Color(0xFF58a6ff),
-          onTap: () => git(_BrowserSayfa.dukkanlar),
-        ),
-        const SizedBox(height: 10),
-        _browserMenuItem(
-          // Anahtar yerine ev: burada satılan şey dükkan, anahtar soyut kalıyordu.
-          ikon: '🏡',
-          baslik: 'Satılık Dükkanlar',
-          altyazi: _state.gun < 5
-              ? '5. günde açılır'
-              : (_state.sahipDukkanlar.isEmpty
-                  ? 'Kirayı bitir, dükkanın sahibi ol'
-                  : '${_state.sahipDukkanlar.length} dükkanın var'),
-          renk: const Color(0xFF3fb950),
-          kilitli: _state.gun < 5,
-          onTap: () => git(_BrowserSayfa.satilik),
-        ),
-        const SizedBox(height: 10),
-        _browserMenuItem(
           ikon: '🏦',
-          baslik: 'Banka Kredisi',
+          baslik: 'Banka',
           altyazi: _state.gun < 3
               ? '3. günde açılır'
               : (_state.aktifKrediVar
@@ -7447,41 +7405,19 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
         // geldiğinde yapılabilir; menüden istediği an açmak ziyaretini
         // anlamsızlaştırıyordu.
         const SizedBox(height: 10),
+        // Oyun her adımda kayıtlı — menüye dönmek ilerlemeyi kaybettirmez.
         _browserMenuItem(
-          ikon: '🛒',
-          baslik: 'Market',
-          altyazi: 'Ev, Araba, Eşya alım satım',
-          renk: const Color(0xFFf78166),
-          onTap: () => git(_BrowserSayfa.market),
-        ),
-        const SizedBox(height: 10),
-        // 🚗 Konum Değiştir — envanterde araç YOKSA tıklanamaz.
-        _browserMenuItem(
-          ikon: '🚗',
-          baslik: 'Konum Değiştir',
-          altyazi: _state.aracVar
-              ? (_gecisAktif ? 'Geçiş sürüyor...' : 'Aracınla başka bir yere git')
-              : 'Envanterde 1 araç olması gerekmekte.',
-          renk: const Color(0xFF4f8bd6),
-          kilitli: !_state.aracVar || _gecisAktif,
-          onTap: () { Navigator.pop(ctx); _konumSecPopup(); },
-        ),
-        const SizedBox(height: 10),
-        _browserMenuItem(
-          ikon: '⚙️',
-          baslik: 'Ayarlar',
-          altyazi: 'Ses: ${SesServisi.sesAcik ? "Açık" : "Kapalı"} · '
-                   'Titreşim: ${SesServisi.titresimAcik ? "Açık" : "Kapalı"}',
+          ikon: '🚪',
+          baslik: 'Ana Menü',
+          altyazi: 'Giriş ekranına dön (oyunun kayıtlı)',
           renk: const Color(0xFFd2a679),
-          onTap: () => _ayarlarPopup(),
-        ),
-        const SizedBox(height: 10),
-        _browserMenuItem(
-          ikon: '🔄',
-          baslik: 'Yeniden Başlat',
-          altyazi: 'Oyunu sıfırla ve başa dön',
-          renk: const Color(0xFFE07B00),
-          onTap: () { Navigator.pop(ctx); _yenidenBaslatOnay(); },
+          onTap: () {
+            Navigator.pop(ctx);
+            Navigator.of(context).pushAndRemoveUntil(
+              MaterialPageRoute(builder: (_) => const AnaMenuEkrani()),
+              (route) => false,
+            );
+          },
         ),
       ],
     );
@@ -7507,45 +7443,6 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     }
   }
 
-  void _yenidenBaslatOnay() {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1a1008),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: const BorderSide(color: Color(0xFFE07B00), width: 2),
-        ),
-        title: const Text('⚠️ Emin misin?', textAlign: TextAlign.center,
-            style: TextStyle(color: Color(0xFFE07B00), fontSize: 18, fontWeight: FontWeight.bold)),
-        content: const Text(
-          'Her şey kaybolacak!\nAna menüye dönülsün mü?',
-          textAlign: TextAlign.center,
-          style: TextStyle(color: Panel.yazi, fontSize: 15),
-        ),
-        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
-        actions: [
-          dialogButonlari(
-            anaEtiket: 'Evet',
-            anaRenk: const Color(0xFFE07B00),
-            anaYazi: Colors.white,
-            anaOnTap: () {
-              Navigator.pop(ctx);
-              KayitServisi.sil();
-              // ⚠️ Yeni oyunu doğrudan başlatmıyoruz: oyuncu ANA MENÜYE dönsün.
-              // Oradan "Başla"ya kendisi bassın — "Devam Et" de artık pasif olur.
-              Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute(builder: (_) => const AnaMenuEkrani()),
-                (route) => false,
-              );
-            },
-            ikincilEtiket: 'Hayır',
-            ikincilOnTap: () => Navigator.pop(ctx),
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget _browserMenuItem({
     required String ikon,
