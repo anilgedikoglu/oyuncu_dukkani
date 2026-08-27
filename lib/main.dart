@@ -9514,9 +9514,13 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
             Positioned.fill(child: IgnorePointer(
               child: Image.asset('assets/telefon_bos.png', fit: BoxFit.fill))),
             // ── Home tuşu ──
+            // ⚠️ Kutu, görseldeki tuştan biraz GENİŞ: ekranın alt kenarı
+            // 0.804'te bitiyor, kasanın alt şeridi 0.92'ye kadar sürüyor.
+            // Dar tutulunca dokunuş kutunun kenarından kaçıp dialog
+            // barrier'ına gidiyor ve telefon kapanıyordu.
             Positioned(
-              left: w * 0.40, top: h * 0.845,
-              width: w * 0.20, height: h * 0.085,
+              left: w * 0.33, top: h * 0.815,
+              width: w * 0.34, height: h * 0.105,
               child: GestureDetector(
                 behavior: HitTestBehavior.opaque,
                 onTap: () { SesServisi.dokun(); _telAnaMenuSor(ctx); },
