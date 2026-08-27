@@ -6386,7 +6386,9 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
             anaOnTap: _state.para < a.item.basePrice ? null : () {
               Navigator.pop(ctx);
               if (_state.aracSatinAl(a)) {
-                _dialogBildirim(context, '🚗 ${a.item.name} artık senin!');
+                _toastGoster('${a.item.name} ARTIK SENİN!',
+                  altYazi: 'Sahip Olunanlar\'dan bakabilirsin',
+                  emoji: '🚗', renk: const Color(0xFF4FC3F7), ms: 3000);
               }
             },
             ikincilEtiket: 'Kapat',
@@ -10980,7 +10982,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
               : () {
                   Navigator.pop(ctx);
                   if (_state.mekanSatinAl(k)) {
-                    _dialogBildirim(context, '$ikon $ad aldın, artık konum değiştirebilirsin!');
+                    _toastGoster('$ad ALDIN!', altYazi: 'Artık konum değiştirebilirsin', emoji: ikon, renk: const Color(0xFF00FF88), ms: 3000);
                   }
                 },
             ikincilEtiket: 'Kapat',
