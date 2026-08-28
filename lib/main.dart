@@ -7348,10 +7348,11 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
         ]),
         const SizedBox(height: 12),
         _segmentCubugu(
-          parcalar: const [('🏠', 'Ev'), ('🚗', 'Araç'), ('🖥️', 'Eşya')],
+          parcalar: const [('🏠', 'Ev'), ('🏬', 'Dükkan'), ('🚗', 'Araç'), ('🖥️', 'Eşya')],
           secili: _sahiplikSekme,
           renk: const Color(0xFF00C2A8),
           onSec: (i) => setDlg(() => _sahiplikSekme = i),
+          kisaMod: true,
         ),
         const SizedBox(height: 12),
         Builder(builder: (_) {
@@ -7365,7 +7366,22 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                     gorselYolu: m.arkaplan,
                     onTap: () => _mekanSatOnay(ctx, m),
                   ),
+            // 🏬 Satın alınmış dükkanlar. Kart, oturulan dükkanı ve kirada
+            // olanı ayırt ediyor; dokununca kiraya ver/kiradan çek soruluyor.
             if (_sahiplikSekme == 1)
+              for (final d in satilikDukkanlar)
+                if (_state.dukkanSahibiMi(d))
+                  _sahiplikKart(
+                    isim: d.isim,
+                    altYazi: d.isim == _state.aktifDukkan.isim
+                        ? 'Şu an buradasın'
+                        : (_state.kirayaVerilenDukkanlar.contains(d.isim)
+                            ? 'Kirada — ${GameState.kiraGeliriHesapla(d)}/gün'
+                            : 'Boş duruyor'),
+                    gorselYolu: d.arkaplan,
+                    onTap: () => _sahipDukkanOnay(ctx, d, setDlg),
+                  ),
+            if (_sahiplikSekme == 2)
               for (final a in Arac.sirali)
                 if (_state.aracSahibi(a.item.id))
                   _sahiplikKart(
@@ -7374,7 +7390,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                     gorselYolu: a.item.gorsel,
                     onTap: () => _aracSatOnay(ctx, a),
                   ),
-            if (_sahiplikSekme == 2 && _state.imacSatinAlindi)
+            if (_sahiplikSekme == 3 && _state.imacSatinAlindi)
               _sahiplikKart(
                 isim: 'iMac',
                 altYazi: 'Satış: 1200',
@@ -7469,6 +7485,32 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   }
 
   /// Araç satışı onayı: Evet → Galerici Gürbüz alıcı olarak gelir.
+  /// 🏬 Sahip olunan dükkan kartına dokunuldu. Oturulan dükkan için yapacak
+  /// bir şey yok; boş duran kiraya verilebilir, kiradaki kiradan çekilebilir.
+  void _sahipDukkanOnay(BuildContext browserCtx, DukkanSeviye d,
+      void Function(VoidCallback) setDlg) {
+    if (d.isim == _state.aktifDukkan.isim) {
+      _dialogBildirim(browserCtx, 'Zaten bu dükkandasın.');
+      return;
+    }
+    final kirada = _state.kirayaVerilenDukkanlar.contains(d.isim);
+    final gelir = GameState.kiraGeliriHesapla(d);
+    _satisOnayPopup(
+      baslik: kirada ? '🔑 ${d.isim} kiradan çekilsin mi?'
+                     : '🔑 ${d.isim} kiraya verilsin mi?',
+      gorselYolu: d.arkaplan,
+      aciklama: kirada
+          ? 'Şu an günde $gelir lira getiriyor.\n'
+            'Kiradan çekersen bu gelir durur ama dükkana taşınabilirsin.'
+          : 'Kiraya verirsen her gün kasana $gelir lira girer.\n'
+            'Kirada olduğu sürece oraya taşınamazsın.',
+      onEvet: () {
+        _state.kirayaVerToggle(d);
+        setDlg(() {});
+      },
+    );
+  }
+
   void _aracSatOnay(BuildContext browserCtx, Arac a) {
     _satisOnayPopup(
       baslik: '🚗 ${a.item.name} satılsın mı?',

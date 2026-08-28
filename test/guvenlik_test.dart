@@ -317,8 +317,12 @@ void main() {
       final gorsel = hedef['gorsel'];
       var goruldu = 0;
       // ⚠️ Kadro büyüdükçe (v122: 65 karakter) belirli birinin gelme olasılığı
-      // düşüyor; 800 denemede bazen hiç çıkmıyor ve test kararsız kalıyordu.
-      for (int i = 0; i < 4000 && goruldu < 2; i++) {
+      // düşüyor; 800 denemede bazen hiç çıkmıyor, 4000'de ise tüm suite ile
+      // birlikte koşarken zaman aşımına uğruyordu. 1500 + açık timeout dengeli.
+      for (int i = 0; i < 1500 && goruldu < 1; i++) {
+        // ⚠️ Kasa beslenmezse birkaç gün sonra kira ödenemeyip İFLAS oluyor ve
+        // müşteri akışı duruyordu — testin asıl kararsızlık sebebi buydu.
+        s.para = 100000;
         if (s.gunBitmeli) s.gunuBitir(); // limit dolunca gün ilerlet
         s.yeniMusteriGonder();
         final m = s.aktifMusteri;
@@ -329,6 +333,6 @@ void main() {
         s.musteriAnimasyonBitti();
       }
       expect(goruldu, greaterThan(0), reason: 'karakter hiç gelmedi, test boş kaldı');
-    });
+    }, timeout: const Timeout(Duration(minutes: 2)));
   });
 }

@@ -47,7 +47,9 @@ class _KirgecOyunuState extends State<KirgecOyunu> with SingleTickerProviderStat
   static const double _topR = 1.6;
   double _topX = 50, _topY = 100;
   double _hizX = 0, _hizY = 0;
-  static const double _topHizBaslangic = 52;
+  // ⚠️ v122: üçü de %20 hızlandırıldı (52→62.4, 1.5→1.8, 95→114). Oranı
+  // korumak şart — sadece başlangıcı artırmak oyunun sonunu yavaş bırakırdı.
+  static const double _topHizBaslangic = 62.4;
   double _topHiz = _topHizBaslangic;
 
   // ── Durum ──
@@ -160,7 +162,7 @@ class _KirgecOyunuState extends State<KirgecOyunu> with SingleTickerProviderStat
       // Çubuğun neresine çarptıysa o yöne sapar — oyuncuya kontrol verir
       final fark = ((_topX - _cubukX) / (_cubukEn / 2)).clamp(-1.0, 1.0);
       final aci = (-90 + fark * 60) * pi / 180;
-      _topHiz = min(_topHiz + 1.5, 95); // her vuruşta hafif hızlanır
+      _topHiz = min(_topHiz + 1.8, 114); // her vuruşta hafif hızlanır
       _hizX = cos(aci) * _topHiz;
       _hizY = sin(aci) * _topHiz;
     }
