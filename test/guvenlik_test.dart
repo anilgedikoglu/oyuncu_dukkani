@@ -46,6 +46,10 @@ void main() {
       final s = GameState();
       var hirsizGeldi = false;
       for (int i = 0; i < 400 && !hirsizGeldi; i++) {
+        // ⚠️ Günlük müşteri limiti dolunca yeniMusteriGonder boş döner —
+        // gün ilerletilmezse döngü havada dönüyor (içerik büyüdükçe
+        // özel müşteri sırası da seyrekleşti, test boş kalıyordu).
+        if (s.gunBitmeli) s.gunuBitir();
         s.yeniMusteriGonder();
         if (s.aktifOzelMusteri?.tip == OzelMusteriTip.hirsiz) hirsizGeldi = true;
         s.musteriAnimasyonBitti();
@@ -313,6 +317,7 @@ void main() {
       final gorsel = hedef['gorsel'];
       var goruldu = 0;
       for (int i = 0; i < 800 && goruldu < 3; i++) {
+        if (s.gunBitmeli) s.gunuBitir(); // limit dolunca gün ilerlet
         s.yeniMusteriGonder();
         final m = s.aktifMusteri;
         if (m != null && m.gorsel == gorsel) {

@@ -38,6 +38,24 @@ void main() {
       expect(Arac.gecisSuresi('arac1'), isNotNull);
       expect(Arac.gecisSuresi('cd1'), isNull);
     });
+
+    test('gün kilitleri fiyatla orantılı ve en ucuzu 1. günde açık', () {
+      // ⚠️ En ucuz araç 1. günde AÇIK olmalı: mekâna gitmek araç istiyor,
+      // hiçbir araç açık değilse konum sistemi kilitlenirdi.
+      final enUcuz = Arac.tumu.reduce(
+          (a, b) => a.item.basePrice <= b.item.basePrice ? a : b);
+      expect(enUcuz.minGun, 1);
+      // Pahalı araç ucuzdan önce açılmamalı.
+      for (final a in Arac.tumu) {
+        for (final b in Arac.tumu) {
+          if (a.item.basePrice < b.item.basePrice) {
+            expect(a.minGun, lessThanOrEqualTo(b.minGun),
+                reason: '${a.item.name} (${a.item.basePrice}) '
+                    '${b.item.name}\'den (${b.item.basePrice}) sonra açılıyor');
+          }
+        }
+      }
+    });
   });
 
   group('Galerici Gürbüz', () {
