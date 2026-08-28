@@ -157,12 +157,14 @@ class _TisssOyunuState extends State<TisssOyunu> with SingleTickerProviderStateM
                 child: LayoutBuilder(builder: (context, kutu) {
                   final hucre = min(kutu.maxWidth / _sutun, kutu.maxHeight / _satir);
                   final en = hucre * _sutun, boy = hucre * _satir;
-                  return Center(
-                    child: SizedBox(
-                      width: en, height: boy,
-                      child: GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onTapDown: (e) => _dokun(e.localPosition, en),
+                  // ⚠️ Dokunma alanı oyun ızgarasını değil EKRANIN TAMAMINI
+                  // kaplar — gerekçesi kirgec_oyunu.dart'ta yazılı.
+                  return GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTapDown: (e) => _dokun(e.localPosition, kutu.maxWidth),
+                    child: Center(
+                      child: SizedBox(
+                        width: en, height: boy,
                         child: Stack(children: [
                           Positioned.fill(
                             child: CustomPaint(

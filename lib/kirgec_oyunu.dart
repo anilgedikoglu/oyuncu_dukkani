@@ -235,18 +235,25 @@ class _KirgecOyunuState extends State<KirgecOyunu> with SingleTickerProviderStat
                   // Mantıksal alanı ekrana sığdır (en-boy korunur)
                   final olcek = min(kutu.maxWidth / _alanEn, kutu.maxHeight / _alanBoy);
                   final en = _alanEn * olcek, boy = _alanBoy * olcek;
-                  return Center(
-                    child: SizedBox(
-                      width: en, height: boy,
-                      child: Listener(
-                        onPointerDown: (e) => _dokunusBasla(e.localPosition, en),
-                        // Parmak kaydırılırsa yön anında güncellensin
-                        onPointerMove: (e) {
-                          if (_bitti) return;
-                          _yon = e.localPosition.dx < en / 2 ? -1 : 1;
-                        },
-                        onPointerUp: (_) => _dokunusBitir(),
-                        onPointerCancel: (_) => _dokunusBitir(),
+                  // ⚠️ Listener OYUN ALANINI DEĞİL, EKRANIN TAMAMINI kaplar.
+                  // Eskiden `SizedBox(en, boy)` içindeydi: mantıksal alan
+                  // 100×140 olduğu için ekranda dar bir şerit kalıyor, sağ/sol
+                  // yarıya basmak ancak o şeridin içinde işe yarıyordu.
+                  // `opaque` şart — boş alanda çocuk yok, `deferToChild`
+                  // olsaydı dokunuş hiç ulaşmazdı.
+                  return Listener(
+                    behavior: HitTestBehavior.opaque,
+                    onPointerDown: (e) => _dokunusBasla(e.localPosition, kutu.maxWidth),
+                    // Parmak kaydırılırsa yön anında güncellensin
+                    onPointerMove: (e) {
+                      if (_bitti) return;
+                      _yon = e.localPosition.dx < kutu.maxWidth / 2 ? -1 : 1;
+                    },
+                    onPointerUp: (_) => _dokunusBitir(),
+                    onPointerCancel: (_) => _dokunusBitir(),
+                    child: Center(
+                      child: SizedBox(
+                        width: en, height: boy,
                         child: Stack(children: [
                           Positioned.fill(
                             child: CustomPaint(

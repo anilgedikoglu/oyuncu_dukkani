@@ -299,27 +299,34 @@ const List<DukkanSeviye> tumDukkanlar = [
   // genişlik sağdan %10 kısaltıldı (0.1330*0.90).
   DukkanSeviye(seviye: 1, isim: 'Bodrum Kat Dükkan',    kira: 300,  minGun: 1,
     arkaplan: 'assets/dukkan_bodrum.jpg',  arkaplanGuv: 'assets/dukkan_bodrum_guv.jpg',  arkaplanOrani: 719 / 1080,
-    kapiSol: 0.3157, kapiUst: 0.0880, kapiGen: 0.1197, kapiYuk: 0.1593),
+    kapiSol: 0.3157, kapiUst: 0.0880, kapiGen: 0.1155, kapiYuk: 0.1540),
   // kapiGen: sağda boşluk kalıyordu — sol kenar ve dikey ölçüler SABİT,
   // genişlik sadece sağa doğru %15 uzatıldı (0.1224*1.15).
   DukkanSeviye(seviye: 2, isim: 'Mahalle Köşe Dükkanı', kira: 600,  minGun: 3,
     arkaplan: 'assets/dukkan_mahalle.jpg', arkaplanGuv: 'assets/dukkan_mahalle_guv.jpg', arkaplanOrani: 719 / 1278,
-    // kapiUst: silüet yukarıda kalıyordu — kendi yüksekliğinin %10'u kadar
-    // aşağı indirildi (0.1228 + 0.1667*0.10). Boy ve yatay ölçüler SABİT.
-    kapiSol: 0.3380, kapiUst: 0.1395, kapiGen: 0.1408, kapiYuk: 0.1667,
-    // Güvenlikli sürüm yeniden çizildi ve kapı camı biraz kaydı: ızgarayla
-    // ölçüldü, cam 0.010 sola / 0.006 yukarı gitmiş.
-    kapiSolGuvFark: -0.010, kapiUstGuvFark: -0.006),
+    // ⚠️ v122'de YENİDEN ÖLÇÜLDÜ. Önceki değerler (0.3380 / 0.1395 / 0.1408
+    // / 0.1667) v111'de gözle yapılan iki elle düzeltmeyi taşıyordu — kapiGen
+    // sağa %15 uzatılmış, kapiUst %10 aşağı indirilmişti. İkisi de fazla
+    // gelmiş: silüet camdan sağa taşıyor, üstte boşluk bırakıyordu. Ekran
+    // dar olduğu için Android'de göze batmıyordu, iPhone'da belli oldu.
+    // Cam dikdörtgeni parlaklık profiliyle ölçülüp görselin üstüne çizdirilip
+    // doğrulandı (CLAUDE.md kuralı: otomatik ölçüme tek başına güvenme).
+    kapiSol: 0.3400, kapiUst: 0.1285, kapiGen: 0.1190, kapiYuk: 0.1600,
+    // Güvenlikli sürüm ayrı çizim; camı biraz kaymış. İki görsel de tek tek
+    // ölçüldü, fark buradan geliyor.
+    kapiSolGuvFark: -0.0062, kapiUstGuvFark: -0.0047),
   DukkanSeviye(seviye: 3, isim: 'Cadde Dükkanı',        kira: 900,  minGun: 5,
     arkaplan: 'assets/dukkan_cadde.jpg',   arkaplanGuv: 'assets/dukkan_cadde_guv.jpg',   arkaplanOrani: 719 / 1278,
-    kapiSol: 0.3350, kapiUst: 0.1517, kapiGen: 0.1160, kapiYuk: 0.1582),
+    kapiSol: 0.3350, kapiUst: 0.1517, kapiGen: 0.1128, kapiYuk: 0.1582),
   // Yeni sanat — kapı camı 900px panelde %1 ızgarayla ölçüldü, çizdirilip doğrulandı.
   DukkanSeviye(seviye: 4, isim: 'Çarşı Dükkanı',        kira: 1200, minGun: 8,
     arkaplan: 'assets/dukkan_carsi.jpg',   arkaplanGuv: 'assets/dukkan_carsi_guv.jpg',   arkaplanOrani: 719 / 1080,
-    kapiSol: 0.3440, kapiUst: 0.1110, kapiGen: 0.1170, kapiYuk: 0.1770),
+    // v122: cam yeniden olculdu — kutu sagda ve altta tasiyordu.
+    kapiSol: 0.3473, kapiUst: 0.1139, kapiGen: 0.1065, kapiYuk: 0.1605),
   DukkanSeviye(seviye: 5, isim: 'AVM Dükkanı',          kira: 1500, minGun: 10,
     arkaplan: 'assets/dukkan_avm.jpg',     arkaplanGuv: 'assets/dukkan_avm_guv.jpg',     arkaplanOrani: 719 / 1278,
-    kapiSol: 0.3588, kapiUst: 0.1385, kapiGen: 0.1280, kapiYuk: 0.1541),
+    // v122: kapiGen kisaldi — kutu kapi kolunun ustune tasiyordu.
+    kapiSol: 0.3588, kapiUst: 0.1385, kapiGen: 0.1159, kapiYuk: 0.1541),
 ];
 
 /// ─── SATILIK DÜKKANLAR ──────────────────────────────────────────────────────
@@ -333,19 +340,19 @@ const List<DukkanSeviye> tumDukkanlar = [
 const List<DukkanSeviye> satilikDukkanlar = [
   DukkanSeviye(seviye: 2, isim: 'Fakir Dükkan',        kira: 0, minGun: 5, satinAlmaFiyati: 5000,
     arkaplan: 'assets/dukkan_satilik1.jpg', arkaplanGuv: 'assets/dukkan_satilik1_guv.jpg', arkaplanOrani: 719 / 1080,
-    kapiSol: 0.3550, kapiUst: 0.1630, kapiGen: 0.1100, kapiYuk: 0.1590),
+    kapiSol: 0.3550, kapiUst: 0.1630, kapiGen: 0.1012, kapiYuk: 0.1555),
   DukkanSeviye(seviye: 3, isim: 'Derme Çatma Dükkan',  kira: 0, minGun: 5, satinAlmaFiyati: 7000,
     arkaplan: 'assets/dukkan_satilik2.jpg', arkaplanGuv: 'assets/dukkan_satilik2_guv.jpg', arkaplanOrani: 719 / 1080,
-    kapiSol: 0.3530, kapiUst: 0.1330, kapiGen: 0.1030, kapiYuk: 0.1590),
+    kapiSol: 0.3459, kapiUst: 0.1330, kapiGen: 0.1043, kapiYuk: 0.1590),
   DukkanSeviye(seviye: 4, isim: 'Lüks Dükkan',         kira: 0, minGun: 5, satinAlmaFiyati: 10000,
     arkaplan: 'assets/dukkan_satilik3.jpg', arkaplanGuv: 'assets/dukkan_satilik3_guv.jpg', arkaplanOrani: 719 / 1080,
-    kapiSol: 0.3520, kapiUst: 0.1500, kapiGen: 0.1030, kapiYuk: 0.1630),
+    kapiSol: 0.3389, kapiUst: 0.1500, kapiGen: 0.1089, kapiYuk: 0.1630),
   DukkanSeviye(seviye: 4, isim: 'Klas Dükkan',         kira: 0, minGun: 5, satinAlmaFiyati: 13000,
     arkaplan: 'assets/dukkan_satilik4.jpg', arkaplanGuv: 'assets/dukkan_satilik4_guv.jpg', arkaplanOrani: 719 / 1080,
-    kapiSol: 0.3550, kapiUst: 0.1580, kapiGen: 0.1250, kapiYuk: 0.1870),
+    kapiSol: 0.3654, kapiUst: 0.1620, kapiGen: 0.1065, kapiYuk: 0.1790),
   DukkanSeviye(seviye: 5, isim: 'Rezidans Dükkanı',    kira: 0, minGun: 5, satinAlmaFiyati: 20000,
     arkaplan: 'assets/dukkan_satilik5.jpg', arkaplanGuv: 'assets/dukkan_satilik5_guv.jpg', arkaplanOrani: 719 / 1080,
-    kapiSol: 0.3530, kapiUst: 0.2500, kapiGen: 0.1040, kapiYuk: 0.1480),
+    kapiSol: 0.3530, kapiUst: 0.2500, kapiGen: 0.1000, kapiYuk: 0.1480),
 ];
 
 /// Kiralık + satılık tüm dükkanlar (kayıt yüklerken isimle arama için).
@@ -393,6 +400,14 @@ class SahneMetrik {
 
   /// Görsel içi oran → dp uzunluk (boyutlar da masayla ölçeklenir)
   double u(double oran) => boy * oran;
+
+  /// Masa görselinin ekrandaki GENİŞLİĞİ (yükseklikten türer, oran sabit).
+  double get gen => boy * gorselW / gorselH;
+
+  /// Görsel içi yatay oran (0..1) → ekranda mutlak x.
+  /// Görsel `scale: 1.4` ile büyütülüp ortalandığı için iki yandan taşar;
+  /// sol kenarı ekranın dışında kalabilir (negatif değer normaldir).
+  double x(double oran, double ekranW) => (ekranW - gen) / 2 + gen * oran;
 }
 
 // ── Sanat eserinden ölçülen / kalibre edilen oranlar ──
@@ -6612,6 +6627,15 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     if (_state.aktifMusteri != null || _state.aktifPazarlik != null) return;
     if (_state.aktifOzelMusteri != null || _envanterAcik) return;
     if (_gunBitiPopupGosterildi || _gameOverGosterildi) return; // gün sonu/iflas popup'ıyla çakışmasın
+    // ⚠️ Ekranda süreli bir bildirim varsa ROZET ONU BEKLER. Aynı anda iki
+    // bildirim (ör. "GİZLİ HAZİNE!" toast'ı + "Rozet kazandın" popup'ı) üst
+    // üste biniyordu: easter egg parayı verip notifyListeners çağırıyor, o da
+    // rozet denetimini tetikliyor ve rozet 250 ms sonra toast'ın üstüne
+    // açılıyordu. Artık toast kapanınca kuyruk baştan işletiliyor.
+    if (_toastMetin != null) {
+      _toastBitinceCalistir(_rozetKuyrugunuIsle);
+      return;
+    }
     _rozetPopupAcik = true;
     final rozet = _state.yeniKazanilanRozetler.removeAt(0);
     Future.delayed(const Duration(milliseconds: 250), () {
@@ -6795,7 +6819,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     _ustBildirimTimer?.cancel();
     _ustBildirimEntry?.remove();
     final entry = OverlayEntry(builder: (_) => Positioned(
-      left: 24, right: 24, bottom: 90,
+      left: 24, right: 24, bottom: 74,
       child: IgnorePointer(child: Material(
         type: MaterialType.transparency,
         child: Container(
@@ -8454,7 +8478,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       children: [
         _browserMenuItem(
           ikon: '🛒',
-          baslik: 'Market',
+          baslik: 'Alım / Satım',
           altyazi: 'Dükkan, Ev, Araç ve Eşya alım satım',
           renk: const Color(0xFFf78166),
           onTap: () => git(_BrowserSayfa.market),
@@ -9466,12 +9490,31 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                       : Align(key: const ValueKey('bgbosmasa'), alignment: Alignment.bottomCenter, child: Transform.translate(offset: const Offset(0, 6), child: Transform.scale(scale: 1.4, alignment: Alignment.bottomCenter, child: Image.asset('assets/bgbosmasa.png', fit: BoxFit.fitWidth))))),
                 ),
               ),
+              // 🖐️ Sahneye dokunma: yazmakta olan balonu anında tamamlar ve
+              // karakteri 1 sn sonra gönderir.
+              //
+              // ⚠️ Konum kritik: SafeArea'dan ÖNCE geliyor, yani Stack'te
+              // ondan önceki çocuk. Sonra gelen çocuk önce hit-test edildiği
+              // için alt bardaki butonlar, header ve güvenlik alanı dokunuşu
+              // önce alır; buraya yalnızca gerçekten BOŞ olan yerler düşer.
+              Positioned.fill(
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: _sahneyeDokunuldu,
+                ),
+              ),
               SafeArea(child: Column(children: [_buildHeader(), Expanded(child: _buildSahne()), _buildAltBar()])),
-              // Dükkan kiralama butonu — 3. günde bilgisayar gelince görünür
+              // Dükkan kiralama butonu — 3. günde bilgisayar gelince görünür.
+              //
+              // ⚠️ Eskiden `bottom: 300` idi — SABİT PİKSEL. Ekran uzadıkça
+              // masa yukarı çıkıyor, buton ekranın altına yapışık kaldığı
+              // için masaya göre kayıyordu (iPhone'da tezgâhın alt rafına
+              // biniyordu). Artık masa metriğine kilitli: butonun ALT kenarı
+              // masa görselinin alt kenarında (%67 — ızgarayla ölçüldü).
               if (_state.gun >= 2)
               Positioned(
                 left: 16,
-                bottom: 300,
+                top: SahneMetrik.hesapla(MediaQuery.of(context).size).y(0.67) - 32,
                 child: GestureDetector(
                   onTap: _browserPopup,
                   child: Container(
@@ -9496,10 +9539,17 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
               // 🚗 Kestirme: menüye girmeden yolculuk. Çerçevesiz/zeminsiz —
               // masanın üstünde duran minyatür bir araç gibi görünüyor;
               // görsel de o an SEÇİLİ olan araç (`_secilenAracId`).
+              // ⚠️ Burası da sabit pikseldi (left 118 / bottom 296). Artık
+              // masaya kilitli: mouse pad'in ÜSTÜNDEKİ boş alanda duruyor
+              // (görsel içi ~%43 yatay, ~%49.5 dikey — ızgarayla ölçüldü).
+              // ⚠️ Burada `Builder` KULLANILAMAZ: Stack'in doğrudan çocuğu
+              // Positioned olmak zorunda, araya bir widget girerse
+              // "Incorrect use of ParentDataWidget" hatası alınır.
               if (_state.gun >= 2 && _state.aracVar && !_gecisAktif)
                 Positioned(
-                  left: 118,
-                  bottom: 296,
+                  left: SahneMetrik.hesapla(MediaQuery.of(context).size)
+                          .x(0.43, MediaQuery.of(context).size.width) - 46,
+                  top: SahneMetrik.hesapla(MediaQuery.of(context).size).y(0.495) - 23,
                   child: GestureDetector(
                     onTap: () { SesServisi.dokun(); _konumSecPopup(); },
                     child: SizedBox(
@@ -9717,7 +9767,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     final kalemler = <(String, String, String, bool)>[
       ('📇', 'TELEFON\nREHBERİ', 'rehber', true),
       ('💼', 'SAHİP\nOLUNANLAR', 'sahiplik', _state.imacSatinAlindi),
-      ('🛒', 'MARKET', 'market', true),
+      ('🛒', 'ALIM / SATIM', 'market', true),
       ('🏆', 'HEDEFLER', 'hedefler', true),
       ('🎒', 'ENVANTER', 'envanter', true),
       ('📚', 'KOLEKSİYON', 'koleksiyon', true),
@@ -9776,7 +9826,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   Widget _telIcerik(BuildContext ctx, void Function(VoidCallback) setTel) {
     final basliklar = {
       'rehber': '📇 Telefon Rehberi', 'sahiplik': '💼 Sahip Olunanlar',
-      'market': '🛒 Market', 'hedefler': '🏆 Hedefler',
+      'market': '🛒 Alım / Satım', 'hedefler': '🏆 Hedefler',
       'envanter': '🎒 Envanter', 'koleksiyon': '📚 Koleksiyon',
       'banka': '🏦 Banka', 'arac': '🚗 Araç', 'oyunlar': '🎮 Oyunlar',
     };
@@ -11866,11 +11916,14 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
           borderRadius: BorderRadius.circular(16),
           side: const BorderSide(color: Color(0xFF00e5ff), width: 2),
         ),
-        title: const Column(mainAxisSize: MainAxisSize.min, children: [
-          Text('🕹️', style: TextStyle(fontSize: 40)),
-          SizedBox(height: 4),
-          Text('OYUN BİTTİ', textAlign: TextAlign.center,
-            style: TextStyle(color: Color(0xFF00e5ff), fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
+        // ⚠️ Başlıkta ÜRÜN ADI geçmeli. Sadece "OYUN BİTTİ" yazınca oyuncu
+        // ANA OYUNUN bittiğini (iflas ettiğini) sanıyor — mini oyundan yeni
+        // çıkmış olsa bile aniden gelen bu popup öyle okunuyor.
+        title: Column(mainAxisSize: MainAxisSize.min, children: [
+          const Text('🕹️', style: TextStyle(fontSize: 40)),
+          const SizedBox(height: 4),
+          Text('$urunAdi OYUNU BİTTİ', textAlign: TextAlign.center,
+            style: const TextStyle(color: Color(0xFF00e5ff), fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
         ]),
         content: Text(
           kazanilan > 0
@@ -12114,12 +12167,40 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   void _yazimBitinceCik(VoidCallback cikis, {Duration enAz = Duration.zero}) {
     final harf = TypewriterText.harfSuresi * _state.mesaj.length;
     final kalan = TypewriterText.kalanYazimSuresi();
-    var beklet = (harf > kalan ? harf : kalan) + const Duration(seconds: 1);
-    if (beklet < const Duration(seconds: 3)) {
-      beklet = const Duration(seconds: 3);
+    var beklet = (harf > kalan ? harf : kalan) +
+        const Duration(milliseconds: 350);
+    if (beklet < const Duration(milliseconds: 1200)) {
+      beklet = const Duration(milliseconds: 1200);
     }
     if (beklet < enAz) beklet = enAz;
-    Future.delayed(beklet, () { if (mounted) cikis(); });
+    // ⚠️ `Future.delayed` DEĞİL, iptal edilebilir bir Timer: oyuncu sahneye
+    // dokunursa yazı anında tamamlanıp çıkış öne çekiliyor (bkz.
+    // `_sahneyeDokunuldu`). Future.delayed iptal edilemediği için hem eski
+    // hem yeni zamanlayıcı çalışır, karakter iki kez gitmeye kalkardı.
+    _cikisTimer?.cancel();
+    _bekleyenCikis = cikis;
+    _cikisTimer = Timer(beklet, () {
+      _bekleyenCikis = null;
+      if (mounted) cikis();
+    });
+  }
+
+  Timer? _cikisTimer;
+  VoidCallback? _bekleyenCikis;
+
+  /// Sahnedeki boş bir yere dokunuldu: yazmakta olan balon varsa metni ANINDA
+  /// tamamla ve karakteri 1 saniye sonra gönder. Bekleyen bir çıkış yoksa
+  /// (kimse gitmiyor) dokunuş yok sayılır — replik okunurken oyuncunun
+  /// yanlışlıkla ekrana dokunması karakteri kovmasın diye.
+  void _sahneyeDokunuldu() {
+    if (_bekleyenCikis == null) return;
+    if (!TypewriterText.hemenBitir()) return; // yazı zaten bitmiş
+    final is_ = _bekleyenCikis!;
+    _cikisTimer?.cancel();
+    _cikisTimer = Timer(const Duration(seconds: 1), () {
+      _bekleyenCikis = null;
+      if (mounted) is_();
+    });
   }
 
   void _ozelMusteriGonder({VoidCallback? bitince}) {
@@ -13998,6 +14079,20 @@ class TypewriterText extends StatefulWidget {
     return fark.isNegative ? Duration.zero : fark;
   }
 
+  /// Ekranda yazan (ya da en son yazmış) balonun state'i. Aynı anda tek
+  /// konuşma balonu olduğu varsayımıyla — `_tahminiBitis` ile aynı kabul.
+  static _TypewriterTextState? _aktif;
+
+  /// Yazmakta olan balonu ANINDA tamamlar. Oyuncu sahneye dokununca çağrılır:
+  /// harf harf yazılmasını beklemek yerine metnin tamamı bir anda çıkar.
+  /// Yazacak harf kalmadıysa false döner — çağıran taraf dokunuşun bir şeyi
+  /// hızlandırıp hızlandırmadığını böyle anlar.
+  static bool hemenBitir() {
+    final s = _aktif;
+    if (s == null || !s.mounted) return false;
+    return s._hemenBitir();
+  }
+
   @override
   State<TypewriterText> createState() => _TypewriterTextState();
 }
@@ -14010,7 +14105,17 @@ class _TypewriterTextState extends State<TypewriterText> {
   @override
   void initState() {
     super.initState();
+    TypewriterText._aktif = this;
     _baslat(widget.text);
+  }
+
+  /// Kalan harfleri atlayıp metni tamamla.
+  bool _hemenBitir() {
+    if (_gorunen == widget.text) return false;
+    _timer?.cancel();
+    setState(() { _gorunen = widget.text; _index = widget.text.length; });
+    TypewriterText._tahminiBitis = DateTime.now();
+    return true;
   }
 
   @override
@@ -14041,6 +14146,7 @@ class _TypewriterTextState extends State<TypewriterText> {
   @override
   void dispose() {
     _timer?.cancel();
+    if (TypewriterText._aktif == this) TypewriterText._aktif = null;
     super.dispose();
   }
 

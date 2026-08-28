@@ -36,9 +36,27 @@ class _IteleOyunuState extends State<IteleOyunu> with SingleTickerProviderStateM
   double _botX = 50;
 
   /// Botun tepki hızı. Oyuncudan biraz yavaş — yenilebilir ama zorlu.
-  static const double _botHiz = 60;
+  ///
+  /// ⚠️ 60'tan 50'ye indirildi: bot pratikte HİÇ yenilmiyordu.
+  static const double _botHiz = 50;
+
   /// Botun nişan hatası: her sekmede yeniden çekilir, hep mükemmel olmasın.
+  ///
+  /// ⚠️ Eskiden ±3'tü ve bot MATEMATİKSEL OLARAK ıskalayamıyordu: çubuk eni
+  /// 20, yarısı 10, top yarıçapıyla yakalama toleransı 11.7 — ±3'lük hata
+  /// bunun çeyreği bile değil. Bot ancak top tavana yaklaşıp yetişemediğinde
+  /// sayı veriyordu, o da maçın sonunda. Artık hata TOPUN HIZIYLA BÜYÜYOR:
+  /// ralli uzadıkça bot yoruluyor ve maç bir yere bağlanıyor.
   double _botHata = 0;
+
+  /// Hıza göre nişan hatası: başlangıçta ±9 (nadiren ıskalar), tavanda ±17
+  /// (sık ıskalar). 11.7'yi aşan her çekiliş sayı demek.
+  double _botHataUret() {
+    final t = ((_topHiz - _topHizBaslangic) / (137.3 - _topHizBaslangic))
+        .clamp(0.0, 1.0);
+    final genlik = 9.0 + 8.0 * t;
+    return (_rng.nextDouble() * 2 - 1) * genlik;
+  }
 
   // ── Top ──
   static const double _topR = 1.7;
@@ -85,7 +103,7 @@ class _IteleOyunuState extends State<IteleOyunu> with SingleTickerProviderStateM
     _hizX = 0;
     _hizY = 0;
     _topHiz = _topHizBaslangic;
-    _botHata = _rng.nextDouble() * 6 - 3;
+    _botHata = _botHataUret();
     // Sayıyı kim yediyse servis ona doğru gider
     _servisYonuAsagi = oyuncuyaDogru;
   }
@@ -191,7 +209,7 @@ class _IteleOyunuState extends State<IteleOyunu> with SingleTickerProviderStateM
     final aci = fark * 55 * pi / 180; // dikeyden sapma
     _hizX = sin(aci) * _topHiz;
     _hizY = cos(aci) * _topHiz * (yukari ? -1 : 1);
-    _botHata = _rng.nextDouble() * 6 - 3; // her sekmede yeni hata
+    _botHata = _botHataUret(); // her sekmede yeni hata
   }
 
   int get _puan => _oyuncuSkor * _sayiPuani;
@@ -222,17 +240,20 @@ class _IteleOyunuState extends State<IteleOyunu> with SingleTickerProviderStateM
                 child: LayoutBuilder(builder: (context, kutu) {
                   final olcek = min(kutu.maxWidth / _alanEn, kutu.maxHeight / _alanBoy);
                   final en = _alanEn * olcek, boy = _alanBoy * olcek;
-                  return Center(
-                    child: SizedBox(
-                      width: en, height: boy,
-                      child: Listener(
-                        onPointerDown: (e) => _dokunusBasla(e.localPosition, en),
-                        onPointerMove: (e) {
-                          if (_bitti) return;
-                          _yon = e.localPosition.dx < en / 2 ? -1 : 1;
-                        },
-                        onPointerUp: (_) => _dokunusBitir(),
-                        onPointerCancel: (_) => _dokunusBitir(),
+                  // ⚠️ Listener oyun alanını değil EKRANIN TAMAMINI kaplar —
+                  // gerekçesi kirgec_oyunu.dart'ta yazılı. `opaque` şart.
+                  return Listener(
+                    behavior: HitTestBehavior.opaque,
+                    onPointerDown: (e) => _dokunusBasla(e.localPosition, kutu.maxWidth),
+                    onPointerMove: (e) {
+                      if (_bitti) return;
+                      _yon = e.localPosition.dx < kutu.maxWidth / 2 ? -1 : 1;
+                    },
+                    onPointerUp: (_) => _dokunusBitir(),
+                    onPointerCancel: (_) => _dokunusBitir(),
+                    child: Center(
+                      child: SizedBox(
+                        width: en, height: boy,
                         child: Stack(children: [
                           Positioned.fill(
                             child: CustomPaint(
