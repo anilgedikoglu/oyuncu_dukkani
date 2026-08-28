@@ -7398,6 +7398,17 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                 ikon: '🖥️',
                 onTap: () => _imacSatOnay(ctx),
               ),
+            // 📱 Telefon de bir eşya — alındığı hâlde burada görünmüyordu.
+            // ⚠️ SATILMIYOR: mekânlarda tek arayüz o; satılsa oyuncu evde
+            // hiçbir şey yapamaz hâle gelirdi. Kart bilgi amaçlı.
+            if (_sahiplikSekme == 3 && _state.telefonVar)
+              _sahiplikKart(
+                isim: 'Oyuncu Pro Max',
+                altYazi: 'Satılık değil',
+                gorselYolu: 'assets/telefon_bos.png',
+                onTap: () => _dialogBildirim(ctx,
+                    'Telefonunu satamazsın — mekânlarda her şeyi onunla yapıyorsun.'),
+              ),
           ];
           if (kartlar.isEmpty) {
             return const Padding(
@@ -7625,6 +7636,9 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       );
       return;
     }
+    // ⚠️ Telefon açıksa ONUN kendi Navigator'ından kapanmalı; root'tan pop
+    // etmek telefonu kapatmaz ve `_telIcCtx` ölü kalır (bkz. `_popupCtx`).
+    _telefonuKapat();
     final nav = Navigator.of(context, rootNavigator: true);
     if (nav.canPop()) nav.pop();
     _state.dukkanAlimiBaslat(d);
@@ -7644,7 +7658,8 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   }
 
   void _galericiyiCagir(Arac a) {
-    // Telefon ya da browser açıksa kapat (ikisi de root Navigator'da).
+    // Telefon kendi Navigator'ında, browser root'ta — ikisini de kapat.
+    _telefonuKapat();
     final nav = Navigator.of(context, rootNavigator: true);
     if (nav.canPop()) nav.pop();
     // Oyuncu çağırdı → bugün gelmiş sayılır, kendi programıyla bir daha gelmez.
@@ -9780,7 +9795,19 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   /// (`showDialog`) bunu kullanır → telefon ekranının içinde açılırlar.
   /// Telefon kapalıyken null; o zaman sayfanın kendi context'i geçerli.
   BuildContext? _telIcCtx;
-  BuildContext get _popupCtx => _telIcCtx ?? context;
+  /// Popup'ların açılacağı context: telefon açıksa telefonun İÇİ, değilse sayfa.
+  ///
+  /// ⚠️ `mounted` kontrolü ŞART. Telefon beklenmedik bir yoldan kapandığında
+  /// (ör. rehberden misafir çağrılırken yanlış Navigator'dan pop) `_telIcCtx`
+  /// ARTIK YOK OLMUŞ bir ağacı işaret ediyordu. O ölü context'e açılmaya
+  /// çalışan her popup sessizce hiçbir şey yapmıyordu: telefon bir daha
+  /// açılmıyor, dükkana dönünce menü ve araç butonları da ölüyordu.
+  BuildContext get _popupCtx {
+    final c = _telIcCtx;
+    if (c != null && c.mounted) return c;
+    _telIcCtx = null;
+    return context;
+  }
 
   /// Telefondaki sayfalarda "browser'ı kapat" davranışı YOK — popup
   /// telefonun üstünde açılmalı, telefon kapanmamalı.
@@ -9788,19 +9815,43 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     if (_telIcCtx == null) Navigator.pop(ctx);
   }
 
+  /// Telefon dialogunun KENDİ route context'i — kapatmak için gerekli.
+  /// ⚠️ Telefon `useRootNavigator: false` ile açılıyor, yani root Navigator'da
+  /// DEĞİL. Rehberden kişi çağrılırken `Navigator.of(ctx, rootNavigator: true)
+  /// .pop()` deneniyordu: yanlış Navigator'dan pop edildiği için telefonun
+  /// route'u kapanmıyor, `.then()` hiç çalışmıyor ve `_telIcCtx` ölü bir
+  /// context'i tutmaya devam ediyordu. Sonraki "Cep Telefonu" dokunuşu o ölü
+  /// context'e dialog açmaya çalışıp sessizce hiçbir şey yapmıyordu.
+  BuildContext? _telDialogCtx;
+
+  void _telefonuKapat() {
+    final c = _telDialogCtx;
+    _telDialogCtx = null;
+    _telIcCtx = null;
+    _telSayfa = null;
+    if (c != null && Navigator.canPop(c)) Navigator.pop(c);
+  }
+
   void _telefonuAc() {
+    // Savunma: önceki oturumdan ölü bir context kalmışsa temizle, yoksa
+    // showDialog onu kullanmaya çalışır ve telefon bir daha hiç açılmaz.
+    _telIcCtx = null;
+    _telDialogCtx = null;
     _telSayfa = null;
     showDialog(
       useRootNavigator: false,
-      context: _popupCtx,
+      context: context,
       barrierColor: Colors.black.withValues(alpha: 0.86),
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setTel) => ListenableBuilder(
-          listenable: _state,
-          builder: (c, __) => _telefonGovdesi(ctx, setTel),
-        ),
-      ),
-    ).then((_) { _telSayfa = null; _telIcCtx = null; });
+      builder: (ctx) {
+        _telDialogCtx = ctx;
+        return StatefulBuilder(
+          builder: (ctx, setTel) => ListenableBuilder(
+            listenable: _state,
+            builder: (c, __) => _telefonGovdesi(ctx, setTel),
+          ),
+        );
+      },
+    ).then((_) { _telSayfa = null; _telIcCtx = null; _telDialogCtx = null; });
   }
 
   Widget _telefonGovdesi(BuildContext ctx, void Function(VoidCallback) setTel) {
@@ -9910,38 +9961,62 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
           style: const TextStyle(color: Colors.white54, fontSize: 9,
             fontWeight: FontWeight.bold, letterSpacing: 1)),
       ),
-      Expanded(child: GridView.count(
-        crossAxisCount: 3,
-        padding: const EdgeInsets.all(8),
-        mainAxisSpacing: 4, crossAxisSpacing: 4,
-        childAspectRatio: 0.82,
-        children: kalemler.map((k) {
-          final (emoji, ad, sayfa, aktif) = k;
-          return Opacity(
-            opacity: aktif ? 1.0 : 0.35,
-            child: GestureDetector(
-              onTap: aktif ? () { SesServisi.dokun(); setTel(() => _telSayfa = sayfa); } : null,
-              child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF2b3a4d), Color(0xFF1b2430)],
-                      begin: Alignment.topLeft, end: Alignment.bottomRight),
-                    borderRadius: BorderRadius.circular(9),
-                    border: Border.all(color: Colors.white24),
-                  ),
-                  child: Text(emoji, style: const TextStyle(fontSize: 20)),
-                ),
-                const SizedBox(height: 3),
-                FittedBox(fit: BoxFit.scaleDown, child: Text(ad,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 7.5, height: 1.15,
-                    fontWeight: FontWeight.bold, color: Colors.white70))),
-              ]),
-            ),
-          );
-        }).toList(),
+      // ⚠️ `GridView.count(childAspectRatio:)` KULLANILMIYOR: o, hücre boyunu
+      // GENİŞLİKTEN türetiyordu; 3 satır ekranın ancak yarısını kaplıyor,
+      // altta koca bir boşluk kalıyor ve ikonlar gereksiz küçük duruyordu.
+      // Satırlar Expanded ile mevcut yüksekliği paylaşıyor, ikon karesi de
+      // hücreye göre ölçekleniyor — telefon ekranı ne kadarsa o kadar büyük.
+      Expanded(child: Padding(
+        padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+        child: LayoutBuilder(builder: (c, kis) {
+          const sutun = 3, bosluk = 8.0;
+          final satir = (kalemler.length / sutun).ceil();
+          final hucreW = (kis.maxWidth - bosluk * (sutun - 1)) / sutun;
+          final hucreH = (kis.maxHeight - bosluk * (satir - 1)) / satir;
+          // Kare ikon: hücrenin dar kenarına göre, altındaki yazıya yer bırak.
+          final kutu = min(hucreW * 0.86, hucreH * 0.62);
+          return Column(children: [
+            for (int r = 0; r < satir; r++) ...[
+              if (r > 0) const SizedBox(height: bosluk),
+              Expanded(child: Row(children: [
+                for (int s = 0; s < sutun; s++) ...[
+                  if (s > 0) const SizedBox(width: bosluk),
+                  Expanded(child: Builder(builder: (_) {
+                    final i = r * sutun + s;
+                    if (i >= kalemler.length) return const SizedBox.shrink();
+                    final (emoji, ad, sayfa, aktif) = kalemler[i];
+                    return Opacity(
+                      opacity: aktif ? 1.0 : 0.35,
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: aktif ? () { SesServisi.dokun(); setTel(() => _telSayfa = sayfa); } : null,
+                        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                          Container(
+                            width: kutu, height: kutu,
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                colors: [Color(0xFF2b3a4d), Color(0xFF1b2430)],
+                                begin: Alignment.topLeft, end: Alignment.bottomRight),
+                              borderRadius: BorderRadius.circular(kutu * 0.22),
+                              border: Border.all(color: Colors.white24),
+                            ),
+                            child: Text(emoji, style: TextStyle(fontSize: kutu * 0.52)),
+                          ),
+                          SizedBox(height: kutu * 0.10),
+                          FittedBox(fit: BoxFit.scaleDown, child: Text(ad,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(fontSize: kutu * 0.17, height: 1.15,
+                              fontWeight: FontWeight.bold, color: Colors.white70))),
+                        ]),
+                      ),
+                    );
+                  })),
+                ],
+              ])),
+            ],
+          ]);
+        }),
       )),
     ]);
   }
@@ -10050,7 +10125,10 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
         child: GestureDetector(
           onTap: !_state.cagriYapilabilir ? null : () {
             SesServisi.dokun();
-            Navigator.of(ctx, rootNavigator: true).pop(); // telefonun KENDİSİ kapansın
+            // ⚠️ `rootNavigator: true` DEĞİL — telefon root Navigator'da değil.
+            // Yanlış Navigator'dan pop edilince telefon kapanmıyor, `.then()`
+            // çalışmıyor ve `_telIcCtx` ölü kalıyordu (bkz. `_popupCtx`).
+            _telefonuKapat();
             _state.misafirCagir(k);
             SesServisi.kapiyiCal();
             _slideController.forward(from: 0);
@@ -10114,7 +10192,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
         padding: const EdgeInsets.only(bottom: 6),
         child: GestureDetector(
           onTap: () {
-            Navigator.of(ctx, rootNavigator: true).pop(); // telefon kapansın
+            _telefonuKapat(); // ⚠️ telefon root Navigator'da DEĞİL
             final idx = _state.slotlar.indexOf(u);
             if (idx >= 0) _oyunuAcPopup(idx);
           },
@@ -10155,7 +10233,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
               opacity: _state.konumSahibi(m.konum) ? 1.0 : 0.35,
               child: GestureDetector(
                 onTap: _state.konumSahibi(m.konum) ? () {
-                  Navigator.of(ctx, rootNavigator: true).pop(); // telefon kapansın
+                  _telefonuKapat(); // ⚠️ telefon root Navigator'da DEĞİL
                   _gecisBaslat(m.konum);
                 } : null,
                 child: Container(
@@ -10182,7 +10260,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       Padding(
         padding: const EdgeInsets.only(top: 4),
         child: GestureDetector(
-          onTap: () { Navigator.of(ctx, rootNavigator: true).pop(); _state.konumaGec(Konum.dukkan); },
+          onTap: () { _telefonuKapat(); _state.konumaGec(Konum.dukkan); },
           child: Container(
             padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
@@ -10469,7 +10547,10 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     if (!_gecisAktif || gorsel == null) return const SizedBox.shrink();
     return Positioned(
       left: 10,
-      top: MediaQuery.of(context).size.height * 0.30,
+      // ⚠️ %30 iken iMac alındıysa halka ekranın üstüne değiyordu; masa
+      // metriğine göre yukarı alındı: halka masa görselinin %22-30 bandında,
+      // iMac ekranı ise %35ten sonra başlıyor.
+      top: SahneMetrik.hesapla(MediaQuery.of(context).size).y(0.22),
       child: IgnorePointer(
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           SizedBox(
@@ -12698,13 +12779,17 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
               )
             else
               Builder(builder: (_) {
+                // ⚠️ İÇİNDE BULUNULAN dükkan listelenmez: burası "nereye
+                // gideyim?" ekranı, gidilemeyecek bir hedefi göstermenin
+                // anlamı yok — sadece yer kaplıyordu.
                 final dukkanlar = satilikDukkanlar
-                    .where((d) => _state.sahipDukkanlar.contains(d.isim))
+                    .where((d) => _state.sahipDukkanlar.contains(d.isim)
+                        && d.isim != _state.aktifDukkan.isim)
                     .toList();
                 if (dukkanlar.isEmpty) {
                   return const Padding(
                     padding: EdgeInsets.symmetric(vertical: 24),
-                    child: Text('Henüz kendine ait bir dükkanın yok.\n'
+                    child: Text('Gidebileceğin başka bir dükkanın yok.\n'
                         'Market → Dükkan → Satılık Dükkanlar\'a bak.',
                       textAlign: TextAlign.center,
                       style: TextStyle(fontSize: 12, color: Panel.yaziSoluk, height: 1.4)),
