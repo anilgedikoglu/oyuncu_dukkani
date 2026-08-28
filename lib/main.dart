@@ -54,13 +54,19 @@ void main() async {
 // Center kendi "Şu adla giriş yapıldı" bandını gösterir; Android'de Play
 // Games otomatik oturum açar ve biz ana menüde küçük bir band gösteririz.
 //
-// ⚠️ Tablo kimlikleri mağaza konsollarında OLUŞTURULMALI:
+// ⚠️ Tablo kimlikleri mağaza konsollarında OLUŞTURULDU (v122):
 //   - App Store Connect → Game Center → Leaderboard ID: `enzenginoyuncu`
-//   - Play Console → Grow → Play Games Services → Leaderboards → ID'yi
-//     `_androidTabloId`ya yapıştır (CgkI... biçiminde).
+//   - Play Console → Kullanıcı sayısını artırın → Play Oyun Hizmetleri →
+//     Skor tabloları → "En Zengin Oyuncu" → CgkIir3fr50QEAIQAQ
+//     (Cloud projesi `oyuncu-dukkani`, proje no 557640572554 → strings.xml)
+//
+// ⚠️ Android ID EKRANDAN OKUNDU, panoya kopyalanamadı. Google Sans fontunda
+//   küçük `l` ile büyük `I` ayırt edilemiyor; ID'nin `CgkI` ile başladığı
+//   Play Games biçim kuralından biliniyor. Girişte "leaderboard not found"
+//   benzeri bir hata çıkarsa ÖNCE bu satırdaki harfleri konsoldan doğrula.
 class LiderServisi {
   static const String _iosTabloId = 'enzenginoyuncu';
-  static const String _androidTabloId = 'CgkIliderTablosuIdBuraya';
+  static const String _androidTabloId = 'CgkIir3fr50QEAIQAQ';
 
   static bool girisYapildi = false;
   static String? oyuncuAdi;
@@ -3576,7 +3582,8 @@ class Mekan {
 /// otomobil kısa — aracın niteliği geçişe yansısın.
 /// Araç sınıfları — listeleme sırası da bu sırayla: önce bisikletler,
 /// sonra motosikletler, en son otomobiller.
-enum AracTip { bisiklet, motosiklet, otomobil }
+/// Vitrin sırası bu enum'un sırasıdır: en mütevazıdan en görkemliye.
+enum AracTip { mikro, bisiklet, motosiklet, otomobil, hava, ozel }
 
 class Arac {
   final GameItem item;
@@ -3589,44 +3596,83 @@ class Arac {
   const Arac(this.item, this.gecisSaniye, this.tip, this.minGun);
 
   static final List<Arac> tumu = [
-    Arac(GameItem(id: 'arac1', name: 'Kızıl Şimşek', gorsel: 'assets/arac_1.png',
-      category: ItemCategory.arac, basePrice: 9000, kondisyon: 4), 35, AracTip.otomobil, 8),
-    Arac(GameItem(id: 'arac2', name: 'Amiral 500', gorsel: 'assets/arac_2.png',
-      category: ItemCategory.arac, basePrice: 14000, kondisyon: 5), 30, AracTip.otomobil, 12),
-    Arac(GameItem(id: 'arac3', name: 'Sarı Melek', gorsel: 'assets/arac_3.png',
-      category: ItemCategory.arac, basePrice: 6000, kondisyon: 3), 45, AracTip.otomobil, 5),
-    Arac(GameItem(id: 'arac4', name: 'Vınn Motor', gorsel: 'assets/arac_4.png',
-      category: ItemCategory.arac, basePrice: 3000, kondisyon: 4), 120, AracTip.motosiklet, 3),
-    Arac(GameItem(id: 'arac5', name: 'Yol Kartalı', gorsel: 'assets/arac_5.png',
-      category: ItemCategory.arac, basePrice: 11000, kondisyon: 5), 75, AracTip.motosiklet, 10),
-    // ── v120 araçları ──
-    Arac(GameItem(id: 'arac6', name: 'Dağ Keçisi', gorsel: 'assets/arac_6.png',       // elektrikli dağ bisikleti
-      category: ItemCategory.arac, basePrice: 2200, kondisyon: 4), 150, AracTip.bisiklet, 1),
-    Arac(GameItem(id: 'arac7', name: 'Yarış Tayı', gorsel: 'assets/arac_7.png',       // yol bisikleti
-      category: ItemCategory.arac, basePrice: 2600, kondisyon: 4), 130, AracTip.bisiklet, 2),
-    Arac(GameItem(id: 'arac8', name: 'Mavi Furya', gorsel: 'assets/arac_8.png',       // mavi üstü açık spor
-      category: ItemCategory.arac, basePrice: 26000, kondisyon: 5), 22, AracTip.otomobil, 20),
-    Arac(GameItem(id: 'arac9', name: 'Çöl Kaplanı', gorsel: 'assets/arac_9.png',      // bej arazi aracı
-      category: ItemCategory.arac, basePrice: 18000, kondisyon: 5), 32, AracTip.otomobil, 16),
-    Arac(GameItem(id: 'arac10', name: 'Fıstık', gorsel: 'assets/arac_10.png',         // beyaz tavanlı yeşil mini
-      category: ItemCategory.arac, basePrice: 8000, kondisyon: 4), 40, AracTip.otomobil, 7),
-    Arac(GameItem(id: 'arac11', name: 'Vahşi At', gorsel: 'assets/arac_11.png',       // kırmızı kas arabası
-      category: ItemCategory.arac, basePrice: 21000, kondisyon: 5), 25, AracTip.otomobil, 18),
-    // ── v121 araçları ──
-    Arac(GameItem(id: 'arac12', name: 'Gök Mavisi', gorsel: 'assets/arac_12.png',     // mavi spor sedan
-      category: ItemCategory.arac, basePrice: 32000, kondisyon: 5), 20, AracTip.otomobil, 25),
-    Arac(GameItem(id: 'arac13', name: 'Sarı Öküz', gorsel: 'assets/arac_13.png',      // sarı pikap
-      category: ItemCategory.arac, basePrice: 16000, kondisyon: 4), 34, AracTip.otomobil, 14),
-    Arac(GameItem(id: 'arac14', name: 'Beyaz Devsin', gorsel: 'assets/arac_14.png',   // beyaz SUV
-      category: ItemCategory.arac, basePrice: 29000, kondisyon: 5), 24, AracTip.otomobil, 22),
-    Arac(GameItem(id: 'arac15', name: 'Dört Teker', gorsel: 'assets/arac_15.png',     // ATV
-      category: ItemCategory.arac, basePrice: 7000, kondisyon: 4), 65, AracTip.motosiklet, 6),
-    Arac(GameItem(id: 'arac16', name: 'Bembeyaz', gorsel: 'assets/arac_16.png',       // beyaz coupe
-      category: ItemCategory.arac, basePrice: 38000, kondisyon: 5), 18, AracTip.otomobil, 28),
-    Arac(GameItem(id: 'arac17', name: 'Şahin Baba', gorsel: 'assets/arac_17.png',     // bordo klasik hatchback
-      category: ItemCategory.arac, basePrice: 4500, kondisyon: 3), 55, AracTip.otomobil, 4),
-  ];
+    // ⚠️ HIZ–FİYAT–GÜN ÜÇLÜSÜ BİRLİKTE ARTAR. Kural: araç ne kadar hızlıysa
+    // o kadar pahalı ve o kadar geç açılır. Yeni araç eklerken bu sıralamayı
+    // koru — `test/arac_ev_test.dart` "ucuz araç pahalıdan önce açılmalı"
+    // kuralını doğruluyor. En ucuz araç 1. GÜNDE açık olmalı: mekâna gitmek
+    // araç istiyor, hiçbiri açık değilse konum sistemi kilitlenir.
+    //
+    // 🛸 Işınlama makinesi bilerek uçta: 3 saniye, 400.000 lira, 60. gün.
+    // Oyunun "son hedefi" o — kolay ulaşılırsa yolculuk mekaniği anlamsızlaşır.
 
+    // ── 🛴 MİKRO (en yavaş, en ucuz) ──
+    Arac(GameItem(id: 'arac22', name: 'Vınzz Scooter', gorsel: 'assets/arac_22.png',
+      category: ItemCategory.arac, basePrice: 1200, kondisyon: 3), 240, AracTip.mikro, 1),
+    Arac(GameItem(id: 'arac21', name: 'Kaykay Roket', gorsel: 'assets/arac_21.png',
+      category: ItemCategory.arac, basePrice: 1600, kondisyon: 3), 200, AracTip.mikro, 2),
+
+    // ── 🚲 BİSİKLET ──
+    Arac(GameItem(id: 'arac6', name: 'Dağ Keçisi', gorsel: 'assets/arac_6.png',
+      category: ItemCategory.arac, basePrice: 2200, kondisyon: 4), 150, AracTip.bisiklet, 3),
+    Arac(GameItem(id: 'arac7', name: 'Yarış Tayı', gorsel: 'assets/arac_7.png',
+      category: ItemCategory.arac, basePrice: 2800, kondisyon: 4), 130, AracTip.bisiklet, 4),
+
+    // ── 🏍️ MOTOSİKLET ──
+    Arac(GameItem(id: 'arac4', name: 'Vınn Motor', gorsel: 'assets/arac_4.png',
+      category: ItemCategory.arac, basePrice: 3500, kondisyon: 4), 120, AracTip.motosiklet, 5),
+    Arac(GameItem(id: 'arac18', name: 'Üç Ayak', gorsel: 'assets/arac_18.png',        // bordo trike
+      category: ItemCategory.arac, basePrice: 5500, kondisyon: 4), 90, AracTip.motosiklet, 7),
+    Arac(GameItem(id: 'arac5', name: 'Yol Kartalı', gorsel: 'assets/arac_5.png',
+      category: ItemCategory.arac, basePrice: 7000, kondisyon: 5), 75, AracTip.motosiklet, 9),
+    Arac(GameItem(id: 'arac15', name: 'Dört Teker', gorsel: 'assets/arac_15.png',     // ATV
+      category: ItemCategory.arac, basePrice: 8500, kondisyon: 4), 65, AracTip.motosiklet, 11),
+    Arac(GameItem(id: 'arac19', name: 'Mavi Yıldırım', gorsel: 'assets/arac_19.png',  // spor motosiklet
+      category: ItemCategory.arac, basePrice: 12000, kondisyon: 5), 45, AracTip.motosiklet, 14),
+
+    // ── 🚗 OTOMOBİL ──
+    Arac(GameItem(id: 'arac17', name: 'Şahin Baba', gorsel: 'assets/arac_17.png',     // bordo klasik
+      category: ItemCategory.arac, basePrice: 6000, kondisyon: 3), 60, AracTip.otomobil, 8),
+    Arac(GameItem(id: 'arac26', name: 'Minik Kutu', gorsel: 'assets/arac_26.png',     // mikro elektrikli
+      category: ItemCategory.arac, basePrice: 7500, kondisyon: 4), 55, AracTip.otomobil, 10),
+    Arac(GameItem(id: 'arac3', name: 'Sarı Melek', gorsel: 'assets/arac_3.png',
+      category: ItemCategory.arac, basePrice: 9000, kondisyon: 3), 50, AracTip.otomobil, 12),
+    Arac(GameItem(id: 'arac23', name: 'Mavi Yavru', gorsel: 'assets/arac_23.png',     // mavi hatchback
+      category: ItemCategory.arac, basePrice: 11000, kondisyon: 4), 46, AracTip.otomobil, 13),
+    Arac(GameItem(id: 'arac10', name: 'Fıstık', gorsel: 'assets/arac_10.png',
+      category: ItemCategory.arac, basePrice: 13000, kondisyon: 4), 42, AracTip.otomobil, 15),
+    Arac(GameItem(id: 'arac25', name: 'Kalabalık', gorsel: 'assets/arac_25.png',      // minibüs
+      category: ItemCategory.arac, basePrice: 15000, kondisyon: 4), 40, AracTip.otomobil, 16),
+    Arac(GameItem(id: 'arac13', name: 'Sarı Öküz', gorsel: 'assets/arac_13.png',      // pikap
+      category: ItemCategory.arac, basePrice: 17000, kondisyon: 4), 38, AracTip.otomobil, 17),
+    Arac(GameItem(id: 'arac1', name: 'Kızıl Şimşek', gorsel: 'assets/arac_1.png',
+      category: ItemCategory.arac, basePrice: 19000, kondisyon: 4), 35, AracTip.otomobil, 18),
+    Arac(GameItem(id: 'arac9', name: 'Çöl Kaplanı', gorsel: 'assets/arac_9.png',
+      category: ItemCategory.arac, basePrice: 22000, kondisyon: 5), 32, AracTip.otomobil, 20),
+    Arac(GameItem(id: 'arac2', name: 'Amiral 500', gorsel: 'assets/arac_2.png',
+      category: ItemCategory.arac, basePrice: 25000, kondisyon: 5), 30, AracTip.otomobil, 21),
+    Arac(GameItem(id: 'arac24', name: 'Altın Pençe', gorsel: 'assets/arac_24.png',    // luks SUV
+      category: ItemCategory.arac, basePrice: 30000, kondisyon: 5), 28, AracTip.otomobil, 23),
+    Arac(GameItem(id: 'arac14', name: 'Beyaz Devsin', gorsel: 'assets/arac_14.png',
+      category: ItemCategory.arac, basePrice: 34000, kondisyon: 5), 26, AracTip.otomobil, 25),
+    Arac(GameItem(id: 'arac11', name: 'Vahşi At', gorsel: 'assets/arac_11.png',
+      category: ItemCategory.arac, basePrice: 38000, kondisyon: 5), 24, AracTip.otomobil, 27),
+    Arac(GameItem(id: 'arac8', name: 'Mavi Furya', gorsel: 'assets/arac_8.png',
+      category: ItemCategory.arac, basePrice: 44000, kondisyon: 5), 22, AracTip.otomobil, 29),
+    Arac(GameItem(id: 'arac12', name: 'Gök Mavisi', gorsel: 'assets/arac_12.png',
+      category: ItemCategory.arac, basePrice: 50000, kondisyon: 5), 20, AracTip.otomobil, 31),
+    Arac(GameItem(id: 'arac16', name: 'Bembeyaz', gorsel: 'assets/arac_16.png',
+      category: ItemCategory.arac, basePrice: 58000, kondisyon: 5), 18, AracTip.otomobil, 33),
+
+    // ── 🚁 HAVA ──
+    Arac(GameItem(id: 'arac20', name: 'Kızıl Pervane', gorsel: 'assets/arac_20.png',  // helikopter
+      category: ItemCategory.arac, basePrice: 90000, kondisyon: 5), 15, AracTip.hava, 38),
+    Arac(GameItem(id: 'arac28', name: 'Bulut Jeti', gorsel: 'assets/arac_28.png',     // ozel jet
+      category: ItemCategory.arac, basePrice: 150000, kondisyon: 5), 10, AracTip.hava, 45),
+
+    // ── 🛸 ÖZEL — oyunun son hedefi ──
+    Arac(GameItem(id: 'arac27', name: 'Işınlama Makinesi', gorsel: 'assets/arac_27.png',
+      category: ItemCategory.arac, basePrice: 400000, kondisyon: 5), 3, AracTip.ozel, 60),
+  ];
   /// Vitrin sırası: bisiklet → motosiklet → otomobil, her grupta fiyat artan.
   /// Market, galerici tezgâhı ve Sahip Olunanlar hep bu sırayı kullanır.
   static List<Arac> get sirali {
@@ -4249,15 +4295,10 @@ class GameState extends ChangeNotifier {
   bool get aracVar => sahipAracIdleri.isNotEmpty;
   bool aracSahibi(String id) => sahipAracIdleri.contains(id);
 
-  /// Market'ten araç satın alma (galerici pazarlığına alternatif, liste fiyatına).
-  bool aracSatinAl(Arac a) {
-    if (aracSahibi(a.item.id) || para < a.item.basePrice) return false;
-    para -= a.item.basePrice;
-    sahipAracIdleri.add(a.item.id);
-    SesServisi.paraGirdi();
-    notifyListeners();
-    return true;
-  }
+  // ⚠️ Araç satın almanın TEK yolu Galerici Gürbüz'le pazarlık. Market'teki
+  // araç kartı da doğrudan almaz, Gürbüz'ü kapıya çağırır
+  // (`_galericiyiCagir` → `galericiAracSec`). Buraya "liste fiyatına al"
+  // kısayolu eklersen pazarlık oynanışını baypas etmiş olursun.
 
   /// Sahip olunan mekânlar (Market'ten alınanlar; `Konum.name` ile) ve
   /// içlerine konan eşyalar. Eşya id'leri mekânlar arasında benzersiz
@@ -4276,7 +4317,7 @@ class GameState extends ChangeNotifier {
   ///
   /// ⚠️ Ekranda karakter zaten duruyor; `_slideController` 1.0'da olduğu için
   /// yeniden içeri girmez, sadece widget'ı değişir (özel → normal müşteri).
-  void galericiAracSec(GameItem arac) {
+  void galericiAracSec(GameItem arac, {bool sessizBaslat = false}) {
     final ozellik = MusteriOzellik.random();
     final fiyat = arac.etkinFiyat;
     final pv = ozellik.perceivedValue(arac.kondisyon, fiyat);
@@ -4303,7 +4344,12 @@ class GameState extends ChangeNotifier {
       yas: YasGrubu.yetiskin,
       cinsiyet: 'E',
     );
-    mesaj = 'Bu araca $ilkTeklif lira. Hesaplı iş abi, kaçırma!';
+    // ⚠️ `sessizBaslat`: vitrinden seçimde Gürbüz HEMEN fiyat söylemez —
+    // önce oyuncu teklif ekranını görür, ilk teklifi o verir. Balona fiyat
+    // yazmak, oyuncu daha ekranı görmeden pazarlık başlamış hissi veriyordu.
+    mesaj = sessizBaslat
+        ? 'Buyur abi, beğendin demek. Ne verirsin buna?'
+        : 'Bu araca $ilkTeklif lira. Hesaplı iş abi, kaçırma!';
     notifyListeners();
   }
 
@@ -4378,10 +4424,50 @@ class GameState extends ChangeNotifier {
         'Ciddi alıcıyım, fiyatta anlaşalım mı?';
   }
 
-  /// Satış modu iptali (müşteri reddedildi/gitti) — bayraklar temizlenir.
+  /// 🏪 Satılık dükkan ALIMI: Emlakçı Necmi SATICI olarak gelir, dükkan
+  /// üzerinden normal pazarlık döner. Anlaşılırsa dükkan sahipliğe geçer
+  /// (`_anlasmayiTamamla`nın alım dalı `alinacakDukkan`a bakar).
+  DukkanSeviye? alinacakDukkan;
+
+  void dukkanAlimiBaslat(DukkanSeviye d) {
+    alinacakDukkan = d;
+    final deger = d.satinAlmaFiyati!;
+    final ozellik = MusteriOzellik.random();
+    final urun = GameItem(id: 'dukkan_${d.isim}', name: d.isim,
+        gorsel: d.arkaplan, category: ItemCategory.aksesuar,
+        basePrice: deger, kondisyon: 5);
+    final pv = ozellik.perceivedValue(5, deger);
+    final reserv = _piyasaEtkisi(ozellik.reservationPrice(pv, deger, true), true);
+    final ilkTeklif = ozellik.openingOffer(reserv, deger, true).round();
+
+    aktifOzelMusteri = null;
+    ozelMusteriGorunuyor = false;
+    aktifMusteri = Customer(
+      name: 'Emlakçı Necmi', gorsel: 'assets/emlakci.png',
+      musteriSatiyor: true, item: urun, ilkTeklif: ilkTeklif,
+      ozellik: ozellik, yas: YasGrubu.yetiskin, cinsiyet: 'E');
+    musteriGorunuyor = true;
+    musteriKabulBekliyor = false;
+    aktifPazarlik = PazarlikSeans(
+      musteriSatiyor: true,
+      piyasaFiyati: deger,
+      musteriTeklif: ilkTeklif,
+      oyuncuTeklif: (deger * 0.75).round(),
+      maxTur: ozellik.maxTur,
+      ozellik: ozellik,
+      reservationPrice: reserv,
+      yas: YasGrubu.yetiskin,
+      cinsiyet: 'E',
+    );
+    mesaj = '${d.isim} için $ilkTeklif istiyorum. Yeri sağlam, kirası yok!';
+    notifyListeners();
+  }
+
+  /// Satış/alım modu iptali (müşteri reddedildi/gitti) — bayraklar temizlenir.
   void ozelSatisiTemizle() {
     satistakiAracId = null;
     satistakiKonum = null;
+    alinacakDukkan = null;
   }
   int toplamTeklifSayisi = 0;
   int krediKalanTaksit = 0;
@@ -4803,8 +4889,17 @@ class GameState extends ChangeNotifier {
   String get aktifArkaplan =>
       (guvenlikVar && !_guvenlikOnde) ? aktifDukkan.arkaplanGuv : aktifDukkan.arkaplan;
 
-  /// Güvenlik şu an müşteri gibi öne gelmiş mi (istifa sorusu).
+  /// Güvenlik şu an müşteri gibi öne gelmiş mi (istifa sorusu ya da yeni
+  /// işe alınıp kapıdaki yerine süzülüyor). Bu bayrak açıkken arka plan
+  /// güvenliksiz sürümde kalır — yoksa ekranda iki güvenlik olur.
   bool _guvenlikOnde = false;
+
+  /// İşe alma anında UI'nin bayrağı açması için (öne çağırma değil, ama
+  /// aynı "arka plandaki kopya görünmesin" ihtiyacı).
+  void guvenligiOneAl() {
+    _guvenlikOnde = true;
+    notifyListeners();
+  }
 
   // ── SAHİP OLUNAN DÜKKANLAR ────────────────────────────────────────────────
   /// Satın alınmış satılık dükkanların isimleri. Bunlarda günlük kira yok.
@@ -4891,6 +4986,18 @@ class GameState extends ChangeNotifier {
     GameItem(id: 'cd51',     name: 'ŞOFEER',             gorsel: 'assets/CD_51.png',               category: ItemCategory.cd,      basePrice: 130,  kondisyon: 4),
     GameItem(id: 'cd52',     name: 'TARKAN',             gorsel: 'assets/CD_52.png',               category: ItemCategory.cd,      basePrice: 190,  kondisyon: 5),
     GameItem(id: 'cd53',     name: 'TÖVBEKAR',           gorsel: 'assets/CD_53.png',               category: ItemCategory.cd,      basePrice: 110,  kondisyon: 3),
+    // v122 — 9 yeni CD. Fiyatlar 90-175, ortalama ~131: mevcut CD ortalamasına
+    // (~134) yakın tutuldu ki "oynanabilir = normal CD ortalamasının 2 katı"
+    // dengesi ve onu koruyan kirgec_test.dart bozulmasın.
+    GameItem(id: 'cd54',     name: 'ABAN',               gorsel: 'assets/CD_54.png',               category: ItemCategory.cd,      basePrice: 145,  kondisyon: 3),
+    GameItem(id: 'cd55',     name: 'AYYÜK',              gorsel: 'assets/CD_55.png',               category: ItemCategory.cd,      basePrice: 105,  kondisyon: 3),
+    GameItem(id: 'cd56',     name: 'CİNCİH',             gorsel: 'assets/CD_56.png',               category: ItemCategory.cd,      basePrice: 120,  kondisyon: 3),
+    GameItem(id: 'cd57',     name: 'FURDİMONİ',          gorsel: 'assets/CD_57.png',               category: ItemCategory.cd,      basePrice: 95,   kondisyon: 3),
+    GameItem(id: 'cd58',     name: 'KAYKIL CAKSIN',      gorsel: 'assets/CD_58.png',               category: ItemCategory.cd,      basePrice: 165,  kondisyon: 3),
+    GameItem(id: 'cd59',     name: 'BEYAZ DÜŞ',          gorsel: 'assets/CD_59.png',               category: ItemCategory.cd,      basePrice: 130,  kondisyon: 3),
+    GameItem(id: 'cd60',     name: 'ZEKİCE',             gorsel: 'assets/CD_60.png',               category: ItemCategory.cd,      basePrice: 150,  kondisyon: 3),
+    GameItem(id: 'cd61',     name: 'AYRAN MEN',          gorsel: 'assets/CD_61.png',               category: ItemCategory.cd,      basePrice: 175,  kondisyon: 3),
+    GameItem(id: 'cd62',     name: 'MİNCİR',             gorsel: 'assets/CD_62.png',               category: ItemCategory.cd,      basePrice: 90,   kondisyon: 3),
     GameItem(id: 'konsol1',  name: 'PlayStatyon',          gorsel: 'assets/konsol_1.png',          category: ItemCategory.konsol,  basePrice: 900,  kondisyon: 4),
     GameItem(id: 'konsol2',  name: 'Ninetendo',            gorsel: 'assets/konsol_2.png',          category: ItemCategory.konsol,  basePrice: 750,  kondisyon: 3),
     GameItem(id: 'konsol3',  name: 'Ateri',                gorsel: 'assets/konsol_3.png',          category: ItemCategory.konsol,  basePrice: 500,  kondisyon: 2),
@@ -5302,6 +5409,16 @@ class GameState extends ChangeNotifier {
     {'gorsel': 'assets/musteri_55.png', 'cinsiyet': 'K', 'yas': 'yetiskin', 'ad': 'Ayselina Coli'},   // sabit ad
     {'gorsel': 'assets/musteri_56.png', 'cinsiyet': 'E', 'yas': 'yasli', 'ad': 'Kumaralı Babil'},     // sabit ad, bordo ceket
     {'gorsel': 'assets/musteri_57.png', 'cinsiyet': 'E', 'yas': 'yetiskin', 'ad': 'Tayfur Kombat'},   // sabit ad, hawaii
+    // v122 — 8 yeni karakter (500x500, doluluk 0.926-0.962 → mevcut kadroyla
+    // uyumlu geldiler, YENİDEN ÖLÇEKLENMEDİ).
+    {'gorsel': 'assets/musteri_58.png', 'cinsiyet': 'E', 'yas': 'yetiskin'},   // dedektif, trençkot + büyüteç
+    {'gorsel': 'assets/musteri_59.png', 'cinsiyet': 'E', 'yas': 'genc'},       // yakışıklı esmer, beyaz gömlek
+    {'gorsel': 'assets/musteri_60.png', 'cinsiyet': 'E', 'yas': 'yetiskin'},   // inşaat işçisi, turuncu yelek
+    {'gorsel': 'assets/musteri_61.png', 'cinsiyet': 'E', 'yas': 'genc'},       // gözlüklü öğrenci, kitap yığını
+    {'gorsel': 'assets/musteri_62.png', 'cinsiyet': 'K', 'yas': 'genc'},       // lila elbiseli, taçlı
+    {'gorsel': 'assets/musteri_63.png', 'cinsiyet': 'E', 'yas': 'yasli'},      // balıkçı, atlet + halat
+    {'gorsel': 'assets/musteri_64.png', 'cinsiyet': 'K', 'yas': 'yetiskin'},   // karikatürist, renkli kazak
+    {'gorsel': 'assets/musteri_65.png', 'cinsiyet': 'K', 'yas': 'yetiskin'},   // sahne divası, pembe kürk
   ];
   List<int> _musteriSira = [];
 
@@ -5972,6 +6089,10 @@ class GameState extends ChangeNotifier {
           // 🚗 Araç da slota girmez — sahiplik listesine yazılır (galerici
           // pazarlığı). Envanterde araç olmayınca müşteri de isteyemiyor.
           if (!sahipAracIdleri.contains(m.item.id)) sahipAracIdleri.add(m.item.id);
+        } else if (alinacakDukkan != null) {
+          // 🏪 Emlakçıdan dükkan alımı — slota değil, dükkan sahipliğine.
+          sahipDukkanlar.add(alinacakDukkan!.isim);
+          alinacakDukkan = null;
         } else {
           final itemMaliyet = m.item.kopyaWith(maliyet: anlasilanFiyat);
           if (!urunEkle(itemMaliyet)) {
@@ -6199,6 +6320,9 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   ///
   /// 0 = kapıdaki yerinde (görünmez), 1 = tezgâhta (tam görünür).
   late AnimationController _guvenlikBelirmeController;
+  /// İşe alınan güvenlik kapıdaki yerine süzülürken true — çıkış animasyonu
+  /// sağa kayma değil, yukarı süzülme olsun diye.
+  bool _guvenlikIseAlindi = false;
   /// Geçiş halkasının sürekli dönüşü (saat yönünün TERSİNE — ters yönde
   /// dönen bir halka "işlem sürüyor" hissini daha net veriyor).
   late AnimationController _gecisController;
@@ -6308,6 +6432,8 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   String? _toastMetin;
   String _toastAltYazi = '';
   String _toastEmoji = '🔥';
+  /// Emoji yerine görsel gösterilecekse dolu olur (ör. yolculuk aracı).
+  String? _toastGorsel;
   Color _toastRenk = const Color(0xFFFFD700);
   int _toastId = 0; // her yeni toast'ta animasyon baştan başlasın
   Timer? _toastTimer;
@@ -6605,11 +6731,12 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   VoidCallback? _toastSonrasiIs;
 
   void _toastGoster(String metin, {required String altYazi, required String emoji,
-      required Color renk, int ms = 4200}) {
+      required Color renk, int ms = 4200, String? gorsel}) {
     _toastTimer?.cancel();
     setState(() {
       _toastId++;
       _toastMetin = metin; _toastAltYazi = altYazi; _toastEmoji = emoji; _toastRenk = renk;
+      _toastGorsel = gorsel;
     });
     _toastTimer = Timer(Duration(milliseconds: ms), () {
       if (!mounted) return;
@@ -6765,7 +6892,11 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(_toastEmoji, style: const TextStyle(fontSize: 30)),
+                  if (_toastGorsel != null)
+                    SizedBox(width: 54, height: 38,
+                      child: Image.asset(_toastGorsel!, fit: BoxFit.contain))
+                  else
+                    Text(_toastEmoji, style: const TextStyle(fontSize: 30)),
                   const SizedBox(width: 12),
                   Column(
                     mainAxisSize: MainAxisSize.min,
@@ -7341,6 +7472,41 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   }
 
   /// 🚗 Market'ten araç satın alma onayı (liste fiyatına, pazarlıksız).
+  /// 🚗 Market'ten seçilen araç için Gürbüz'ü kapıya çağırır ve o araç
+  /// üzerinden pazarlığı başlatır. Açık olan browser/telefon kapatılır —
+  /// sahne görünmezse pazarlık ekranı da görünmez.
+  /// 🏪 Satılık dükkan için Emlakçı Necmi'yi kapıya çağırır ve pazarlığı
+  /// başlatır. Açık browser/telefon kapanır — sahne görünmezse pazarlık da
+  /// görünmez.
+  void _emlakciyiCagir(DukkanSeviye d) {
+    final nav = Navigator.of(context, rootNavigator: true);
+    if (nav.canPop()) nav.pop();
+    _state.dukkanAlimiBaslat(d);
+    setState(() => _pazarlikBekleniyor = true);
+    SesServisi.kapiyiCal();
+    _slideController.forward(from: 0);
+  }
+
+  /// 🚗 Araç seçildi — pazarlık İLK TEKLİFİ OYUNCU verecek şekilde başlar.
+  /// ⚠️ Önceden araç seçilir seçilmez Gürbüz balondan fiyat söylüyordu;
+  /// oyuncu daha teklif ekranını görmeden pazarlık başlamış oluyordu.
+  /// Şimdi: seçim → teklif ekranı → oyuncunun ilk teklifi → Gürbüz'ün cevabı.
+  void _aracTeklifEkrani(Arac a) {
+    _state.galericiAracSec(a.item, sessizBaslat: true);
+    setState(() => _pazarlikBekleniyor = true);
+    _pazarlikGoster();
+  }
+
+  void _galericiyiCagir(Arac a) {
+    // Telefon ya da browser açıksa kapat (ikisi de root Navigator'da).
+    final nav = Navigator.of(context, rootNavigator: true);
+    if (nav.canPop()) nav.pop();
+    _state.galericiAracSec(a.item);
+    setState(() => _pazarlikBekleniyor = true);
+    SesServisi.kapiyiCal();
+    _slideController.forward(from: 0);
+  }
+
   void _aracSatinAlPopup(Arac a) {
     showDialog(
       useRootNavigator: false,
@@ -7356,24 +7522,24 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
         content: Column(mainAxisSize: MainAxisSize.min, children: [
           Image.asset(a.item.gorsel, height: 120, fit: BoxFit.contain),
           const SizedBox(height: 10),
-          Text('${a.item.basePrice} lira · Geçiş süresi ${a.gecisSaniye} sn\n'
-               'Pazarlık istersen Galerici Gürbüz uğradığında dene.',
+          Text('Piyasa değeri ${a.item.basePrice} lira · '
+               'Geçiş süresi ${a.gecisSaniye} sn\n'
+               'Galerici Gürbüz\'ü çağıralım, fiyatı onunla konuşursun.',
             textAlign: TextAlign.center,
             style: const TextStyle(color: Panel.yazi, fontSize: 13, height: 1.3)),
         ]),
         actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
         actions: [
           dialogButonlari(
-            anaEtiket: 'Satın Al',
+            anaEtiket: 'Gürbüz\'ü Çağır',
             anaRenk: const Color(0xFF4f8bd6),
             anaYazi: Colors.white,
-            anaOnTap: _state.para < a.item.basePrice ? null : () {
+            // ⚠️ Market'ten araç ARTIK PAZARLIKSIZ ALINMIYOR. Popup ve
+            // browser/telefon kapanır, Gürbüz kapıya gelir ve bu araç
+            // üzerinden normal pazarlık başlar — tek satın alma yolu bu.
+            anaOnTap: () {
               Navigator.pop(ctx);
-              if (_state.aracSatinAl(a)) {
-                _toastGoster('${a.item.name} ARTIK SENİN!',
-                  altYazi: 'Sahip Olunanlar\'dan bakabilirsin',
-                  emoji: '🚗', renk: const Color(0xFF4FC3F7), ms: 3000);
-              }
+              _galericiyiCagir(a);
             },
             ikincilEtiket: 'Kapat',
             ikincilOnTap: () => Navigator.pop(ctx),
@@ -8689,8 +8855,50 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
         textAlign: TextAlign.center,
         style: const TextStyle(fontSize: 11, color: Colors.white38)),
       const SizedBox(height: 12),
-      ...List.generate(satilikDukkanlar.length, (i) {
-        final d = satilikDukkanlar[i];
+      // ── İKİ GRUP: önce satılıktakiler, altta senin olanlar ──
+      // Tek listede hangisinin alındığı ayırt edilemiyordu; satın alınan
+      // dükkan artık alttaki gruba iniyor ve sağında ✓ rozeti oluyor.
+      ..._dukkanGrubu(ctx, setDlg,
+          baslik: 'SATILIKLAR',
+          renk: const Color(0xFFFFD700),
+          liste: satilikDukkanlar.where((d) => !_state.dukkanSahibiMi(d)).toList(),
+          bosMesaj: 'Satılık dükkan kalmadı — hepsi senin! 🎉'),
+      ..._dukkanGrubu(ctx, setDlg,
+          baslik: 'SATIN ALINMIŞLAR',
+          renk: const Color(0xFF3fb950),
+          liste: satilikDukkanlar.where((d) => _state.dukkanSahibiMi(d)).toList(),
+          bosMesaj: 'Henüz kendine ait bir dükkanın yok.'),
+    ]);
+  }
+
+  /// Satılık dükkan sayfasındaki tek grup (başlık + kartlar).
+  List<Widget> _dukkanGrubu(BuildContext ctx, void Function(VoidCallback) setDlg, {
+    required String baslik,
+    required Color renk,
+    required List<DukkanSeviye> liste,
+    required String bosMesaj,
+  }) {
+    return [
+      Padding(
+        padding: const EdgeInsets.only(top: 4, bottom: 8),
+        child: Row(children: [
+          Expanded(child: Container(height: 1, color: renk.withValues(alpha: 0.25))),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            child: Text(baslik, style: TextStyle(fontSize: 11,
+              fontWeight: FontWeight.bold, color: renk, letterSpacing: 1.5)),
+          ),
+          Expanded(child: Container(height: 1, color: renk.withValues(alpha: 0.25))),
+        ]),
+      ),
+      if (liste.isEmpty)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: Text(bosMesaj, textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 11, color: Panel.yaziSoluk)),
+        ),
+      ...List.generate(liste.length, (i) {
+        final d = liste[i];
         final sahip = _state.dukkanSahibiMi(d);
         final oturuyor = _state.aktifDukkan.isim == d.isim;
         final kirada = _state.kirayaVerilenDukkanlar.contains(d.isim);
@@ -8751,15 +8959,19 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                       ),
                     ],
                   ])),
-                  if (oturuyor) const Icon(Icons.check_circle, color: Color(0xFF3fb950), size: 20)
-                  else if (!kilitli) Icon(Icons.chevron_right, color: renk.withValues(alpha: 0.6), size: 20),
+                  // Sahip olunan dukkanda TIK; oturulan yesil dolu tik.
+                  if (sahip)
+                    Icon(oturuyor ? Icons.check_circle : Icons.check_circle_outline,
+                      color: const Color(0xFF3fb950), size: 22)
+                  else if (!kilitli)
+                    Icon(Icons.chevron_right, color: renk.withValues(alpha: 0.6), size: 20),
                 ]),
               ),
             ),
           ),
         );
       }),
-    ]);
+    ];
   }
 
   /// Satın alma onayı.
@@ -8783,31 +8995,28 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
             style: const TextStyle(color: Color(0xFF3fb950), fontSize: 18, fontWeight: FontWeight.bold)),
         ]),
         content: Text(
-          '${d.satinAlmaFiyati} liraya satın alınacak.\n\n'
+          'Piyasa değeri ${d.satinAlmaFiyati} lira.\n\n'
           'Satın alınan dükkanda günlük kira ÖDEMEZSİN. '
-          'İstersen buraya taşınır, istersen kiraya verip gelir elde edersin.',
+          'İstersen buraya taşınır, istersen kiraya verip gelir elde edersin.\n\n'
+          'Emlakçı Necmi\'yi çağıralım, fiyatı onunla konuşursun.',
           textAlign: TextAlign.center,
           style: const TextStyle(color: Colors.white70, fontSize: 13, height: 1.4),
         ),
         actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
         actions: [Row(children: [
           Expanded(child: ElevatedButton(
+            // ⚠️ Dükkan ARTIK PAZARLIKSIZ ALINMIYOR. Emlakçı Necmi kapıya
+            // gelir, dükkan üzerinden normal pazarlık döner
+            // (`GameState.dukkanAlimiBaslat`).
             onPressed: () {
-              final hata = _state.dukkanSatinAl(d);
               Navigator.pop(c2);
-              if (hata != null) {
-                SesServisi.hata();
-                _dialogBildirim(ctx, hata, hata: true);
-              } else {
-                _dialogBildirim(ctx, '🔑 ${d.isim} senin oldu!');
-                setDlg(() {});
-              }
+              _emlakciyiCagir(d);
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF3fb950), foregroundColor: Colors.black,
               minimumSize: const Size(0, 44),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
-            child: const Text('Satın Al', style: TextStyle(fontWeight: FontWeight.bold)),
+            child: const Text('Necmi\'yi Çağır', style: TextStyle(fontWeight: FontWeight.bold)),
           )),
           const SizedBox(width: 10),
           Expanded(child: ElevatedButton(
@@ -8906,13 +9115,15 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       const Text('🏠 DükkanKirala.com', textAlign: TextAlign.center,
         style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Color(0xFFFFD700), letterSpacing: 1)),
       const SizedBox(height: 3),
-      Text('Güncel dükkanın: ${_state.aktifDukkan.isim}',
-        textAlign: TextAlign.center,
-        style: const TextStyle(fontSize: 11, color: Colors.white38)),
-      const SizedBox(height: 2),
+      // Üstte ipucu (gri), altında hangi dükkanda olduğun (sarı vurgu) —
+      // vurgu, oyuncunun o an baktığı bilgide olmalı.
       const Text('Büyük dükkan = Büyük envanter',
         textAlign: TextAlign.center,
-        style: TextStyle(fontSize: 11, color: Color(0xFFFFD700), fontWeight: FontWeight.bold)),
+        style: TextStyle(fontSize: 11, color: Colors.white38)),
+      const SizedBox(height: 2),
+      Text('Güncel dükkanın: ${_state.aktifDukkan.isim}',
+        textAlign: TextAlign.center,
+        style: const TextStyle(fontSize: 11, color: Color(0xFFFFD700), fontWeight: FontWeight.bold)),
       const SizedBox(height: 12),
       ListView.separated(
         shrinkWrap: true,
@@ -9202,8 +9413,15 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                     animation: _guvenlikBelirmeController,
                     builder: (context, child) {
                       final om = _state.aktifOzelMusteri;
-                      final guvenlikOnde =
-                          om != null && om.tip == OzelMusteriTip.guvenlik && om.istifaSorusu;
+                      // ⚠️ İki durumda da bu dönüşüm geçerli:
+                      //  1. istifaSorusu — oyuncu dükkandaki güvenliğe dokundu
+                      //  2. _guvenlikIseAlindi — teklif kabul edildi, güvenlik
+                      //     GİTMİYOR, kapıdaki yerine süzülüyor.
+                      // Sağdan kaydırmak "gitti" hissi verir ve o sırada arka
+                      // plan güvenlikli olduğu için ekranda İKİ güvenlik olur.
+                      final guvenlikOnde = om != null &&
+                          om.tip == OzelMusteriTip.guvenlik &&
+                          (om.istifaSorusu || _guvenlikIseAlindi);
                       if (!guvenlikOnde) return child!;
                       // easeOut: hızlı belirip yumuşak oturur (iniş hissi)
                       final t = Curves.easeOutCubic
@@ -9264,26 +9482,18 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                   ),
                 ),
               ),
-              // 🚗 Kestirme: Konum Değiştir aktifse browser butonunun sağında
-              // şeffaf zeminli bir araç butonu — menüye girmeden yolculuk.
-              // Menü butonuyla AYNI genişlikte ve onun tam sağında (16 + 92
-              // buton + 10 boşluk) — eskiden left:96'da üst üste biniyorlardı.
+              // 🚗 Kestirme: menüye girmeden yolculuk. Çerçevesiz/zeminsiz —
+              // masanın üstünde duran minyatür bir araç gibi görünüyor;
+              // görsel de o an SEÇİLİ olan araç (`_secilenAracId`).
               if (_state.gun >= 2 && _state.aracVar && !_gecisAktif)
                 Positioned(
                   left: 118,
-                  bottom: 300,
+                  bottom: 296,
                   child: GestureDetector(
                     onTap: () { SesServisi.dokun(); _konumSecPopup(); },
-                    child: Container(
-                      width: 92,
-                      alignment: Alignment.center,
-                      padding: const EdgeInsets.symmetric(vertical: 6),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.35),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: const Color(0xFF4FC3F7).withValues(alpha: 0.5)),
-                      ),
-                      child: const Text('🚗', style: TextStyle(fontSize: 18)),
+                    child: SizedBox(
+                      width: 92, height: 46,
+                      child: Image.asset(_aktifAracGorseli, fit: BoxFit.contain),
                     ),
                   ),
                 ),
@@ -10005,8 +10215,8 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                 border: Border.all(color: const Color(0xFF4FC3F7).withValues(alpha: 0.45)),
               ),
               child: const Text(
-                'Burada yapacak bir şey yok. Market\'ten "Oyuncu Pro Max" '
-                'alırsan her şey cebine gelir.',
+                'Burada bir şeyler yapabilmek için Market\'ten '
+                'cep telefonu satın almalısın.',
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 10.5, color: Color(0xFF9fd8f5), height: 1.3)),
             ),
@@ -11870,13 +12080,24 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   /// müşterinin `dx`'ini takip ettiği için aşağı kayarken sağa savruluyordu
   /// ("hafif zıplayıp sağdan geri gidiyor" hatası). Eskiden buradaki sabit
   /// 1500 ms gecikme bunu örtüyordu.
+  /// Balondaki yazı BİTMEDEN müşteri gitmesin.
+  ///
+  /// ⚠️ `TypewriterText.kalanYazimSuresi()` TEK BAŞINA YETMİYOR: mesaj
+  /// `notifyListeners()` ile set edilir ama TypewriterText yeni metni ancak
+  /// BİR SONRAKİ build'de görür. Bu metot o build'den ÖNCE çağrıldığı için
+  /// statik alan hâlâ ESKİ mesajın (çoktan geçmiş) bitişini tutuyordu →
+  /// kalan 0 → müşteri yazı hiç yazılmadan kayıp gidiyordu.
+  ///
+  /// Bu yüzden süre EKRANDAKİ MESAJIN UZUNLUĞUNDAN hesaplanıyor ve altına
+  /// 3 saniyelik taban konuyor (uzun mesajda harf başına süre zaten aşar).
   void _yazimBitinceCik(VoidCallback cikis, {Duration enAz = Duration.zero}) {
+    final harf = TypewriterText.harfSuresi * _state.mesaj.length;
     final kalan = TypewriterText.kalanYazimSuresi();
-    var beklet = kalan > Duration.zero
-        ? kalan + const Duration(seconds: 1)
-        : Duration.zero;
+    var beklet = (harf > kalan ? harf : kalan) + const Duration(seconds: 1);
+    if (beklet < const Duration(seconds: 3)) {
+      beklet = const Duration(seconds: 3);
+    }
     if (beklet < enAz) beklet = enAz;
-    if (beklet == Duration.zero) { cikis(); return; }
     Future.delayed(beklet, () { if (mounted) cikis(); });
   }
 
@@ -11963,12 +12184,30 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
         _ozelMusteriGonder();
         return;
       }
-      // 🛡️ İşe alındı — arka plan güvenlikli sürüme geçer, hırsız gelmez.
+      // 🛡️ İşe alındı — güvenlik GİTMİYOR, kapıdaki yerine geçiyor.
+      // Sıra önemli:
+      //  1. `guvenligiOneCagirBayrak` → arka plan güvenliksiz KALIR
+      //     (yoksa `guvenlikVar` true olur olmaz arkada ikinci güvenlik belirir)
+      //  2. Belirme controller'ı 1.0'a alınır: karakter tam görünür durumda
+      //  3. Replik okunur, sonra reverse ile yukarı süzülüp kaybolur
+      //  4. `musteriAnimasyonBitti` bayrağı sıfırlar → arka plan güvenlikliye
+      //     döner, güvenlik yerine geçmiş gibi görünür.
       // İlk günün ücreti hemen değil, gün sonunda kirayla birlikte kesilir.
+      setState(() => _guvenlikIseAlindi = true);
+      _state.guvenligiOneAl();          // _guvenlikOnde = true
       _state.guvenligiIseAl();
+      _guvenlikBelirmeController.value = 1.0;
+      _slideController.value = 1.0;     // yatayda ortalanmış kalsın
       _state.mesaj = 'Anlaştık! Bugünden itibaren kapıdayım, kimse giremez.';
       _state.notifyListeners();
-      _ozelMusteriGonder();
+      _yazimBitinceCik(() {
+        if (!mounted) return;
+        _guvenlikBelirmeController.reverse().then((_) {
+          if (!mounted) return;
+          setState(() => _guvenlikIseAlindi = false);
+          _state.musteriAnimasyonBitti(); // _guvenlikOnde = false
+        });
+      });
       return;
     }
 
@@ -12419,6 +12658,30 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   /// çıkar ve onaylanırsa dükkan değişir.
   DukkanSeviye? _gecisDukkan;
 
+  /// Yolculukta kullanılacak araç. null → sahip olunan EN HIZLI araç.
+  /// Oyuncu birden fazla araca sahipse konum seçiminden sonra soruluyor.
+  String? _secilenAracId;
+
+  /// Masadaki kestirme düğmesinde ve varsayılan yolculukta kullanılan araç.
+  Arac? get _aktifArac {
+    final araclar = _state.sahipAraclar;
+    if (araclar.isEmpty) return null;
+    if (_secilenAracId != null) {
+      final s = Arac.bul(_secilenAracId!);
+      if (s != null && _state.aracSahibi(s.item.id)) return s;
+    }
+    // Seçim yoksa en hızlısı — oyuncu doğal olarak iyi olanla gider.
+    Arac? enIyi;
+    for (final u in araclar) {
+      final a = Arac.bul(u.id);
+      if (a == null) continue;
+      if (enIyi == null || a.gecisSaniye < enIyi.gecisSaniye) enIyi = a;
+    }
+    return enIyi;
+  }
+
+  String get _aktifAracGorseli => _aktifArac?.item.gorsel ?? 'assets/arac_1.png';
+
   void _dukkanGecisiBaslat(DukkanSeviye d) {
     _gecisDukkan = d;
     _gecisBaslat(Konum.dukkan);
@@ -12456,24 +12719,105 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     );
   }
 
+  /// Konum seçildi. Birden fazla araç varsa önce "hangi araçla?" sorulur —
+  /// araçlar farklı hızlarda, seçim oyuncunun kararı olmalı.
   void _gecisBaslat(Konum hedef) {
     final araclar = _state.sahipAraclar;
     if (araclar.isEmpty) return;
-    int enIyiSn = 1 << 30;
-    String gorsel = araclar.first.gorsel;
-    for (final a in araclar) {
-      final sn = Arac.gecisSuresi(a.id) ?? 60;
-      if (sn < enIyiSn) { enIyiSn = sn; gorsel = a.gorsel; }
+    if (araclar.length > 1) {
+      _aracSecPopup(hedef);
+      return;
     }
+    _yolculugaCik(hedef, Arac.bul(araclar.first.id));
+  }
+
+  /// "Hangi araçla gitmek istersin?" — araç görseli, adı ve süresiyle.
+  void _aracSecPopup(Konum hedef) {
+    final secenekler = _state.sahipAraclar
+        .map((u) => Arac.bul(u.id))
+        .whereType<Arac>()
+        .toList()
+      ..sort((a, b) => a.gecisSaniye.compareTo(b.gecisSaniye));
+    showDialog(
+      useRootNavigator: false,
+      context: _popupCtx,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Panel.zemin,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: Color(0xFF4f8bd6), width: 1.5),
+        ),
+        titlePadding: const EdgeInsets.fromLTRB(16, 18, 16, 8),
+        title: Text('Hangi araçla gitmek istersin?\n${Mekan.bul(hedef).ad}',
+          textAlign: TextAlign.center,
+          style: const TextStyle(color: Color(0xFF90caf9), fontSize: 15,
+            fontWeight: FontWeight.bold, height: 1.35)),
+        contentPadding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+        content: SizedBox(
+          width: 300,
+          child: Column(mainAxisSize: MainAxisSize.min,
+            children: secenekler.map((a) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: GestureDetector(
+                onTap: () {
+                  SesServisi.dokun();
+                  Navigator.pop(ctx);
+                  setState(() => _secilenAracId = a.item.id);
+                  _yolculugaCik(hedef, a);
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF11202f),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: const Color(0xFF4f8bd6).withValues(alpha: 0.55)),
+                  ),
+                  child: Row(children: [
+                    SizedBox(width: 70, height: 46,
+                      child: Image.asset(a.item.gorsel, fit: BoxFit.contain)),
+                    const SizedBox(width: 10),
+                    Expanded(child: Text(a.item.name,
+                      style: const TextStyle(fontSize: 13,
+                        fontWeight: FontWeight.bold, color: Panel.yazi))),
+                    Text('${a.gecisSaniye} sn',
+                      style: const TextStyle(fontSize: 12,
+                        fontWeight: FontWeight.bold, color: Color(0xFF90caf9))),
+                  ]),
+                ),
+              ),
+            )).toList()),
+        ),
+        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+        actions: [Center(child: ElevatedButton(
+          onPressed: () => Navigator.pop(ctx),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Panel.ikincilZemin, foregroundColor: Colors.white70,
+            minimumSize: const Size(140, 44),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+              side: const BorderSide(color: Panel.ikincilKenar)),
+          ),
+          child: const Text('Vazgeç', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+        ))],
+      ),
+    );
+  }
+
+  void _yolculugaCik(Konum hedef, Arac? arac) {
+    final sn = arac?.gecisSaniye ?? 60;
+    final gorsel = arac?.item.gorsel ?? 'assets/arac_1.png';
     setState(() {
       _gecisAktif = true;
       _gecisHedef = hedef;
       _gecisAracGorsel = gorsel;
-      _gecisToplamSn = enIyiSn;
+      _gecisToplamSn = sn;
       _gecisBaslangic = DateTime.now();
     });
-    _toastGoster('Geçiş başladı...', altYazi: '$enIyiSn saniye sürecek',
-      emoji: '🚗', renk: const Color(0xFF4f8bd6));
+    // Toast'ta emoji yerine gerçek araç görseli — hangi araçla gidildiği
+    // bir bakışta görünsün.
+    _toastGoster('Geçiş başladı...', altYazi: '$sn saniye sürecek',
+      emoji: '', gorsel: gorsel, renk: const Color(0xFF4f8bd6));
     _gecisTimer?.cancel();
     _gecisTimer = Timer.periodic(const Duration(milliseconds: 500), (t) {
       if (!mounted) { t.cancel(); return; }
@@ -12510,6 +12854,23 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     _gecisSorusuGoster();
   }
 
+  /// "Aracın hazır!" popup'ındaki eşit boyutlu görsel kutusu.
+  Widget _gecisKutusu(String gorsel, {required bool kapak}) {
+    return Container(
+      width: 86, height: 68,
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: const Color(0xFF11202f),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFF4f8bd6).withValues(alpha: 0.55)),
+      ),
+      child: Padding(
+        padding: EdgeInsets.all(kapak ? 0 : 5),
+        child: Image.asset(gorsel, fit: kapak ? BoxFit.cover : BoxFit.contain),
+      ),
+    );
+  }
+
   /// Yolculuk bitti: "Aracın hazır!" — üstte araç → ok → hedef görseli.
   void _gecisSorusuGoster() {
     final hedef = _gecisHedef;
@@ -12531,22 +12892,19 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
           borderRadius: BorderRadius.circular(16),
           side: const BorderSide(color: Color(0xFF4f8bd6), width: 1.5),
         ),
-        title: const Text('🚗 Aracın hazır!', textAlign: TextAlign.center,
+        title: const Text('Aracın hazır!', textAlign: TextAlign.center,
           style: TextStyle(color: Color(0xFF90caf9), fontSize: 19, fontWeight: FontWeight.bold)),
         content: Column(mainAxisSize: MainAxisSize.min, children: [
-          // Araç → ok → hedef
+          // Araç → ok → hedef. İki görsel de AYNI boyutta kutuda: araç
+          // şeffaf PNG olduğu için `contain` + koyu zemin, hedef fotoğraf
+          // olduğu için `cover`.
           Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-            SizedBox(width: 92, height: 66,
-              child: Image.asset(aracGorsel, fit: BoxFit.contain)),
+            _gecisKutusu(aracGorsel, kapak: false),
             const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 8),
+              padding: EdgeInsets.symmetric(horizontal: 10),
               child: Text('➡️', style: TextStyle(fontSize: 24)),
             ),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: SizedBox(width: 78, height: 66,
-                child: Image.asset(hedefGorsel, fit: BoxFit.cover)),
-            ),
+            _gecisKutusu(hedefGorsel, kapak: true),
           ]),
           const SizedBox(height: 14),
           Text('$aracAd ile $hedefAd konumuna şimdi geçmek istiyor musun?',
@@ -12672,42 +13030,72 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                         style: TextStyle(fontSize: 12, color: Panel.yaziSoluk, height: 1.4)),
                     );
                   }
-                  return Column(children: vitrin
-                    .map((a) => Padding(
-                  padding: const EdgeInsets.only(bottom: 9),
-                  child: GestureDetector(
-                    onTap: () {
-                      SesServisi.dokun();
-                      Navigator.pop(ctx);
-                      _state.galericiAracSec(a.item);
-                      setState(() => _pazarlikBekleniyor = true);
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.all(9),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF11202f),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: const Color(0xFF4f8bd6).withValues(alpha: 0.55)),
-                      ),
-                      child: Row(children: [
-                        Image.asset(a.item.gorsel, width: 72, height: 54, fit: BoxFit.contain),
-                        const SizedBox(width: 10),
-                        Expanded(child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(a.item.name, style: const TextStyle(fontSize: 13,
-                              fontWeight: FontWeight.bold, color: Panel.yazi)),
-                            const SizedBox(height: 2),
-                            Text('Geçiş süresi: ${a.gecisSaniye} sn',
-                              style: const TextStyle(fontSize: 10, color: Panel.yaziSoluk)),
+                  // 🖼️ Vitrin: 2 sütunlu ızgara — kart başına büyük araç
+                  // görseli, üstte geçiş süresi rozeti, altta ad + fiyat.
+                  // Alt alta uzun liste hem çirkindi hem araçlar seçilemeyecek
+                  // kadar küçük görünüyordu.
+                  return GridView.count(
+                    crossAxisCount: 2,
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    mainAxisSpacing: 10,
+                    crossAxisSpacing: 10,
+                    childAspectRatio: 0.86,
+                    children: vitrin.map((a) => GestureDetector(
+                      onTap: () {
+                        SesServisi.dokun();
+                        Navigator.pop(ctx);
+                        _aracTeklifEkrani(a);
+                      },
+                      child: Container(
+                        clipBehavior: Clip.antiAlias,
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF16293b), Color(0xFF0e1a26)],
+                            begin: Alignment.topCenter, end: Alignment.bottomCenter),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: const Color(0xFF4f8bd6).withValues(alpha: 0.55)),
+                        ),
+                        child: Column(children: [
+                          Expanded(child: Stack(children: [
+                            Positioned.fill(child: Padding(
+                              padding: const EdgeInsets.all(7),
+                              child: Image.asset(a.item.gorsel, fit: BoxFit.contain),
+                            )),
+                            Positioned(
+                              left: 5, top: 5,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withValues(alpha: 0.55),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text('⏱ ${a.gecisSaniye}sn',
+                                  style: const TextStyle(fontSize: 9,
+                                    fontWeight: FontWeight.bold, color: Color(0xFF9fd8f5))),
+                              ),
+                            ),
                           ])),
-                        Text('${a.item.basePrice}',
-                          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold,
-                            color: Color(0xFF90caf9))),
-                      ]),
-                    ),
-                  ),
-                )).toList());
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.fromLTRB(5, 4, 5, 6),
+                            color: Colors.black.withValues(alpha: 0.45),
+                            child: Column(mainAxisSize: MainAxisSize.min, children: [
+                              FittedBox(fit: BoxFit.scaleDown, child: Text(a.item.name,
+                                maxLines: 1,
+                                style: const TextStyle(fontSize: 12,
+                                  fontWeight: FontWeight.bold, color: Panel.yazi))),
+                              const SizedBox(height: 1),
+                              Text('${a.item.basePrice} lira',
+                                style: const TextStyle(fontSize: 11,
+                                  fontWeight: FontWeight.bold, color: Color(0xFF90caf9))),
+                            ]),
+                          ),
+                        ]),
+                      ),
+                    )).toList(),
+                  );
                 }),
               ),
             ),
@@ -13582,7 +13970,7 @@ class TypewriterText extends StatefulWidget {
   /// TypewriterText (ör. mini oyun ekranı) yazarsa tahmin onunkine kayar;
   /// balon dışında kullanılacaksa bu takibe yeni bir yol gerekir.
   static DateTime _tahminiBitis = DateTime.fromMillisecondsSinceEpoch(0);
-  static const Duration _harfSuresi = Duration(milliseconds: 32);
+  static const Duration harfSuresi = Duration(milliseconds: 32);
 
   static Duration kalanYazimSuresi() {
     final fark = _tahminiBitis.difference(DateTime.now());
@@ -13618,8 +14006,8 @@ class _TypewriterTextState extends State<TypewriterText> {
   void _baslat(String metin) {
     if (metin.isEmpty) return;
     TypewriterText._tahminiBitis =
-        DateTime.now().add(TypewriterText._harfSuresi * metin.length);
-    _timer = Timer.periodic(TypewriterText._harfSuresi, (timer) {
+        DateTime.now().add(TypewriterText.harfSuresi * metin.length);
+    _timer = Timer.periodic(TypewriterText.harfSuresi, (timer) {
       if (!mounted) { timer.cancel(); return; }
       if (_index < metin.length) {
         setState(() => _gorunen = metin.substring(0, ++_index));

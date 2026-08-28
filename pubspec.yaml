@@ -2,7 +2,7 @@ name: oyuncu_dukkani
 description: "A new Flutter project."
 publish_to: 'none'
 
-version: 1.0.2+13
+version: 1.1.0+20
 
 environment:
   sdk: ^3.7.2
@@ -170,6 +170,17 @@ flutter:
     - assets/arac_15.png
     - assets/arac_16.png
     - assets/arac_17.png
+    - assets/arac_18.png
+    - assets/arac_19.png
+    - assets/arac_20.png
+    - assets/arac_21.png
+    - assets/arac_22.png
+    - assets/arac_23.png
+    - assets/arac_24.png
+    - assets/arac_25.png
+    - assets/arac_26.png
+    - assets/arac_27.png
+    - assets/arac_28.png
     - assets/musteri_49.png
     - assets/musteri_50.png
     - assets/musteri_51.png
@@ -179,6 +190,14 @@ flutter:
     - assets/musteri_55.png
     - assets/musteri_56.png
     - assets/musteri_57.png
+    - assets/musteri_58.png
+    - assets/musteri_59.png
+    - assets/musteri_60.png
+    - assets/musteri_61.png
+    - assets/musteri_62.png
+    - assets/musteri_63.png
+    - assets/musteri_64.png
+    - assets/musteri_65.png
     - assets/CD_47.png
     - assets/CD_48.png
     - assets/CD_49.png
@@ -186,6 +205,15 @@ flutter:
     - assets/CD_51.png
     - assets/CD_52.png
     - assets/CD_53.png
+    - assets/CD_54.png
+    - assets/CD_55.png
+    - assets/CD_56.png
+    - assets/CD_57.png
+    - assets/CD_58.png
+    - assets/CD_59.png
+    - assets/CD_60.png
+    - assets/CD_61.png
+    - assets/CD_62.png
     - assets/musteri_47.png
     - assets/musteri_48.png
     - assets/hande.png

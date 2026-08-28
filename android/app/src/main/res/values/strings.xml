@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Play Games Services proje kimligi. Play Console > Play Games Services
-         kurulumu yapilinca GERCEK numerik ID ile degistirilmeli. Bu yer
-         tutucu, oyun acilista COKMESIN diye var (games-v2 SDK meta-data
-         yoksa uygulamayi baslatmiyor); giris denemesi sessizce basarisiz olur. -->
-    <string name="game_services_project_id" translatable="false">123456789012</string>
+         kurulumu yapilinca GERCEK numerik ID ile degistirilmeli. (v122: girildi —
+         Cloud projesi "oyuncu-dukkani".) games-v2 SDK bu meta-data
+         olmadan uygulamayi ACILISTA COKERTIR. -->
+    <string name="game_services_project_id" translatable="false">557640572554</string>
 </resources>

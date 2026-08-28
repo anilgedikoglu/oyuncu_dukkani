@@ -11,10 +11,10 @@ void main() {
   });
 
   group('Araçlar', () {
-    test('17 araç var, hepsinin id\'si ve görseli benzersiz', () {
-      expect(Arac.tumu.length, 17);
-      expect(Arac.tumu.map((a) => a.item.id).toSet().length, 17);
-      expect(Arac.tumu.map((a) => a.item.gorsel).toSet().length, 17);
+    test('28 araç var, hepsinin id\'si ve görseli benzersiz', () {
+      expect(Arac.tumu.length, 28);
+      expect(Arac.tumu.map((a) => a.item.id).toSet().length, 28);
+      expect(Arac.tumu.map((a) => a.item.gorsel).toSet().length, 28);
     });
 
     test('araçlar arac kategorisinde ve normal ürün havuzunda DEĞİL', () {
@@ -128,7 +128,7 @@ void main() {
   });
 
   group('Araç sıralaması', () {
-    test('vitrin sırası: bisiklet → motosiklet → otomobil, fiyat artan', () {
+    test('vitrin sırası: mikro → … → özel, her grupta fiyat artan', () {
       final s = Arac.sirali;
       expect(s.length, Arac.tumu.length);
       for (int i = 1; i < s.length; i++) {
@@ -140,8 +140,8 @@ void main() {
               reason: '${once.item.id} → ${sonra.item.id} fiyat sırası bozuk');
         }
       }
-      expect(s.first.tip, AracTip.bisiklet);
-      expect(s.last.tip, AracTip.otomobil);
+      expect(s.first.tip, AracTip.mikro);
+      expect(s.last.tip, AracTip.ozel);
     });
   });
 
