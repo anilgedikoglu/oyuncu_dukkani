@@ -438,13 +438,17 @@ class SahneMetrik {
 // Masa arka kenarı: bg1.png'de y=522/1080 (üç varyantta da aynı)
 const double kMasaYuzeyi   = 0.4833;
 // Ürünün masaya oturduğu çizgi (alt kenarı) — mousepad/klavye derinliği
-const double kUrunTabani   = 0.5680;
+// ⚠️ v122: isim etiketi ve ürün, ETİKETİN KENDİ YÜKSEKLİĞİ kadar aşağı
+// alındı (+0.025). Etiket = 4+4 dikey padding + ~14dp metin ≈ 22dp; masa
+// boyuna oranı ~0.025. İkisi de AYNI değerle kaydırıldı ki aralarındaki
+// hizalama bozulmasın.
+const double kUrunTabani   = 0.5930;
 // Ürün yüksekliği (masa boyuna oranla) — 411dp ekranda ~151dp'ye denk gelir
 const double kUrunBoyu     = 0.1745;
 // Ürünün müşteriye göre yatay kayması
 const double kUrunSagKaydir= 0.3537;
 // İsim etiketinin alt kenarı — masa çizgisinin hemen altı
-const double kIsimAlti     = 0.4920;
+const double kIsimAlti     = 0.5170;
 // Müşteri görselinin üst kenarı ve boyu
 const double kMusteriUstu  = 0.2183;
 const double kMusteriBoyu  = 0.6519;
@@ -8769,7 +8773,12 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                           ),
                           // Adres metni — görseldeki yazıyı beyazla örtüp yenisini yazar
                           Positioned(
-                            left: 0, right: 0, top: 52 * s, height: 26 * s,
+                            // ⚠️ Kutu, browser.png'deki ÇİZİLİ yazıyı TAM kapatmalı.
+                            // Yazının koyu pikselleri görselde y=46..61 arasında
+                            // (satır satır tarandı); kutu 52'de başlayınca üst
+                            // kısmı açıkta kalıyor ve iki yazı üst üste biniyordu.
+                            // 44..64: iki uçta da 2-3 px pay var.
+                            left: 0, right: 0, top: 44 * s, height: 20 * s,
                             child: Padding(
                               padding: EdgeInsets.only(left: 96 * s, right: 22 * s),
                               child: Container(
@@ -8912,6 +8921,20 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
         // ⚠️ Toptancı Rıza BİLEREK burada yok. Alışveriş sadece Rıza kapıya
         // geldiğinde yapılabilir; menüden istediği an açmak ziyaretini
         // anlamsızlaştırıyordu.
+        const SizedBox(height: 10),
+        // 🚗 Transfer — eskiden masanın üstünde araç görselli bir düğmeydi.
+        // Menüye alındı: masada iki düğme yan yana durunca dağınık
+        // görünüyordu ve araç maketi hem süs hem buton olarak belirsizdi.
+        _browserMenuItem(
+          ikon: '🚗',
+          baslik: 'Transfer',
+          altyazi: _state.aracVar
+              ? 'Dükkan, ev ya da mekân değiştir'
+              : 'Önce bir araç almalısın',
+          renk: const Color(0xFF4f8bd6),
+          kilitli: !_state.aracVar,
+          onTap: () { Navigator.pop(ctx); _konumSecPopup(); },
+        ),
         const SizedBox(height: 10),
         // Oyun her adımda kayıtlı — menüye dönmek ilerlemeyi kaybettirmez.
         _browserMenuItem(
@@ -9975,32 +9998,17 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                 ),
               // 🚗 Kestirme: menüye girmeden yolculuk. Çerçevesiz/zeminsiz —
               // masanın üstünde duran minyatür bir araç gibi görünüyor;
-              // görsel de o an SEÇİLİ olan araç (`_secilenAracId`).
+              // (Masadaki araç maketi v122de kaldırıldı.)
               // ⚠️ Burası da sabit pikseldi (left 118 / bottom 296). Artık
               // masaya kilitli: mouse pad'in ÜSTÜNDEKİ boş alanda duruyor
               // (görsel içi ~%43 yatay, ~%49.5 dikey — ızgarayla ölçüldü).
               // ⚠️ Burada `Builder` KULLANILAMAZ: Stack'in doğrudan çocuğu
               // Positioned olmak zorunda, araya bir widget girerse
               // "Incorrect use of ParentDataWidget" hatası alınır.
-              // ⚠️ v122: maket %100 büyüdü (92×46 → görsel oranıyla iki katı)
-              // ve kendi boyunun YARISI kadar aşağı indi. Boyut artık sabit
-              // piksel değil, masa metriğine oranlı — masa ölçeklenince maket
-              // de ölçekleniyor.
-              if (_state.gun >= 2 && _state.aracVar && !_gecisAktif)
-                Positioned(
-                  left: SahneMetrik.hesapla(MediaQuery.of(context).size)
-                          .x(0.43, MediaQuery.of(context).size.width)
-                        - SahneMetrik.hesapla(MediaQuery.of(context).size).u(kAracMaketGen) / 2,
-                  top: SahneMetrik.hesapla(MediaQuery.of(context).size).y(0.495),
-                  child: GestureDetector(
-                    onTap: () { SesServisi.dokun(); _konumSecPopup(); },
-                    child: SizedBox(
-                      width: SahneMetrik.hesapla(MediaQuery.of(context).size).u(kAracMaketGen),
-                      height: SahneMetrik.hesapla(MediaQuery.of(context).size).u(kAracMaketGen / 2),
-                      child: Image.asset(_aktifAracGorseli, fit: BoxFit.contain),
-                    ),
-                  ),
-                ),
+              // ⚠️ Masadaki araç maketi KALDIRILDI (v122). Hem süs hem buton
+              // olması belirsizdi ve menü düğmesiyle yan yana dağınık
+              // duruyordu. Yolculuk artık menüden: Banka ile Ana Menü
+              // arasındaki "🚗 Transfer" satırı aynı popup'ı açıyor.
               if (_envanterAcik) _buildEnvanterOverlay(),
               // 🚗 Yolculuk göstergesi — sahnenin solunda, dokunuşu yutmaz.
               _buildGecisGostergesi(),
@@ -13326,30 +13334,6 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   /// çıkar ve onaylanırsa dükkan değişir.
   DukkanSeviye? _gecisDukkan;
 
-  /// Yolculukta kullanılacak araç. null → sahip olunan EN HIZLI araç.
-  /// Oyuncu birden fazla araca sahipse konum seçiminden sonra soruluyor.
-  String? _secilenAracId;
-
-  /// Masadaki kestirme düğmesinde ve varsayılan yolculukta kullanılan araç.
-  Arac? get _aktifArac {
-    final araclar = _state.sahipAraclar;
-    if (araclar.isEmpty) return null;
-    if (_secilenAracId != null) {
-      final s = Arac.bul(_secilenAracId!);
-      if (s != null && _state.aracSahibi(s.item.id)) return s;
-    }
-    // Seçim yoksa en hızlısı — oyuncu doğal olarak iyi olanla gider.
-    Arac? enIyi;
-    for (final u in araclar) {
-      final a = Arac.bul(u.id);
-      if (a == null) continue;
-      if (enIyi == null || a.gecisSaniye < enIyi.gecisSaniye) enIyi = a;
-    }
-    return enIyi;
-  }
-
-  String get _aktifAracGorseli => _aktifArac?.item.gorsel ?? 'assets/arac_1.png';
-
   void _dukkanGecisiBaslat(DukkanSeviye d) {
     _gecisDukkan = d;
     _gecisBaslat(Konum.dukkan);
@@ -13430,7 +13414,6 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                 onTap: () {
                   SesServisi.dokun();
                   Navigator.pop(ctx);
-                  setState(() => _secilenAracId = a.item.id);
                   _yolculugaCik(hedef, a);
                 },
                 child: Container(
