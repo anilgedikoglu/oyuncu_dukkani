@@ -4542,6 +4542,34 @@ class GameState extends ChangeNotifier {
   static const int telefonFiyati = 7500;
   static const int telefonMinGun = 10;
 
+
+  /// 🥚 Gizli hazine (2-6-4-5 dokunuş deseni). Para vermenin yanı sıra oyuncuyu
+  /// **10. güne** taşır ve o güne kadar açılan HER ŞEYİ verir: araçlar,
+  /// mekânlar, telefon, iMac. Test/keşif kısayolu.
+  ///
+  /// ⚠️ Gün kilidi olan içerik `minGun <= 10` filtresiyle veriliyor —
+  /// ışınlama makinesi (60. gün) gibi geç hedefler AÇILMAZ, yoksa oyunun
+  /// bütün ilerlemesi tek dokunuşla biterdi.
+  String easterEggHazinesi() {
+    para += 99000;
+    if (gun < 10) gun = 10;
+    var arac = 0, mekan = 0;
+    for (final a in Arac.tumu) {
+      if (a.minGun <= gun && !aracSahibi(a.item.id)) {
+        sahipAracIdleri.add(a.item.id);
+        arac++;
+      }
+    }
+    for (final m in Mekan.satinAlinabilir) {
+      if (m.minGun <= gun && !konumSahibi(m.konum)) {
+        sahipMekanlar.add(m.konum.name);
+        mekan++;
+      }
+    }
+    if (!telefonVar && telefonMinGun <= gun) telefonVar = true;
+    imacSatinAlindi = true;
+    return '$gun. gün · $arac araç · $mekan mekân';
+  }
   bool telefonSatinAl() {
     if (telefonVar || para < telefonFiyati) return false;
     para -= telefonFiyati;
@@ -9477,7 +9505,8 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   void _handeTamam() {
     if (!_state.handeAktif) return;
     if (_state.handeIlerle()) return; // daha anlatacağı var
-    _ozelMusteriGonder();
+    // Son replik zaten okundu — "Teşekkür ederim"e basıldığı anda gitsin.
+    _ozelMusteriGonder(beklemeden: true);
   }
 
   /// Güvenliği "müşteri" olarak öne çağırır (istifa sorusu modunda).
@@ -10747,11 +10776,11 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       if (_eeDokunuslar[i] != _eeDesen[i]) return;
     }
     _eeDokunuslar.clear();
-    _state.para += 99000;
+    final acilan = _state.easterEggHazinesi();
     SesServisi.paraGirdi();
     _state.notifyListeners(); // para sayacı animasyonu tetiklensin
-    _toastGoster('GİZLİ HAZİNE!', altYazi: '+99000 lira', emoji: '🥚',
-      renk: const Color(0xFF00FF88), ms: 3000);
+    _toastGoster('GİZLİ HAZİNE!', altYazi: '+99000 lira · $acilan',
+      emoji: '🥚', renk: const Color(0xFF00FF88), ms: 4200);
   }
 
   Widget _buildSahne() {
@@ -12416,8 +12445,11 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     });
   }
 
-  void _ozelMusteriGonder({VoidCallback? bitince}) {
-    _yazimBitinceCik(() {
+  /// [beklemeden] true ise balondaki yazının bitmesi BEKLENMEZ. Oyuncunun
+  /// bir butona basmasıyla gidiyorsa (ör. Hande'nin son "Teşekkür ederim"i)
+  /// replik zaten okunmuş oluyor; orada beklemek gecikme gibi hissettiriyor.
+  void _ozelMusteriGonder({VoidCallback? bitince, bool beklemeden = false}) {
+    void cik() {
       _toastBitinceCalistir(() {
         if (!mounted) return;
         _slideController.reverse().then((_) {
@@ -12426,7 +12458,8 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
           bitince?.call();
         });
       });
-    });
+    }
+    if (beklemeden) { cik(); } else { _yazimBitinceCik(cik); }
   }
 
   /// Fal ekranı. Üstte falcı emojisi, ortada 2-3 cümlelik fal metni,
