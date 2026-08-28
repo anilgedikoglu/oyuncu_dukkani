@@ -4925,6 +4925,11 @@ class GameState extends ChangeNotifier {
   /// Widget bunu görüp "ürün masadan aşağı kayıp gitme" efektini atlar —
   /// müşteri elindeki malla birlikte normal şekilde sağdan çıkar.
   bool sonAnlasmaBasarisiz = false;
+
+  /// Son anlaşma bir VARLIK alımıydı (dükkan / araç / mekân) — sıradan bir
+  /// ürün değil. Masada ürün gösterilmesini ve "aşağı kayma" animasyonunu
+  /// engeller. `musteriAnimasyonBitti()` içinde sıfırlanır.
+  bool sonAnlasmaVarlikti = false;
   DukkanSeviye aktifDukkan = tumDukkanlar[0]; // Seviye 1'den başla
 
   // ── REHBER HANDE (açılış tanıtımı) ────────────────────────────────────────
@@ -6161,6 +6166,7 @@ class GameState extends ChangeNotifier {
     musteriKabulBekliyor = false;
     kolonyaIkramEdildi = false;
     sonAnlasmaBasarisiz = false;
+    sonAnlasmaVarlikti = false;
     // Güvenlik öne gelmişti ve gitti: hâlâ çalışıyorsa arka planda kapıdaki
     // yerine geri döner (istifa ettiyse `guvenlikVar` zaten false yapılıyor).
     _guvenlikOnde = false;
@@ -6207,6 +6213,11 @@ class GameState extends ChangeNotifier {
           // 🏪 Emlakçıdan dükkan alımı — slota değil, dükkan sahipliğine.
           sahipDukkanlar.add(alinacakDukkan!.isim);
           alinacakDukkan = null;
+          // ⚠️ `alinacakDukkan` burada NULL oluyor ve masadaki ürün filtresi
+          // ona bakıyordu: dükkan görseli tam da anlaşma anında BELİRİP
+          // "satın alınmış CD" gibi aşağı kayıyordu. Bayrak müşteri gidene
+          // kadar duruyor, filtre de kayma animasyonu da buna bakıyor.
+          sonAnlasmaVarlikti = true;
         } else {
           final itemMaliyet = m.item.kopyaWith(maliyet: anlasilanFiyat);
           if (!urunEkle(itemMaliyet)) {
@@ -10939,7 +10950,8 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
         // için tezgâhın üstünde koca bir mağaza fotoğrafı beliriyordu.
         if (_state.aktifMusteri != null && _state.aktifMusteri!.musteriSatiyor &&
                 _state.aktifMusteri!.item.category != ItemCategory.arac &&
-                _state.alinacakDukkan == null ||
+                _state.alinacakDukkan == null &&
+                !_state.sonAnlasmaVarlikti ||
             _state.aktifOzelMusteri?.tip == OzelMusteriTip.kurye)
           AnimatedBuilder(
             animation: _slideAnim,
@@ -13880,7 +13892,8 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
         //
         // Oyuncu SATIN ALDIYSA ürün masadan aşağı kayıp kaybolur — malın el
         // değiştirdiği görünsün. Oyuncu satıyorsa zaten masada ürün yok.
-        if (_state.aktifMusteri?.musteriSatiyor == true && !_state.sonAnlasmaBasarisiz) {
+        if (_state.aktifMusteri?.musteriSatiyor == true && !_state.sonAnlasmaBasarisiz
+            && !_state.sonAnlasmaVarlikti) {
           setState(() => _urunAsagiKayiyor = true);
           _urunKayipController.forward(from: 0);
         }
