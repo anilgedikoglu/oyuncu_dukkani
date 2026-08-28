@@ -12430,19 +12430,26 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   Timer? _cikisTimer;
   VoidCallback? _bekleyenCikis;
 
-  /// Sahnedeki boş bir yere dokunuldu: yazmakta olan balon varsa metni ANINDA
-  /// tamamla ve karakteri 1 saniye sonra gönder. Bekleyen bir çıkış yoksa
-  /// (kimse gitmiyor) dokunuş yok sayılır — replik okunurken oyuncunun
-  /// yanlışlıkla ekrana dokunması karakteri kovmasın diye.
+  /// Sahnedeki boş bir yere dokunuldu — bekleyen bir çıkış varsa hızlandırır.
+  ///
+  /// • Balon hâlâ yazıyorsa: metin ANINDA tamamlanır, karakter 1 sn sonra gider
+  ///   (oyuncu son cümleyi okusun).
+  /// • Yazı çoktan bittiyse: beklemeye gerek yok, karakter hemen gider.
+  ///
+  /// ⚠️ Bekleyen çıkış yoksa dokunuş YOK SAYILIR. `_bekleyenCikis` yalnızca
+  /// gidiş kararı verildiğinde doluyor (anlaşma, red, küsüp gitme, ziyaret
+  /// bitişi); pazarlık sürerken ya da EVET/HAYIR beklenirken null. Yani
+  /// konuşmanın ortasında boşluğa dokunmak karakteri göndermez.
   void _sahneyeDokunuldu() {
     if (_bekleyenCikis == null) return;
-    if (!TypewriterText.hemenBitir()) return; // yazı zaten bitmiş
+    // 1. dokunuş — balon hâlâ yazıyorsa metni tamamlamakla yetin. Oyuncu
+    // cümleyi görmeden karakteri göndermiş olmasın.
+    if (TypewriterText.hemenBitir()) return;
+    // 2. dokunuş (ya da yazı zaten bitmişti) — bekletmeden gönder.
     final is_ = _bekleyenCikis!;
+    _bekleyenCikis = null;
     _cikisTimer?.cancel();
-    _cikisTimer = Timer(const Duration(seconds: 1), () {
-      _bekleyenCikis = null;
-      if (mounted) is_();
-    });
+    is_();
   }
 
   /// [beklemeden] true ise balondaki yazının bitmesi BEKLENMEZ. Oyuncunun
