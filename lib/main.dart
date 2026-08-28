@@ -8705,18 +8705,6 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   /// açılır; geri oku menüye döndürür.
   _BrowserSayfa _browserSayfa = _BrowserSayfa.menu;
 
-  /// Adres çubuğunda görünecek metin (browser.png'deki yazının üstüne biner).
-  String _browserAdres(_BrowserSayfa s) {
-    switch (s) {
-      case _BrowserSayfa.menu:      return 'oyuncu_dukkani';
-      case _BrowserSayfa.sahiplik:  return 'sahip_olunanlar';
-      case _BrowserSayfa.dukkanlar: return 'kiralik_dukkanlar';
-      case _BrowserSayfa.satilik:   return 'satilik_dukkanlar';
-      case _BrowserSayfa.hedefler:  return 'hedefler';
-      case _BrowserSayfa.market:    return 'saticisindan_com';
-      case _BrowserSayfa.banka:     return 'banka_kredisi';
-    }
-  }
 
   void _browserPopup() {
     _browserSayfa = _BrowserSayfa.menu; // her açılışta ana sayfa
@@ -8750,16 +8738,18 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                   mainAxisSize: MainAxisSize.max,
                   children: [
                     // ── Browser başlığı: görsel + adres yazısı + geri oku ──
-                    // browser.png'de adres ("oyuncu_dukkani") ve oklar ÇİZİLİ.
-                    // Sayfaya göre değişebilmesi için üstüne bindiriliyor.
-                    // ⚠️ Örtü kutuları GÖRSELİN ölçeğine bağlı olmak ZORUNDA.
-                    // browser.png 306×512 ve `cover` ile çiziliyor: kutu
-                    // genişledikçe görsel de büyür, çizili adres yazısı aşağı
-                    // kayar. Sabit `top: 52 / left: 96` yalnızca dialog tam
-                    // 306dp iken oturuyordu — geniş ekranda (iPhone Pro Max)
-                    // beyaz örtü yazının üstünde kalıp altta browser.png'nin
-                    // kendi yazısını açıkta bırakıyordu.
-                    // Aşağıdaki sayılar GÖRSEL İÇİ piksel; `s` ile ölçeklenir.
+                    // ⚠️ browser.png'nin ÜSTÜNE HİÇBİR ŞEY ÇİZİLMİYOR.
+                    //
+                    // Görselde adres yazısı ve oklar zaten çizili. Sayfaya göre
+                    // değişsin diye üstüne beyaz bir kutu + yeni metin
+                    // bindiriliyordu; kutunun yeri görselin ölçeğine bağlı
+                    // olduğu için ekran genişliği değiştikçe hep bir taşma
+                    // kalıyordu (üstte açıkta yazı ya da kayık örtü). Birkaç
+                    // turluk ölçüm denemesinden sonra vazgeçildi: görsel kendi
+                    // haline bırakıldı, adres metni artık DEĞİŞMİYOR.
+                    //
+                    // Geri oku da görselde çizili; burada yalnızca GÖRÜNMEZ bir
+                    // dokunma alanı var, yoksa alt sayfalardan menüye dönülemez.
                     LayoutBuilder(builder: (_, kis) {
                       final s = kis.maxWidth / 306.0;
                       return ClipRRect(
@@ -8771,42 +8761,12 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                           Positioned.fill(
                             child: Image.asset('assets/browser.png', fit: BoxFit.cover, alignment: Alignment.topCenter),
                           ),
-                          // Adres metni — görseldeki yazıyı beyazla örtüp yenisini yazar
+                          // Geri oku — görünmez dokunma alanı (ok görselde çizili)
                           Positioned(
-                            // ⚠️ Kutu, browser.png'deki ÇİZİLİ yazıyı TAM kapatmalı.
-                            // Yazının koyu pikselleri görselde y=46..61 arasında
-                            // (satır satır tarandı); kutu 52'de başlayınca üst
-                            // kısmı açıkta kalıyor ve iki yazı üst üste biniyordu.
-                            // 44..64: iki uçta da 2-3 px pay var.
-                            left: 0, right: 0, top: 44 * s, height: 20 * s,
-                            child: Padding(
-                              padding: EdgeInsets.only(left: 96 * s, right: 22 * s),
-                              child: Container(
-                                color: Colors.white,
-                                alignment: Alignment.centerLeft,
-                                child: Text(
-                                  _browserAdres(_browserSayfa),
-                                  maxLines: 1, overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    color: const Color(0xFF202124), fontSize: 14 * s,
-                                    fontWeight: FontWeight.w500, letterSpacing: 0.1),
-                                ),
-                              ),
-                            ),
-                          ),
-                          // Geri oku — menüde değilken sarı ve tıklanabilir
-                          Positioned(
-                            left: 4 * s, top: 46 * s, width: 40 * s, height: 38 * s,
+                            left: 4 * s, top: 46 * s, width: 44 * s, height: 40 * s,
                             child: GestureDetector(
+                              behavior: HitTestBehavior.opaque,
                               onTap: menude ? null : () => git(_BrowserSayfa.menu),
-                              child: Container(
-                                color: Colors.white,
-                                child: Center(
-                                  child: Icon(Icons.arrow_back,
-                                    size: 20 * s,
-                                    color: menude ? const Color(0xFFBDC1C6) : const Color(0xFFE6A800)),
-                                ),
-                              ),
                             ),
                           ),
                         ]),
