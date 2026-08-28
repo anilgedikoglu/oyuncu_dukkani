@@ -7033,36 +7033,23 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
         ]),
         const SizedBox(height: 12),
         // ── Ana sekmeler: Dükkan / Ev / Araç / Eşya ──
-        Row(children: [
-          for (int i = 0; i < 4; i++) ...[
-            if (i > 0) const SizedBox(width: 6),
-            Expanded(child: _guzelSekme(
-              emoji: const ['🏬', '🏠', '🚗', '🖥️'][i],
-              etiket: const ['Dükkan', 'Ev', 'Araç', 'Eşya'][i],
-              aktif: _marketSekme == i,
-              renk: const Color(0xFFf78166),
-              onTap: () => setDlg(() => _marketSekme = i),
-            )),
-          ],
-        ]),
+        _segmentCubugu(
+          parcalar: const [('🏬', 'Dükkan'), ('🏠', 'Ev'), ('🚗', 'Araç'), ('🖥️', 'Eşya')],
+          secili: _marketSekme,
+          renk: const Color(0xFFf78166),
+          onSec: (i) => setDlg(() => _marketSekme = i),
+        ),
         const SizedBox(height: 12),
         // ── Dükkan sekmesi: Satılık / Kiralık alt sekmeleri ──
         if (_marketSekme == 0) ...[
-          Row(children: [
-            Expanded(child: _guzelSekme(
-              emoji: '🏡', etiket: 'Satılık Dükkanlar',
-              aktif: _dukkanAltSekme == 0,
-              renk: const Color(0xFF3fb950),
-              onTap: () => setDlg(() => _dukkanAltSekme = 0),
-            )),
-            const SizedBox(width: 6),
-            Expanded(child: _guzelSekme(
-              emoji: '🔑', etiket: 'Kiralık Dükkanlar',
-              aktif: _dukkanAltSekme == 1,
-              renk: const Color(0xFF58a6ff),
-              onTap: () => setDlg(() => _dukkanAltSekme = 1),
-            )),
-          ]),
+          _ikiliSegment(
+            solEmoji: '🏡', solEtiket: 'Satılık',
+            sagEmoji: '🔑', sagEtiket: 'Kiralık',
+            seciliSag: _dukkanAltSekme == 1,
+            solRenk: const Color(0xFF3fb950),
+            sagRenk: const Color(0xFF58a6ff),
+            onSec: (sag) => setDlg(() => _dukkanAltSekme = sag ? 1 : 0),
+          ),
           const SizedBox(height: 12),
           if (_dukkanAltSekme == 0)
             (_state.gun < 5
@@ -7143,48 +7130,6 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     );
   }
 
-  /// Süslü sekme düğmesi: emoji üstte, etiket altta; aktif olan kendi
-  /// rengiyle dolar ve hafif parlar. Market'in iki sekme katmanı da bunu
-  /// kullanıyor — yeni sekme eklerken elle stil verme.
-  Widget _guzelSekme({
-    required String emoji,
-    required String etiket,
-    required bool aktif,
-    required Color renk,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: () { SesServisi.dokun(); onTap(); },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 2),
-        decoration: BoxDecoration(
-          gradient: aktif
-              ? LinearGradient(
-                  colors: [renk.withValues(alpha: 0.28), renk.withValues(alpha: 0.10)],
-                  begin: Alignment.topCenter, end: Alignment.bottomCenter)
-              : null,
-          color: aktif ? null : Panel.ikincilZemin,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: aktif ? renk : Panel.ikincilKenar,
-            width: aktif ? 1.6 : 1),
-          boxShadow: aktif
-              ? [BoxShadow(color: renk.withValues(alpha: 0.35), blurRadius: 8)]
-              : null,
-        ),
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Text(emoji, style: TextStyle(fontSize: aktif ? 18 : 15)),
-          const SizedBox(height: 2),
-          FittedBox(fit: BoxFit.scaleDown, child: Text(etiket,
-            maxLines: 1,
-            style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold,
-              letterSpacing: 0.3,
-              color: aktif ? renk : Panel.yaziSoluk))),
-        ]),
-      ),
-    );
-  }
 
   // ═══════════════════════════════════════════════════════════════════════════
   //  💼 SAHİP OLUNANLAR — evler, araçlar, eşyalar + satış akışları
@@ -7203,13 +7148,12 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
           Text('SAHİP OLUNANLAR', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF00C2A8), letterSpacing: 2)),
         ]),
         const SizedBox(height: 12),
-        Row(children: [
-          Expanded(child: _sahiplikSekmeButonu('🏠 Ev', 0, setDlg)),
-          const SizedBox(width: 8),
-          Expanded(child: _sahiplikSekmeButonu('🚗 Araç', 1, setDlg)),
-          const SizedBox(width: 8),
-          Expanded(child: _sahiplikSekmeButonu('🖥️ Eşya', 2, setDlg)),
-        ]),
+        _segmentCubugu(
+          parcalar: const [('🏠', 'Ev'), ('🚗', 'Araç'), ('🖥️', 'Eşya')],
+          secili: _sahiplikSekme,
+          renk: const Color(0xFF00C2A8),
+          onSec: (i) => setDlg(() => _sahiplikSekme = i),
+        ),
         const SizedBox(height: 12),
         Builder(builder: (_) {
           final kartlar = <Widget>[
@@ -7262,26 +7206,6 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     );
   }
 
-  Widget _sahiplikSekmeButonu(String etiket, int idx, void Function(VoidCallback) setDlg) {
-    final aktif = _sahiplikSekme == idx;
-    return GestureDetector(
-      onTap: () { SesServisi.dokun(); setDlg(() => _sahiplikSekme = idx); },
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 9),
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: aktif ? const Color(0xFF0e2a26) : Panel.ikincilZemin,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: aktif ? const Color(0xFF00C2A8) : Panel.ikincilKenar,
-            width: aktif ? 1.5 : 1),
-        ),
-        child: FittedBox(fit: BoxFit.scaleDown, child: Text(etiket,
-          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1,
-            color: aktif ? const Color(0xFF00C2A8) : Panel.yaziSoluk))),
-      ),
-    );
-  }
 
   Widget _sahiplikKart({
     required String isim,
@@ -7565,31 +7489,6 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   // ═══════════════════════════════════════════════════════════════════════════
   //  TOPTANCI — günlük stok, ucuz ürün / çürük ürün / tamir seti / kapalı kutu
   // ═══════════════════════════════════════════════════════════════════════════
-  /// Toptancı ekranındaki sekme düğmesi (Tezgâh / Envanter).
-  Widget _toptanciSekme(String etiket, bool secili, VoidCallback onTap) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 9),
-          decoration: BoxDecoration(
-            color: secili ? const Color(0xFFd29922).withValues(alpha: 0.16) : Colors.transparent,
-            border: Border(
-              bottom: BorderSide(
-                color: secili ? const Color(0xFFd29922) : const Color(0xFFd29922).withValues(alpha: 0.20),
-                width: secili ? 2.5 : 1,
-              ),
-            ),
-          ),
-          child: Text(etiket,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 0.6,
-              color: secili ? const Color(0xFFd29922) : Colors.white38)),
-        ),
-      ),
-    );
-  }
 
   Future<void> _toptanciPopup({bool ziyaret = false}) async {
     _toptanciSekmeIdx = 0; // her açılışta tezgâhla başla
@@ -7677,14 +7576,15 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                     // ⚠️ Geçiş TEK YÖNLÜ tasarlandı: envanterin kendi
                     // popup'ından toptancıya geçiş YOK — alışveriş yalnızca
                     // Rıza kapıya geldiğinde açılmalı.
-                    Row(children: [
-                      _toptanciSekme('🛒 Tezgâh', _toptanciSekmeIdx == 0,
-                          () => setDlg(() => _toptanciSekmeIdx = 0)),
-                      _toptanciSekme('📦 Envanter', _toptanciSekmeIdx == 1,
-                          () => setDlg(() => _toptanciSekmeIdx = 1)),
-                      _toptanciSekme('📚 Koleksiyon', _toptanciSekmeIdx == 2,
-                          () => setDlg(() => _toptanciSekmeIdx = 2)),
-                    ]),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
+                      child: _segmentCubugu(
+                        parcalar: const [('🛒', 'Tezgâh'), ('📦', 'Envanter'), ('📚', 'Koleksiyon')],
+                        secili: _toptanciSekmeIdx,
+                        renk: const Color(0xFFd29922),
+                        onSec: (i) => setDlg(() => _toptanciSekmeIdx = i),
+                      ),
+                    ),
                     if (_toptanciSekmeIdx == 1)
                       Flexible(child: _envanterGovdesi(baslikGoster: false))
                     else if (_toptanciSekmeIdx == 2)
@@ -8032,11 +7932,12 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         // ── Sekmeler: HEDEFLER / KOLEKSİYON ──
-        Row(children: [
-          Expanded(child: _hedefSekmeButonu('🏆 HEDEFLER', 0, setDlg)),
-          const SizedBox(width: 8),
-          Expanded(child: _hedefSekmeButonu('📚 KOLEKSİYON', 1, setDlg)),
-        ]),
+        _segmentCubugu(
+          parcalar: const [('🏆', 'Hedefler'), ('📚', 'Koleksiyon')],
+          secili: _hedefSekme,
+          renk: const Color(0xFFa371f7),
+          onSec: (i) => setDlg(() => _hedefSekme = i),
+        ),
         const SizedBox(height: 12),
         if (_hedefSekme == 1)
           _koleksiyonGovdesi(setDlg)
@@ -8052,28 +7953,6 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     );
   }
 
-  /// Hedefler sayfasının üstündeki iki sekmeden biri.
-  Widget _hedefSekmeButonu(String etiket, int idx, void Function(VoidCallback) setDlg) {
-    final aktif = _hedefSekme == idx;
-    return GestureDetector(
-      onTap: () { SesServisi.dokun(); setDlg(() => _hedefSekme = idx); },
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 9),
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: aktif ? const Color(0xFF2a1d3d) : Panel.ikincilZemin,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: aktif ? const Color(0xFFa371f7) : Panel.ikincilKenar,
-            width: aktif ? 1.5 : 1),
-        ),
-        child: FittedBox(fit: BoxFit.scaleDown, child: Text(etiket,
-          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold,
-            letterSpacing: 1,
-            color: aktif ? const Color(0xFFa371f7) : Panel.yaziSoluk))),
-      ),
-    );
-  }
 
   /// Hedefler listesinin tek satırı: 0 → bugün paneli, son → koleksiyon,
   /// aradakiler rozet kartı.
@@ -12293,28 +12172,32 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
           borderRadius: BorderRadius.circular(16),
           side: const BorderSide(color: Color(0xFF4f8bd6), width: 1.5),
         ),
-        title: const Text('🚗 Hangi konuma gitmek istersin?',
+        titlePadding: const EdgeInsets.fromLTRB(16, 18, 16, 8),
+        title: const Text('Hangi konuma gitmek istersin?',
           textAlign: TextAlign.center,
-          style: TextStyle(color: Color(0xFF90caf9), fontSize: 16, fontWeight: FontWeight.bold)),
+          style: TextStyle(color: Color(0xFF90caf9), fontSize: 16,
+            fontWeight: FontWeight.bold, letterSpacing: 0.2)),
+        contentPadding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
         // ⚠️ 6 mekân TEK SATIRA sığmıyor — kutular eziliyor, yazılar
         // birbirine giriyordu. 3 sütunlu ızgara: 2 satır × 3 kutu.
         // Üstte Evler / Dükkanlar sekmesi: sahip olunan dükkanlara taşınmak
         // da bir yolculuk (araç gerekiyor), aynı ekrandan yapılıyor.
+        // ⚠️ Sabit yükseklik: Evler (6 kart) ile Dükkanlar (0-5 kart)
+        // arasında geçerken popup boyu zıplıyordu. İki satırlık ızgaraya
+        // yetecek alan hep ayrılı, sekme değişince pencere yerinde kalıyor.
         content: StatefulBuilder(builder: (c2, setSec) => SizedBox(
           width: 300,
+          height: 330,
           child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Row(children: [
-              Expanded(child: _guzelSekme(
-                emoji: '🏠', etiket: 'Evler', aktif: _konumSekme == 0,
-                renk: const Color(0xFF4f8bd6),
-                onTap: () => setSec(() => _konumSekme = 0))),
-              const SizedBox(width: 8),
-              Expanded(child: _guzelSekme(
-                emoji: '🏪', etiket: 'Dükkanlar', aktif: _konumSekme == 1,
-                renk: const Color(0xFF3fb950),
-                onTap: () => setSec(() => _konumSekme = 1))),
-            ]),
-            const SizedBox(height: 10),
+            _ikiliSegment(
+              solEmoji: '🏠', solEtiket: 'Evler',
+              sagEmoji: '🏪', sagEtiket: 'Dükkanlar',
+              seciliSag: _konumSekme == 1,
+              solRenk: const Color(0xFF4f8bd6),
+              sagRenk: const Color(0xFF3fb950),
+              onSec: (sag) => setSec(() => _konumSekme = sag ? 1 : 0),
+            ),
+            const SizedBox(height: 12),
             if (_konumSekme == 0)
               GridView.count(
                 crossAxisCount: 3,
@@ -12322,11 +12205,12 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                 physics: const NeverScrollableScrollPhysics(),
                 mainAxisSpacing: 8,
                 crossAxisSpacing: 8,
-                childAspectRatio: 0.80,
+                childAspectRatio: 0.78,
                 children: Mekan.satinAlinabilir.map((m) {
                   final sahip = _state.konumSahibi(m.konum);
                   return _konumKutusu(
                     ikon: m.ikon, ad: m.ad,
+                    gorsel: m.arkaplan,
                     aciklama: sahip ? 'Senin' : 'Market\'ten al',
                     aktif: sahip,
                     onTap: () { Navigator.pop(ctx); _gecisBaslat(m.konum); },
@@ -12353,11 +12237,12 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                   physics: const NeverScrollableScrollPhysics(),
                   mainAxisSpacing: 8,
                   crossAxisSpacing: 8,
-                  childAspectRatio: 0.80,
+                  childAspectRatio: 0.78,
                   children: dukkanlar.map((d) {
                     final oturuyor = _state.aktifDukkan.isim == d.isim;
                     return _konumKutusu(
                       ikon: '🏪', ad: d.isim,
+                      gorsel: d.arkaplan,
                       aciklama: oturuyor ? 'Buradasın' : 'Taşın',
                       aktif: !oturuyor,
                       onTap: () { Navigator.pop(ctx); _dukkanGecisiBaslat(d); },
@@ -12383,41 +12268,146 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     );
   }
 
+  /// 🎛️ UYGULAMANIN TEK SEKME DİLİ — segmented control.
+  ///
+  /// Tek kapsül, içinde N parça; simge ve etiket YAN YANA, aktif olan kendi
+  /// rengiyle doluyor. Market / Hedefler / Sahip Olunanlar / Toptancı /
+  /// konum seçimi hepsi bunu kullanır.
+  ///
+  /// ⚠️ Eski `_guzelSekme` (emoji üstte, etiket altta, kalın kutu) "sekme
+  /// değil buton" gibi duruyordu — yeni sekme eklerken bunu kullan, elle
+  /// stil verme.
+  ///
+  /// [kisaMod] dar alanlar için (telefon ekranı): yazı ve kutu küçülür.
+  Widget _segmentCubugu({
+    required List<(String emoji, String etiket)> parcalar,
+    required int secili,
+    required Color renk,
+    required void Function(int) onSec,
+    bool kisaMod = false,
+  }) {
+    return Container(
+      padding: EdgeInsets.all(kisaMod ? 2 : 3),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.30),
+        borderRadius: BorderRadius.circular(kisaMod ? 9 : 12),
+        border: Border.all(color: Colors.white12),
+      ),
+      child: Row(children: [
+        for (int i = 0; i < parcalar.length; i++)
+          Expanded(child: GestureDetector(
+            onTap: () { SesServisi.dokun(); onSec(i); },
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 170),
+              height: kisaMod ? 26 : 34,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: secili == i ? renk.withValues(alpha: 0.22) : Colors.transparent,
+                borderRadius: BorderRadius.circular(kisaMod ? 7 : 9),
+                border: Border.all(
+                  color: secili == i ? renk : Colors.transparent,
+                  width: secili == i ? 1.4 : 0),
+              ),
+              child: FittedBox(fit: BoxFit.scaleDown,
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Text(parcalar[i].$1,
+                    style: TextStyle(fontSize: kisaMod ? 11 : 14)),
+                  SizedBox(width: kisaMod ? 4 : 6),
+                  Text(parcalar[i].$2, maxLines: 1, style: TextStyle(
+                    fontSize: kisaMod ? 10 : 13,
+                    fontWeight: secili == i ? FontWeight.bold : FontWeight.w600,
+                    color: secili == i ? renk : Panel.yaziSoluk)),
+                ])),
+            ),
+          )),
+      ]),
+    );
+  }
+
+  /// İki seçenekli kısayol — sol/sağ farklı renkte olabilsin diye ayrı.
+  Widget _ikiliSegment({
+    required String solEmoji, required String solEtiket,
+    required String sagEmoji, required String sagEtiket,
+    required bool seciliSag,
+    required Color solRenk, required Color sagRenk,
+    required void Function(bool sag) onSec,
+  }) {
+    return _segmentCubugu(
+      parcalar: [(solEmoji, solEtiket), (sagEmoji, sagEtiket)],
+      secili: seciliSag ? 1 : 0,
+      renk: seciliSag ? sagRenk : solRenk,
+      onSec: (i) => onSec(i == 1),
+    );
+  }
+
+  /// Konum ızgarasındaki tek kart. [gorsel] verilirse (mekân/dükkan arka
+  /// planı) emoji yerine GERÇEK görsel kullanılır — kilitli olanlar gri
+  /// tonda ve üstünde kilit rozetiyle çıkar, "neyi kaçırıyorum" görünsün.
   Widget _konumKutusu({
     required String ikon, required String ad, required String aciklama,
     required bool aktif, required VoidCallback onTap,
+    String? gorsel,
   }) {
-    return Opacity(
-      opacity: aktif ? 1.0 : 0.42,
-      child: GestureDetector(
-        onTap: aktif ? () { SesServisi.dokun(); onTap(); } : null,
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-          decoration: BoxDecoration(
-            color: const Color(0xFF11202f),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: aktif ? const Color(0xFF4f8bd6) : Colors.white24,
-              width: aktif ? 1.5 : 1),
-          ),
-          // Izgara hücresi dar: adlar ("Mütevazı Ev", "Orman Evi") tek satıra
-          // sığmayabiliyor — FittedBox ile küçülüyorlar, taşma yok.
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(aktif ? ikon : '🔒', style: const TextStyle(fontSize: 26)),
-              const SizedBox(height: 4),
+    final vurgu = aktif ? const Color(0xFF4f8bd6) : Colors.white24;
+    return GestureDetector(
+      onTap: aktif ? () { SesServisi.dokun(); onTap(); } : null,
+      child: Container(
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          color: const Color(0xFF11202f),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: vurgu, width: aktif ? 1.5 : 1),
+          boxShadow: aktif
+              ? [BoxShadow(color: vurgu.withValues(alpha: 0.28), blurRadius: 7)]
+              : null,
+        ),
+        child: Column(children: [
+          // ── Görsel / ikon alanı ──
+          Expanded(child: Stack(fit: StackFit.expand, children: [
+            // ⚠️ Aktif kartta HİÇ filtre olmamalı. Bir ara aktif dala
+            // `ColorFilter.mode(transparent, multiply)` konmuştu — o görüntüyü
+            // tamamen karartıyor. Kilitli kartta gri tonlama matrisi var.
+            if (gorsel != null)
+              aktif
+                  ? Image.asset(gorsel, fit: BoxFit.cover)
+                  : ColorFiltered(
+                      colorFilter: const ColorFilter.matrix(<double>[
+                        0.2126, 0.7152, 0.0722, 0, 0,
+                        0.2126, 0.7152, 0.0722, 0, 0,
+                        0.2126, 0.7152, 0.0722, 0, 0,
+                        0, 0, 0, 1, 0,
+                      ]),
+                      child: Image.asset(gorsel, fit: BoxFit.cover),
+                    )
+            else
+              Center(child: Text(ikon,
+                style: TextStyle(fontSize: 26, color: aktif ? null : Colors.white38))),
+            if (!aktif)
+              Container(
+                color: Colors.black.withValues(alpha: 0.45),
+                alignment: Alignment.center,
+                child: const Text('🔒', style: TextStyle(fontSize: 20)),
+              ),
+          ])),
+          // ── Ad + durum ──
+          // Izgara hücresi dar: "Mütevazı Ev", "Rezidans Dükkanı" gibi uzun
+          // adlar FittedBox ile küçülüyor, taşma yok.
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(3, 4, 3, 5),
+            color: Colors.black.withValues(alpha: 0.55),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
               FittedBox(fit: BoxFit.scaleDown, child: Text(ad,
                 maxLines: 1,
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold,
-                  color: Panel.yazi))),
-              const SizedBox(height: 2),
+                style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold,
+                  color: aktif ? Panel.yazi : Colors.white54))),
               FittedBox(fit: BoxFit.scaleDown, child: Text(aciklama,
                 maxLines: 1, textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 9, color: Panel.yaziSoluk))),
+                style: TextStyle(fontSize: 8.5,
+                  color: aktif ? const Color(0xFF7fd4ff) : Panel.yaziSoluk))),
             ]),
-        ),
+          ),
+        ]),
       ),
     );
   }
