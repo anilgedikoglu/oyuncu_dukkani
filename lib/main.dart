@@ -5453,9 +5453,9 @@ class GameState extends ChangeNotifier {
     {'gorsel': 'assets/musteri_21.png', 'cinsiyet': 'K', 'yas': 'yetiskin'}, // kıvırcık saçlı, turuncu bluz
     {'gorsel': 'assets/musteri_22.png', 'cinsiyet': 'K', 'yas': 'genc'},     // punk, mor mohawk
     {'gorsel': 'assets/musteri_23.png', 'cinsiyet': 'E', 'yas': 'yetiskin'}, // sakallı, yelek ve gömlek
-    {'gorsel': 'assets/musteri_24.png', 'cinsiyet': 'K', 'yas': 'genc'},     // renkli saçlı genç
+    {'gorsel': 'assets/musteri_24.png', 'cinsiyet': 'E', 'yas': 'yetiskin'}, // v122: kasap/aşçı önlüklü, sakallı
     {'gorsel': 'assets/musteri_25.png', 'cinsiyet': 'E', 'yas': 'genc'},     // takım elbiseli genç
-    {'gorsel': 'assets/musteri_26.png', 'cinsiyet': 'E', 'yas': 'cocuk'},    // erkek çocuk, mavi kazak
+    {'gorsel': 'assets/musteri_26.png', 'cinsiyet': 'K', 'yas': 'yasli'},    // v122: beyaz saçlı hanımefendi, yeşil ceket
     {'gorsel': 'assets/musteri_27.png', 'cinsiyet': 'K', 'yas': 'cocuk'},    // kız çocuk, okul üniforması
     {'gorsel': 'assets/musteri_28.png', 'cinsiyet': 'E', 'yas': 'yetiskin'}, // atletik, kolsuz tişört
     // v110 — kaynak klasörde işlenmemiş kalan 6 kesim. Ölçüldü: hepsi 500×500,
@@ -5470,7 +5470,7 @@ class GameState extends ChangeNotifier {
     // v112 — 8 yeni kesim. Ölçüldü: hepsi 500×500, doluluk 0.914-0.976,
     // alt boşluk 7-17px → mevcut kadroyla uyumlu, olduğu gibi kopyalandı.
     {'gorsel': 'assets/musteri_35.png', 'cinsiyet': 'K', 'yas': 'genc'},     // kızıl örgülü, hardal hırka
-    {'gorsel': 'assets/musteri_36.png', 'cinsiyet': 'E', 'yas': 'cocuk'},    // erkek çocuk, basketbol forması
+    {'gorsel': 'assets/musteri_36.png', 'cinsiyet': 'K', 'yas': 'genc'},     // v122: gotik, siyah dantel elbise
     {'gorsel': 'assets/musteri_37.png', 'cinsiyet': 'E', 'yas': 'genc'},     // rocker, siyah deri ceket
     {'gorsel': 'assets/musteri_38.png', 'cinsiyet': 'E', 'yas': 'genc'},     // at kuyruklu, kahve gömlek
     {'gorsel': 'assets/musteri_39.png', 'cinsiyet': 'E', 'yas': 'yetiskin'}, // gözlüklü, papyonlu takım elbise
@@ -5509,6 +5509,25 @@ class GameState extends ChangeNotifier {
     {'gorsel': 'assets/musteri_63.png', 'cinsiyet': 'E', 'yas': 'yasli'},      // balıkçı, atlet + halat
     {'gorsel': 'assets/musteri_64.png', 'cinsiyet': 'K', 'yas': 'yetiskin'},   // karikatürist, renkli kazak
     {'gorsel': 'assets/musteri_65.png', 'cinsiyet': 'K', 'yas': 'yetiskin'},   // sahne divası, pembe kürk
+    // ── v122: 16 yeni karakter ──
+    // Hepsi 500×500, doluluk 0.938-0.976 → mevcut kadroyla uyumlu geldiler,
+    // YENİDEN ÖLÇEKLENMEDİ. Kadro 65 → 81.
+    {'gorsel': 'assets/musteri_66.png', 'cinsiyet': 'E', 'yas': 'yetiskin'}, // yelekli papyonlu garson
+    {'gorsel': 'assets/musteri_67.png', 'cinsiyet': 'K', 'yas': 'yetiskin'}, // başörtülü, bej kaban
+    {'gorsel': 'assets/musteri_68.png', 'cinsiyet': 'E', 'yas': 'genc'},     // platin saçlı, bel çantalı
+    {'gorsel': 'assets/musteri_69.png', 'cinsiyet': 'K', 'yas': 'genc'},     // kıvırcık, turkuaz bomber
+    {'gorsel': 'assets/musteri_70.png', 'cinsiyet': 'E', 'yas': 'genc'},     // bordo deri ceket
+    {'gorsel': 'assets/musteri_71.png', 'cinsiyet': 'K', 'yas': 'yetiskin'}, // mor takım, gözlüklü
+    {'gorsel': 'assets/musteri_72.png', 'cinsiyet': 'K', 'yas': 'yetiskin'}, // aşçı, örgülü saç
+    {'gorsel': 'assets/musteri_73.png', 'cinsiyet': 'E', 'yas': 'yetiskin'}, // turuncu kaftan, sakallı
+    {'gorsel': 'assets/musteri_74.png', 'cinsiyet': 'K', 'yas': 'yetiskin'}, // kısa saç, motorcu ceket
+    {'gorsel': 'assets/musteri_75.png', 'cinsiyet': 'E', 'yas': 'yasli'},    // mint takım, beyaz sakal
+    {'gorsel': 'assets/musteri_76.png', 'cinsiyet': 'E', 'yas': 'genc'},     // sarı bukleli, yeşil önlük
+    {'gorsel': 'assets/musteri_77.png', 'cinsiyet': 'K', 'yas': 'yetiskin'}, // mavi saç, renkli desenli tulum
+    {'gorsel': 'assets/musteri_78.png', 'cinsiyet': 'E', 'yas': 'genc'},     // kızıl saçlı, beyaz önlük
+    {'gorsel': 'assets/musteri_79.png', 'cinsiyet': 'K', 'yas': 'genc'},     // örgülü, lila kapüşonlu
+    {'gorsel': 'assets/musteri_80.png', 'cinsiyet': 'K', 'yas': 'yasli'},    // yeşil geleneksel ceket
+    {'gorsel': 'assets/musteri_81.png', 'cinsiyet': 'E', 'yas': 'yetiskin'}, // bere, teal mont, sakallı
   ];
   List<int> _musteriSira = [];
 
