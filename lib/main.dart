@@ -446,7 +446,10 @@ const double kUrunTabani   = 0.5930;
 // Ürün yüksekliği (masa boyuna oranla) — 411dp ekranda ~151dp'ye denk gelir
 const double kUrunBoyu     = 0.1745;
 // Ürünün müşteriye göre yatay kayması
-const double kUrunSagKaydir= 0.3537;
+// ⚠️ v122: ürün genişliğinin (kUrunBoyu = 0.1745) ALTIDA BİRİ kadar sağa
+// alındı: 0.3537 + 0.0291. İsim etiketi DOKUNULMADI — o `Center` ile
+// ortalı, yatay kayması yok.
+const double kUrunSagKaydir= 0.3828;
 // İsim etiketinin alt kenarı — masa çizgisinin hemen altı
 const double kIsimAlti     = 0.5170;
 // Müşteri görselinin üst kenarı ve boyu
@@ -3320,6 +3323,52 @@ class SesServisi {
       player.onPlayerComplete.first.then((_) => player.dispose());
     } catch (_) {}
   }
+
+  // ── 🔊 MASA HOPARLÖRÜ — MÜZİK ÇALAR ────────────────────────────────────
+  //
+  // ⚠️ SFX'ten AYRI bir player: efektler her seferinde yeni bir AudioPlayer
+  // açıp bitince kapatıyor, müzik ise uzun sürüyor ve durdurulabilmesi
+  // gerekiyor. Aynı player'ı paylaşsalardı bir kapı sesi müziği kesердi.
+  static AudioPlayer? _muzikPlayer;
+
+  /// O an çalan parçanın dosya adı (`muzik_oyun1.mp3` gibi), yoksa null.
+  /// Çalar listesi hangi satırın oynadığını buradan biliyor.
+  static String? calanMuzik;
+
+  /// Parça değişince UI'ın kendini yenilemesi için — popup buna abone olur.
+  static final ValueNotifier<int> muzikDurumu = ValueNotifier(0);
+
+  static Future<void> muzikCal(String dosya) async {
+    try {
+      await muzikDurdur();
+      final p = AudioPlayer();
+      _muzikPlayer = p;
+      calanMuzik = dosya;
+      muzikDurumu.value++;
+      await p.play(AssetSource('sounds/$dosya'));
+      // Parça bitince listede "çalıyor" işareti kalmasın.
+      p.onPlayerComplete.first.then((_) {
+        if (_muzikPlayer == p) {
+          calanMuzik = null;
+          muzikDurumu.value++;
+          p.dispose();
+          _muzikPlayer = null;
+        }
+      });
+    } catch (_) {
+      calanMuzik = null;
+      muzikDurumu.value++;
+    }
+  }
+
+  static Future<void> muzikDurdur() async {
+    final p = _muzikPlayer;
+    _muzikPlayer = null;
+    calanMuzik = null;
+    muzikDurumu.value++;
+    if (p == null) return;
+    try { await p.stop(); await p.dispose(); } catch (_) {}
+  }
 }
 
 // ─── KAYIT SERVİSİ ───────────────────────────────────────────────────────────
@@ -4604,6 +4653,22 @@ class GameState extends ChangeNotifier {
   static const int telefonFiyati = 7500;
   static const int telefonMinGun = 10;
 
+  // ── 🔊 MASA HOPARLÖRÜ ─────────────────────────────────────────────────────
+  /// Market'ten alınır, masaya monte edilir. Masa görseli hoparlörlü sürüme
+  /// geçer ve hoparlörlere dokununca müzik çalar listesi açılır.
+  bool hoparlorVar = false;
+  static const int hoparlorFiyati = 3500;
+  static const int hoparlorMinGun = 4;
+
+  bool hoparlorSatinAl() {
+    if (hoparlorVar || para < hoparlorFiyati) return false;
+    para -= hoparlorFiyati;
+    hoparlorVar = true;
+    SesServisi.paraGirdi();
+    notifyListeners();
+    return true;
+  }
+
 
   /// 🥚 Gizli hazine (2-6-4-5 dokunuş deseni). Para vermenin yanı sıra oyuncuyu
   /// **10. güne** taşır ve o güne kadar açılan HER ŞEYİ verir: araçlar,
@@ -5686,6 +5751,7 @@ class GameState extends ChangeNotifier {
     krediTaksitMiktar = (j['krediTaksitMiktar'] as int?) ?? 0;
     tamamlananKrediSayisi = (j['tamamlananKrediSayisi'] as int?) ?? 0;
     imacSatinAlindi = (j['imacSatinAlindi'] as bool?) ?? false;
+    hoparlorVar     = (j['hoparlorVar'] as bool?) ?? false;
     kolonyaKullanim = (j['kolonyaKullanim'] as int?) ?? 0;
     // Eski kayıt migrasyonu: kolonya slotta idiyse çıkar, kullanım hakkını koru
     for (int i = 0; i < slotlar.length; i++) {
@@ -5785,6 +5851,7 @@ class GameState extends ChangeNotifier {
     'krediTaksitMiktar': krediTaksitMiktar,
     'tamamlananKrediSayisi': tamamlananKrediSayisi,
     'imacSatinAlindi': imacSatinAlindi,
+    'hoparlorVar': hoparlorVar,
     'kolonyaKullanim': kolonyaKullanim,
     'tamirSetiAdet': tamirSetiAdet,
     'yemekVar': yemekVar,
@@ -7478,6 +7545,16 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                 kilitYazi: '${GameState.telefonMinGun}. gün',
                 onTap: () { _sayfaKapat(ctx); _telefonSatinAlPopup(); },
               ),
+            // 🔊 Masa hoparlörü — masaya monte edilir, müzik çalar açar.
+            if (_marketSekme == 3 && !_state.hoparlorVar)
+              _marketUrunKart(
+                isim: 'Masa Hoparlörü',
+                fiyat: GameState.hoparlorFiyati,
+                gorselYolu: 'assets/hoparlor.png',
+                kilitli: _state.gun < GameState.hoparlorMinGun,
+                kilitYazi: '${GameState.hoparlorMinGun}. gün',
+                onTap: () { _sayfaKapat(ctx); _hoparlorSatinAlPopup(); },
+              ),
           ];
           if (kartlar.isEmpty) {
             return const Padding(
@@ -7569,6 +7646,15 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                 gorselYolu: null,
                 ikon: '🖥️',
                 onTap: () => _imacSatOnay(ctx),
+              ),
+            // 🔊 Hoparlör de bir eşya — satılmıyor, masaya monte.
+            if (_sahiplikSekme == 3 && _state.hoparlorVar)
+              _sahiplikKart(
+                isim: 'Masa Hoparlörü',
+                altYazi: 'Satılık değil',
+                gorselYolu: 'assets/hoparlor.png',
+                onTap: () => _dialogBildirim(ctx,
+                    'Hoparlörler masaya monte, sökülmüyor.'),
               ),
             // 📱 Telefon de bir eşya — alındığı hâlde burada görünmüyordu.
             // ⚠️ SATILMIYOR: mekânlarda tek arayüz o; satılsa oyuncu evde
@@ -8026,6 +8112,50 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   }
 
   /// 📱 Telefon satın alma onayı.
+
+  /// 🔊 Masa hoparlörü satın alma onayı.
+  void _hoparlorSatinAlPopup() {
+    showDialog(
+      useRootNavigator: false,
+      context: _popupCtx,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Panel.zemin,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: Color(0xFF00e5ff), width: 1.5),
+        ),
+        title: const Text('🔊 Masa Hoparlörü', textAlign: TextAlign.center,
+          style: TextStyle(color: Color(0xFF00e5ff), fontSize: 18, fontWeight: FontWeight.bold)),
+        content: Column(mainAxisSize: MainAxisSize.min, children: [
+          Image.asset('assets/hoparlor.png', height: 150, fit: BoxFit.contain),
+          const SizedBox(height: 10),
+          Text('${GameState.hoparlorFiyati} lira.\n'
+              'Tezgâhın üstüne monte edilir. Hoparlörlere dokununca çalar '
+              'liste açılır, dükkanda müzik çalar.',
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Panel.yazi, fontSize: 13, height: 1.35)),
+        ]),
+        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+        actions: [
+          dialogButonlari(
+            anaEtiket: 'Satın Al',
+            anaRenk: const Color(0xFF00838f),
+            anaYazi: Colors.white,
+            anaOnTap: _state.para < GameState.hoparlorFiyati ? null : () {
+              Navigator.pop(ctx);
+              if (_state.hoparlorSatinAl()) {
+                _toastGoster('HOPARLÖRLER KURULDU!',
+                  altYazi: 'Masadaki hoparlörlere dokun',
+                  emoji: '🔊', renk: const Color(0xFF00e5ff), ms: 3200);
+              }
+            },
+            ikincilEtiket: 'Kapat',
+            ikincilOnTap: () => Navigator.pop(ctx),
+          ),
+        ],
+      ),
+    );
+  }
   void _telefonSatinAlPopup() {
     showDialog(
       useRootNavigator: false,
@@ -9862,14 +9992,25 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                   ),
                 ),
               // 4. Masa layer'ı (müşterinin üzerinde, SafeArea'nın altında)
+              //
+              // 🔊 Hoparlör alındıysa masanın HOPARLÖRLÜ sürümü çiziliyor.
+              // Üç durum için üç ayrı çizim var; bilgisayarsız / ilk bilgisayar
+              // / iMac. Görseller 407×612 geldi, 719×1080'e ölçeklendi (aynı
+              // en-boy oranı, 0.665) — sahne metriği hiç değişmiyor.
               Positioned.fill(
                 child: AnimatedSwitcher(
                   duration: const Duration(milliseconds: 600),
-                  child: _state.imacSatinAlindi
-                    ? Align(key: const ValueKey('bg2'), alignment: Alignment.bottomCenter, child: Transform.translate(offset: const Offset(0, 6), child: Transform.scale(scale: 1.4, alignment: Alignment.bottomCenter, child: Image.asset('assets/bg2.png', fit: BoxFit.fitWidth))))
-                    : (_state.gun >= 2
-                      ? Align(key: const ValueKey('bg1'), alignment: Alignment.bottomCenter, child: Transform.translate(offset: const Offset(0, 6), child: Transform.scale(scale: 1.4, alignment: Alignment.bottomCenter, child: Image.asset('assets/bg1.png', fit: BoxFit.fitWidth))))
-                      : Align(key: const ValueKey('bgbosmasa'), alignment: Alignment.bottomCenter, child: Transform.translate(offset: const Offset(0, 6), child: Transform.scale(scale: 1.4, alignment: Alignment.bottomCenter, child: Image.asset('assets/bgbosmasa.png', fit: BoxFit.fitWidth))))),
+                  child: Align(
+                    key: ValueKey(_masaGorseli),
+                    alignment: Alignment.bottomCenter,
+                    child: Transform.translate(
+                      offset: const Offset(0, 6),
+                      child: Transform.scale(
+                        scale: 1.4, alignment: Alignment.bottomCenter,
+                        child: Image.asset(_masaGorseli, fit: BoxFit.fitWidth),
+                      ),
+                    ),
+                  ),
                 ),
               ),
               // 🖐️ Sahneye dokunma: yazmakta olan balonu anında tamamlar ve
@@ -9919,6 +10060,26 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
               // y %55-63 — ikisini kapsayan tek kutu (ızgarayla ölçüldü).
               // Sol kenar masanın ekran dışına taşan kısmına denk gelebilir,
               // negatif `left` normaldir.
+              // 🔊 Masadaki hoparlörler — çalar listesini açar.
+              //
+              // Hoparlörler tezgâhın ÖN YÜZÜNDE, masa yüzeyinin altında
+              // duruyor: görsel içi yatay %22-84, dikey %70-89 (ekrandan
+              // ölçüldü). Masa %140 ölçekli olduğu için orada iri görünüyorlar.
+              //
+              // ⚠️ Menü katmanından SONRA geliyor: Stack'te sonraki çocuk önce
+              // hit-test edilir, yani hoparlör bölgesi menüye kaptırmaz.
+              if (_state.hoparlorVar)
+                Positioned(
+                  left: SahneMetrik.hesapla(MediaQuery.of(context).size)
+                          .x(0.22, MediaQuery.of(context).size.width),
+                  top: SahneMetrik.hesapla(MediaQuery.of(context).size).y(0.70),
+                  width: SahneMetrik.hesapla(MediaQuery.of(context).size).gen * 0.62,
+                  height: SahneMetrik.hesapla(MediaQuery.of(context).size).u(0.19),
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () { SesServisi.dokun(); _muzikPopup(); },
+                  ),
+                ),
               // ⚠️ iMac ŞARTI YOK. Düğme tamamen kaldırıldı; masanın bu
               // bölgesi iMac olsa da olmasa da menüyü açıyor. Önce "iMac
               // yokken düğme kalsın" denmişti ama o zaman 1-2. günde düğme
@@ -12672,6 +12833,135 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   /// `build()` içinde, SafeArea'nın DIŞINDA hesaplanır — içeride ölçülemez,
   /// sebebi orada yazılı.
   double _sahneUstKaymasi = 0;
+
+  /// 🔊 Masadaki hoparlörlere dokununca açılan çalar listesi.
+  ///
+  /// Parçalar `assets/sounds/muzik_*.mp3`. Çalan parça listede vurgulanır;
+  /// üstüne tekrar dokunmak durdurur. Popup kapansa da müzik devam eder —
+  /// oyuncu dükkanda çalışırken müzik dinleyebilsin.
+  static const List<(String dosya, String ad)> _calarListe = [
+    ('muzik_oyun1.mp3', 'Dükkan Havası'),
+    ('muzik_oyun2.mp3', 'Tezgâh Ritmi'),
+    ('muzik_oyun3.mp3', 'Retro Rüzgâr'),
+    ('muzik_oyun4.mp3', 'Gece Vardiyası'),
+    ('muzik_yol.mp3',   'Yol'),
+  ];
+
+  void _muzikPopup() {
+    showDialog(
+      useRootNavigator: false,
+      context: _popupCtx,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Panel.zemin,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: Color(0xFF00e5ff), width: 1.5),
+        ),
+        titlePadding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
+        title: const Column(mainAxisSize: MainAxisSize.min, children: [
+          Text('🔊', style: TextStyle(fontSize: 34)),
+          SizedBox(height: 4),
+          Text('MÜZİK ÇALAR', textAlign: TextAlign.center,
+            style: TextStyle(color: Color(0xFF00e5ff), fontSize: 16,
+              fontWeight: FontWeight.bold, letterSpacing: 1.5)),
+        ]),
+        contentPadding: const EdgeInsets.fromLTRB(14, 0, 14, 8),
+        content: SizedBox(
+          width: 300,
+          child: ValueListenableBuilder<int>(
+            valueListenable: SesServisi.muzikDurumu,
+            builder: (c, _, __) => Column(mainAxisSize: MainAxisSize.min, children: [
+              for (final (dosya, ad) in _calarListe) ...[
+                Builder(builder: (_) {
+                  final caliyor = SesServisi.calanMuzik == dosya;
+                  return GestureDetector(
+                    onTap: () {
+                      SesServisi.dokun();
+                      if (caliyor) {
+                        SesServisi.muzikDurdur();
+                      } else {
+                        SesServisi.muzikCal(dosya);
+                      }
+                    },
+                    child: Container(
+                      margin: const EdgeInsets.only(bottom: 6),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+                      decoration: BoxDecoration(
+                        color: caliyor ? const Color(0xFF06323a) : const Color(0xFF161b22),
+                        borderRadius: BorderRadius.circular(9),
+                        border: Border.all(
+                          color: caliyor ? const Color(0xFF00e5ff) : Colors.white12,
+                          width: caliyor ? 1.6 : 1),
+                      ),
+                      child: Row(children: [
+                        Text(caliyor ? '⏸️' : '▶️', style: const TextStyle(fontSize: 16)),
+                        const SizedBox(width: 10),
+                        Expanded(child: Text(ad,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: caliyor ? FontWeight.bold : FontWeight.w500,
+                            color: caliyor ? const Color(0xFF00e5ff) : Panel.yazi))),
+                        if (caliyor)
+                          const Text('çalıyor',
+                            style: TextStyle(fontSize: 10, color: Color(0xFF00e5ff))),
+                      ]),
+                    ),
+                  );
+                }),
+              ],
+              const SizedBox(height: 2),
+              const Text('Popup kapansa da müzik çalmaya devam eder.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 10.5, color: Panel.yaziSoluk)),
+            ]),
+          ),
+        ),
+        actionsPadding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+        actions: [
+          Row(children: [
+            Expanded(child: ElevatedButton(
+              onPressed: () { SesServisi.muzikDurdur(); },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF7f2a2a), foregroundColor: Colors.white,
+                minimumSize: const Size(0, 44),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              child: const Text('Durdur', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+            )),
+            const SizedBox(width: 10),
+            Expanded(child: ElevatedButton(
+              onPressed: () => Navigator.pop(ctx),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Panel.ikincilZemin, foregroundColor: Colors.white70,
+                minimumSize: const Size(0, 44),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  side: const BorderSide(color: Panel.ikincilKenar)),
+              ),
+              child: const Text('Kapat', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+            )),
+          ]),
+        ],
+      ),
+    );
+  }
+
+  /// Masa görseli. Hoparlör alındıysa hoparlörlü sürüm çizilir.
+  ///
+  /// | durum | normal | hoparlörlü |
+  /// |---|---|---|
+  /// | 3. günden önce (bilgisayarsız) | bgbosmasa | masa_hoparlor1 |
+  /// | ilk bilgisayar (gün ≥ 2)       | bg1       | masa_hoparlor2 |
+  /// | iMac alındı                    | bg2       | masa_hoparlor3 |
+  String get _masaGorseli {
+    if (_state.imacSatinAlindi) {
+      return _state.hoparlorVar ? 'assets/masa_hoparlor3.png' : 'assets/bg2.png';
+    }
+    if (_state.gun >= 2) {
+      return _state.hoparlorVar ? 'assets/masa_hoparlor2.png' : 'assets/bg1.png';
+    }
+    return _state.hoparlorVar ? 'assets/masa_hoparlor1.png' : 'assets/bgbosmasa.png';
+  }
   /// Envanter penceresindeki sekme: 0 = Envanter, 1 = Koleksiyon.
   /// ⚠️ Widget'ta değil state'te — pencere her karede yeniden çiziliyor.
   int _envanterSekme = 0;

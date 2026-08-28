@@ -2,7 +2,7 @@ name: oyuncu_dukkani
 description: "A new Flutter project."
 publish_to: 'none'
 
-version: 1.2.0+21
+version: 1.3.0+22
 
 environment:
   sdk: ^3.7.2
@@ -155,6 +155,10 @@ flutter:
     - assets/arac_10.png
     - assets/arac_11.png
     - assets/telefon.png
+    - assets/hoparlor.png
+    - assets/masa_hoparlor1.png
+    - assets/masa_hoparlor2.png
+    - assets/masa_hoparlor3.png
     - assets/telefon_bos.png
     - assets/doktor.png
     - assets/tamirci.png
