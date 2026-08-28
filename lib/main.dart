@@ -299,7 +299,7 @@ const List<DukkanSeviye> tumDukkanlar = [
   // genişlik sağdan %10 kısaltıldı (0.1330*0.90).
   DukkanSeviye(seviye: 1, isim: 'Bodrum Kat Dükkan',    kira: 300,  minGun: 1,
     arkaplan: 'assets/dukkan_bodrum.jpg',  arkaplanGuv: 'assets/dukkan_bodrum_guv.jpg',  arkaplanOrani: 719 / 1080,
-    kapiSol: 0.3157, kapiUst: 0.0880, kapiGen: 0.1155, kapiYuk: 0.1540),
+    kapiSol: 0.3157, kapiUst: 0.0880, kapiGen: 0.1085, kapiYuk: 0.1540),
   // kapiGen: sağda boşluk kalıyordu — sol kenar ve dikey ölçüler SABİT,
   // genişlik sadece sağa doğru %15 uzatıldı (0.1224*1.15).
   DukkanSeviye(seviye: 2, isim: 'Mahalle Köşe Dükkanı', kira: 600,  minGun: 3,
@@ -317,16 +317,16 @@ const List<DukkanSeviye> tumDukkanlar = [
     kapiSolGuvFark: -0.0062, kapiUstGuvFark: -0.0047),
   DukkanSeviye(seviye: 3, isim: 'Cadde Dükkanı',        kira: 900,  minGun: 5,
     arkaplan: 'assets/dukkan_cadde.jpg',   arkaplanGuv: 'assets/dukkan_cadde_guv.jpg',   arkaplanOrani: 719 / 1278,
-    kapiSol: 0.3350, kapiUst: 0.1517, kapiGen: 0.1128, kapiYuk: 0.1582),
+    kapiSol: 0.3350, kapiUst: 0.1517, kapiGen: 0.1086, kapiYuk: 0.1582),
   // Yeni sanat — kapı camı 900px panelde %1 ızgarayla ölçüldü, çizdirilip doğrulandı.
   DukkanSeviye(seviye: 4, isim: 'Çarşı Dükkanı',        kira: 1200, minGun: 8,
     arkaplan: 'assets/dukkan_carsi.jpg',   arkaplanGuv: 'assets/dukkan_carsi_guv.jpg',   arkaplanOrani: 719 / 1080,
     // v122: cam yeniden olculdu — kutu sagda ve altta tasiyordu.
-    kapiSol: 0.3473, kapiUst: 0.1139, kapiGen: 0.1065, kapiYuk: 0.1605),
+    kapiSol: 0.3473, kapiUst: 0.1139, kapiGen: 0.0982, kapiYuk: 0.1605),
   DukkanSeviye(seviye: 5, isim: 'AVM Dükkanı',          kira: 1500, minGun: 10,
     arkaplan: 'assets/dukkan_avm.jpg',     arkaplanGuv: 'assets/dukkan_avm_guv.jpg',     arkaplanOrani: 719 / 1278,
     // v122: kapiGen kisaldi — kutu kapi kolunun ustune tasiyordu.
-    kapiSol: 0.3588, kapiUst: 0.1385, kapiGen: 0.1159, kapiYuk: 0.1541),
+    kapiSol: 0.3588, kapiUst: 0.1385, kapiGen: 0.1103, kapiYuk: 0.1541),
 ];
 
 /// ─── SATILIK DÜKKANLAR ──────────────────────────────────────────────────────
@@ -340,19 +340,19 @@ const List<DukkanSeviye> tumDukkanlar = [
 const List<DukkanSeviye> satilikDukkanlar = [
   DukkanSeviye(seviye: 2, isim: 'Fakir Dükkan',        kira: 0, minGun: 5, satinAlmaFiyati: 5000,
     arkaplan: 'assets/dukkan_satilik1.jpg', arkaplanGuv: 'assets/dukkan_satilik1_guv.jpg', arkaplanOrani: 719 / 1080,
-    kapiSol: 0.3550, kapiUst: 0.1630, kapiGen: 0.1012, kapiYuk: 0.1555),
+    kapiSol: 0.3550, kapiUst: 0.1630, kapiGen: 0.0942, kapiYuk: 0.1555),
   DukkanSeviye(seviye: 3, isim: 'Derme Çatma Dükkan',  kira: 0, minGun: 5, satinAlmaFiyati: 7000,
     arkaplan: 'assets/dukkan_satilik2.jpg', arkaplanGuv: 'assets/dukkan_satilik2_guv.jpg', arkaplanOrani: 719 / 1080,
-    kapiSol: 0.3459, kapiUst: 0.1330, kapiGen: 0.1043, kapiYuk: 0.1590),
+    kapiSol: 0.3431, kapiUst: 0.1330, kapiGen: 0.1015, kapiYuk: 0.1590),
   DukkanSeviye(seviye: 4, isim: 'Lüks Dükkan',         kira: 0, minGun: 5, satinAlmaFiyati: 10000,
     arkaplan: 'assets/dukkan_satilik3.jpg', arkaplanGuv: 'assets/dukkan_satilik3_guv.jpg', arkaplanOrani: 719 / 1080,
-    kapiSol: 0.3389, kapiUst: 0.1500, kapiGen: 0.1089, kapiYuk: 0.1630),
+    kapiSol: 0.3389, kapiUst: 0.1500, kapiGen: 0.1028, kapiYuk: 0.1630),
   DukkanSeviye(seviye: 4, isim: 'Klas Dükkan',         kira: 0, minGun: 5, satinAlmaFiyati: 13000,
     arkaplan: 'assets/dukkan_satilik4.jpg', arkaplanGuv: 'assets/dukkan_satilik4_guv.jpg', arkaplanOrani: 719 / 1080,
     kapiSol: 0.3654, kapiUst: 0.1620, kapiGen: 0.1065, kapiYuk: 0.1790),
   DukkanSeviye(seviye: 5, isim: 'Rezidans Dükkanı',    kira: 0, minGun: 5, satinAlmaFiyati: 20000,
     arkaplan: 'assets/dukkan_satilik5.jpg', arkaplanGuv: 'assets/dukkan_satilik5_guv.jpg', arkaplanOrani: 719 / 1080,
-    kapiSol: 0.3530, kapiUst: 0.2500, kapiGen: 0.1000, kapiYuk: 0.1480),
+    kapiSol: 0.3530, kapiUst: 0.2500, kapiGen: 0.0948, kapiYuk: 0.1480),
 ];
 
 /// Kiralık + satılık tüm dükkanlar (kayıt yüklerken isimle arama için).
@@ -3979,7 +3979,16 @@ class Customer {
   final YasGrubu yas;
   final String cinsiyet; // 'E' | 'K'
 
-  Customer({required this.name, required this.gorsel, required this.musteriSatiyor, required this.item, required this.ilkTeklif, required this.ozellik, required this.yas, required this.cinsiyet});
+  /// Tezgâhın altındaki isim etiketinde yazacak KISA ad.
+  ///
+  /// Sabit adlı bazı karakterler kendini unvanıyla tanıtıyor ("Kaportacı
+  /// Demir Demirkan") ama o uzunluk küçük etikete sığmıyor. `name` balondaki
+  /// `{AD}` için tam hâli, `etiketAdi` etiket için kısası. Verilmezse `name`
+  /// kullanılır — diğer 60+ karakter için hiçbir şey değişmiyor.
+  final String? kisaAd;
+  String get etiketAdi => kisaAd ?? name;
+
+  Customer({required this.name, required this.gorsel, required this.musteriSatiyor, required this.item, required this.ilkTeklif, required this.ozellik, required this.yas, required this.cinsiyet, this.kisaAd});
 
   // ── SELAMLAMA HAVUZLARI ──
   // {AD} = müşteri adı, {URUN} = ürün adı.
@@ -4159,6 +4168,11 @@ class GameState extends ChangeNotifier {
   bool get _galericiZamani =>
       !_galericiBugunGeldi && gun >= 3 && (gun - 3) % 3 == 0;
 
+  /// Gürbüz bugün geldi sayılsın. ⚠️ Oyuncu Market'ten araç seçip Gürbüz'ü
+  /// KENDİSİ çağırdığında da işaretlenmeli: yoksa aynı gün bir de kendi
+  /// programıyla kapıyı çalıyor, üst üste iki kez gelmiş oluyordu.
+  void galericiGeldiIsaretle() => _galericiBugunGeldi = true;
+
   /// Özel müşteri ROTASYONUNA hiç girmeyen tipler — her birinin kendi
   /// programı var, rotasyondan da gelirlerse iki kez gelmiş olurlar.
   /// (Deli Bekir bilerek LİSTEDE YOK: o sıradan rotasyona girer.)
@@ -4237,10 +4251,12 @@ class GameState extends ChangeNotifier {
   }
 
   /// Şeyma'nın hediye kararı: ('araba' | 'motor' | 'para', ilgili id ya da tutar).
-  /// Para hediyesi bakiyenin 2 katıdır. Araç zaten sahipliyse paraya düşülür.
+  /// Para hediyesi bakiyenin BEŞTE BİRİDİR. ⚠️ Eskiden 2 KATIYDI: oyuncunun
+  /// 15.500 lirası varken 31.000 lira veriyordu, yani tek ziyarette servet
+  /// üçe katlanıyordu. Ödül hâlâ hatırı sayılır ama oyunu bitirmiyor.
   (String, String, int) seymaOdulSec() {
     final rng = Random();
-    final paraOdul = para * 2;
+    final paraOdul = (para * 0.2).round();
     final tip = rng.nextInt(3);
     if (tip == 0 && !aracSahibi('arac10')) {
       return ('araba', 'arac10', 0); // beyaz tavanlı Fıstık
@@ -4257,7 +4273,7 @@ class GameState extends ChangeNotifier {
     switch (Random().nextInt(3)) {
       case 0: return 'bir araba';
       case 1: return 'bir motosiklet';
-      default: return '${para * 2} lira';
+      default: return '${(para * 0.2).round()} lira';
     }
   }
 
@@ -4482,8 +4498,18 @@ class GameState extends ChangeNotifier {
   void ozelSatisiTemizle() {
     satistakiAracId = null;
     satistakiKonum = null;
+    // Anlaşmadan ayrılan dükkan bugünlük kapanır: Necmi aynı gün aynı dükkan
+    // için tekrar çağrılamaz, yoksa oyuncu beğenmediği fiyatı reddedip
+    // pazarlığı sonsuz kez yeniden başlatırdı.
+    if (alinacakDukkan != null) {
+      bugunPazarligiBozulanDukkanlar.add(alinacakDukkan!.isim);
+    }
     alinacakDukkan = null;
   }
+
+  /// Bugün Emlakçı Necmi'yle pazarlığı anlaşmasız biten dükkanların adı.
+  /// `gunuBitir()` içinde temizlenir — ertesi gün yeniden denenebilir.
+  final Set<String> bugunPazarligiBozulanDukkanlar = {};
   int toplamTeklifSayisi = 0;
   int krediKalanTaksit = 0;
   int krediTaksitMiktar = 0;
@@ -5413,7 +5439,10 @@ class GameState extends ChangeNotifier {
     {'gorsel': 'assets/musteri_45.png', 'cinsiyet': 'E', 'yas': 'yetiskin', 'ad': 'Şakir Oneyıl'},   // basketbolcu, mor forma
     {'gorsel': 'assets/musteri_46.png', 'cinsiyet': 'E', 'yas': 'yetiskin'},                          // takım elbiseli bey
     // ── v121: 9 yeni karakter ──
-    {'gorsel': 'assets/musteri_47.png', 'cinsiyet': 'E', 'yas': 'yetiskin'},                          // robocop kostumlu
+    // ⚠️ SABİT ad + KISA ad: kendini "Kaportacı Demir Demirkan" diye tanıtır
+    // ama tezgâh etiketine o uzunluk sığmıyor, orada sadece "Demir" yazar.
+    {'gorsel': 'assets/musteri_47.png', 'cinsiyet': 'E', 'yas': 'yetiskin',
+     'ad': 'Kaportacı Demir Demirkan', 'kisaAd': 'Demir'},                    // robocop kostumlu
     {'gorsel': 'assets/musteri_48.png', 'cinsiyet': 'E', 'yas': 'genc'},                              // ucube/karikatur tip
     {'gorsel': 'assets/musteri_49.png', 'cinsiyet': 'K', 'yas': 'yetiskin'},                          // koylu kadin, sepetli
     {'gorsel': 'assets/musteri_50.png', 'cinsiyet': 'E', 'yas': 'genc'},                              // lacivert ceketli genc
@@ -6000,7 +6029,7 @@ class GameState extends ChangeNotifier {
     final openingRaw = ozellik.openingOffer(reserv, fiyat, musteriSatiyor);
     final ilkTeklif  = openingRaw.round();
 
-    aktifMusteri = Customer(name: isim, gorsel: gorsel, musteriSatiyor: musteriSatiyor, item: secilenUrun, ilkTeklif: ilkTeklif, ozellik: ozellik, yas: yas, cinsiyet: cinsiyet);
+    aktifMusteri = Customer(name: isim, gorsel: gorsel, musteriSatiyor: musteriSatiyor, item: secilenUrun, ilkTeklif: ilkTeklif, ozellik: ozellik, yas: yas, cinsiyet: cinsiyet, kisaAd: secilen['kisaAd']);
     musteriGorunuyor = true;
     musteriKabulBekliyor = true;
     musteriSayisi++;
@@ -6218,6 +6247,7 @@ class GameState extends ChangeNotifier {
     gunlukMusteriSayisi = 0;
     gunlukMusteriLimiti = aktifDukkan.gunlukMusteriSayisiUret();
     bugunOynananOyunlar.clear(); // yeni gün → mini oyunlar tekrar oynanabilir
+    bugunPazarligiBozulanDukkanlar.clear(); // Necmi yarın yeniden gelebilir
     // Oynanabilir ürün hakkı yenilenir; bugünkü "dün"e devredilir ki
     // iki gün üst üste aynı oyun gelmesin.
     _dunGelenOynanabilirId = _bugunGelenOynanabilirId;
@@ -7503,6 +7533,42 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   /// başlatır. Açık browser/telefon kapanır — sahne görünmezse pazarlık da
   /// görünmez.
   void _emlakciyiCagir(DukkanSeviye d) {
+    // Aynı gün aynı dükkan için ikinci kez çağrılamaz — anlaşamadıysanız
+    // Necmi küsüp gidiyor, ertesi gün geliyor.
+    if (_state.bugunPazarligiBozulanDukkanlar.contains(d.isim)) {
+      SesServisi.hata();
+      showDialog(
+        useRootNavigator: false,
+        context: _popupCtx,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: Panel.zemin,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: const BorderSide(color: Color(0xFFd29922), width: 1.5),
+          ),
+          title: const Text('🏠 Necmi bugünlük gitti', textAlign: TextAlign.center,
+            style: TextStyle(color: Color(0xFFd29922), fontSize: 17, fontWeight: FontWeight.bold)),
+          content: const Text(
+            'Emlakçı Necmi Bey bugün bu dükkan için sana geldi ve '
+            'anlaşamadınız. Yarın tekrar dene.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Panel.yazi, fontSize: 14, height: 1.35)),
+          actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+          actions: [Center(child: ElevatedButton(
+            onPressed: () => Navigator.pop(ctx),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Panel.ikincilZemin, foregroundColor: Colors.white70,
+              minimumSize: const Size(140, 44),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+                side: const BorderSide(color: Panel.ikincilKenar)),
+            ),
+            child: const Text('Tamam', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+          ))],
+        ),
+      );
+      return;
+    }
     final nav = Navigator.of(context, rootNavigator: true);
     if (nav.canPop()) nav.pop();
     _state.dukkanAlimiBaslat(d);
@@ -7525,6 +7591,8 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     // Telefon ya da browser açıksa kapat (ikisi de root Navigator'da).
     final nav = Navigator.of(context, rootNavigator: true);
     if (nav.canPop()) nav.pop();
+    // Oyuncu çağırdı → bugün gelmiş sayılır, kendi programıyla bir daha gelmez.
+    _state.galericiGeldiIsaretle();
     _state.galericiAracSec(a.item);
     setState(() => _pazarlikBekleniyor = true);
     SesServisi.kapiyiCal();
@@ -10602,7 +10670,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                                   borderRadius: BorderRadius.circular(6),
                                   border: Border.all(color: const Color(0xFFFFD700).withValues(alpha: 0.6)),
                                 ),
-                                child: Text(_state.aktifMusteri!.name, style: const TextStyle(fontSize: 12, color: Color(0xFFFFD700), fontWeight: FontWeight.bold)),
+                                child: Text(_state.aktifMusteri!.etiketAdi, style: const TextStyle(fontSize: 12, color: Color(0xFFFFD700), fontWeight: FontWeight.bold)),
                               ),
                             ),
                       ),
@@ -10623,8 +10691,14 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
         // ╚═══════════════════════════════════════════════════════════════╝
         // ⚠️ Araç masada GÖSTERİLMEZ: ekipman değil, galerici pazarlığında
         // masaya minicik bir araba koymak saçma görünüyordu. Balonda görünür.
+        //
+        // ⚠️ DÜKKAN da gösterilmez. Emlakçı Necmi dükkan satarken ürün
+        // `ItemCategory.aksesuar` olarak kuruluyor (`dukkanAlimiBaslat`), yani
+        // araç filtresine takılmıyordu; görseli de dükkanın ARKA PLANI olduğu
+        // için tezgâhın üstünde koca bir mağaza fotoğrafı beliriyordu.
         if (_state.aktifMusteri != null && _state.aktifMusteri!.musteriSatiyor &&
-                _state.aktifMusteri!.item.category != ItemCategory.arac ||
+                _state.aktifMusteri!.item.category != ItemCategory.arac &&
+                _state.alinacakDukkan == null ||
             _state.aktifOzelMusteri?.tip == OzelMusteriTip.kurye)
           AnimatedBuilder(
             animation: _slideAnim,
@@ -14150,7 +14224,29 @@ class _TypewriterTextState extends State<TypewriterText> {
     super.dispose();
   }
 
+  /// ⚠️ Yazılmamış harfler SİLİNMEZ, ŞEFFAF çizilir.
+  ///
+  /// Eskiden yalnızca `_gorunen` basılıyordu. Metin ortalandığı için her yeni
+  /// harf öncekileri sola itiyordu: ilk harf ekranın ortasında beliriyor,
+  /// sağdan harf eklendikçe hepsi kayıyor, satır atlandığında da tüm blok
+  /// yukarı sıçrıyordu. Kalan metni saydam bir span olarak bırakınca yerleşim
+  /// ilk kareden itibaren TAM metne göre hesaplanıyor: satır sayısı ve her
+  /// harfin yeri sabit, harfler sadece "görünür oluyor".
   @override
-  Widget build(BuildContext context) =>
-      Text(_gorunen, style: widget.style, textAlign: widget.textAlign);
+  Widget build(BuildContext context) {
+    final stil = widget.style;
+    // Metin yazım ortasında değişirse `_gorunen` bir an yeni metinden uzun
+    // kalabilir; substring patlamasın diye sınırlanıyor.
+    final n = _gorunen.length.clamp(0, widget.text.length);
+    return Text.rich(
+      TextSpan(children: [
+        TextSpan(text: widget.text.substring(0, n), style: stil),
+        TextSpan(
+          text: widget.text.substring(n),
+          style: (stil ?? const TextStyle()).copyWith(color: Colors.transparent),
+        ),
+      ]),
+      textAlign: widget.textAlign,
+    );
+  }
 }

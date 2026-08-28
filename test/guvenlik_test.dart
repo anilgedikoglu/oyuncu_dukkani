@@ -316,7 +316,9 @@ void main() {
       final hedef = s.musteriHavuzu.firstWhere((m) => m['ad'] == 'Kahraman Memo');
       final gorsel = hedef['gorsel'];
       var goruldu = 0;
-      for (int i = 0; i < 800 && goruldu < 3; i++) {
+      // ⚠️ Kadro büyüdükçe (v122: 65 karakter) belirli birinin gelme olasılığı
+      // düşüyor; 800 denemede bazen hiç çıkmıyor ve test kararsız kalıyordu.
+      for (int i = 0; i < 4000 && goruldu < 2; i++) {
         if (s.gunBitmeli) s.gunuBitir(); // limit dolunca gün ilerlet
         s.yeniMusteriGonder();
         final m = s.aktifMusteri;
