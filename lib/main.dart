@@ -8334,10 +8334,20 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                     // ── Browser başlığı: görsel + adres yazısı + geri oku ──
                     // browser.png'de adres ("oyuncu_dukkani") ve oklar ÇİZİLİ.
                     // Sayfaya göre değişebilmesi için üstüne bindiriliyor.
-                    ClipRRect(
+                    // ⚠️ Örtü kutuları GÖRSELİN ölçeğine bağlı olmak ZORUNDA.
+                    // browser.png 306×512 ve `cover` ile çiziliyor: kutu
+                    // genişledikçe görsel de büyür, çizili adres yazısı aşağı
+                    // kayar. Sabit `top: 52 / left: 96` yalnızca dialog tam
+                    // 306dp iken oturuyordu — geniş ekranda (iPhone Pro Max)
+                    // beyaz örtü yazının üstünde kalıp altta browser.png'nin
+                    // kendi yazısını açıkta bırakıyordu.
+                    // Aşağıdaki sayılar GÖRSEL İÇİ piksel; `s` ile ölçeklenir.
+                    LayoutBuilder(builder: (_, kis) {
+                      final s = kis.maxWidth / 306.0;
+                      return ClipRRect(
                       borderRadius: const BorderRadius.vertical(top: Radius.circular(10)),
                       child: SizedBox(
-                        height: 110,
+                        height: 110 * s,
                         width: double.infinity,
                         child: Stack(children: [
                           Positioned.fill(
@@ -8345,17 +8355,17 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                           ),
                           // Adres metni — görseldeki yazıyı beyazla örtüp yenisini yazar
                           Positioned(
-                            left: 0, right: 0, top: 52, height: 26,
+                            left: 0, right: 0, top: 52 * s, height: 26 * s,
                             child: Padding(
-                              padding: const EdgeInsets.only(left: 96, right: 22),
+                              padding: EdgeInsets.only(left: 96 * s, right: 22 * s),
                               child: Container(
                                 color: Colors.white,
                                 alignment: Alignment.centerLeft,
                                 child: Text(
                                   _browserAdres(_browserSayfa),
                                   maxLines: 1, overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    color: Color(0xFF202124), fontSize: 14,
+                                  style: TextStyle(
+                                    color: const Color(0xFF202124), fontSize: 14 * s,
                                     fontWeight: FontWeight.w500, letterSpacing: 0.1),
                                 ),
                               ),
@@ -8363,14 +8373,14 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                           ),
                           // Geri oku — menüde değilken sarı ve tıklanabilir
                           Positioned(
-                            left: 4, top: 46, width: 40, height: 38,
+                            left: 4 * s, top: 46 * s, width: 40 * s, height: 38 * s,
                             child: GestureDetector(
                               onTap: menude ? null : () => git(_BrowserSayfa.menu),
                               child: Container(
                                 color: Colors.white,
                                 child: Center(
                                   child: Icon(Icons.arrow_back,
-                                    size: 20,
+                                    size: 20 * s,
                                     color: menude ? const Color(0xFFBDC1C6) : const Color(0xFFE6A800)),
                                 ),
                               ),
@@ -8378,7 +8388,8 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                           ),
                         ]),
                       ),
-                    ),
+                      );
+                    }),
                     // ── İçerik — Expanded: her sayfada AYNI yüksekliği kaplar ──
                     Expanded(
                       child: SingleChildScrollView(
@@ -10505,7 +10516,16 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
             builder: (context, _) {
               final mq = MediaQuery.of(context);
               final m = SahneMetrik.hesapla(mq.size);
-              final ofs = mq.padding.top + 48.0; // _buildSahne yerel koordinat kayması
+              // ⚠️ viewPadding, padding DEĞİL. Bu kod SafeArea'nın İÇİNDE
+              // çalışıyor; SafeArea child'ını MediaQuery.removePadding ile
+              // sardığı için `mq.padding.top` burada HER ZAMAN 0 döner.
+              // Kayma bu yüzden yalnızca 48 sanılıyordu; gerçekte çentik
+              // kadar daha aşağıdan başlıyor. Android emülatöründe status bar
+              // ~24dp olduğu için hata gözden kaçtı, iPhone'un Dynamic
+              // Island'ında (~59dp) isim etiketi ve ürün gözle görülür
+              // biçimde masanın önüne düştü. viewPadding SafeArea tarafından
+              // tüketilmez, gerçek sistem çentiğini verir.
+              final ofs = mq.viewPadding.top + 48.0; // _buildSahne yerel koordinat kayması
               final boy = m.u(kMusteriBoyu);
               final hedef = (mq.size.width - boy) / 2;
               final dx = hedef + (mq.size.width - hedef) * _slideAnim.value;
@@ -10561,7 +10581,8 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
             builder: (context, _) {
               final mq = MediaQuery.of(context);
               final m = SahneMetrik.hesapla(mq.size);
-              final ofs = mq.padding.top + 48.0; // _buildSahne yerel koordinat kayması
+              // viewPadding — sebebi yukarıdaki müşteri bloğunda açıklandı.
+              final ofs = mq.viewPadding.top + 48.0; // _buildSahne yerel koordinat kayması
               final musteriBoy = m.u(kMusteriBoyu);
               final hedef = (mq.size.width - musteriBoy) / 2;
               final dx = hedef + (mq.size.width - hedef) * _slideAnim.value;
