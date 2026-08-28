@@ -638,21 +638,10 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                // 🏆 Liderlik girişi bandı (rakip oyundaki gibi, üstte).
-                if (_girisBandi != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 10),
-                    child: Center(child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.72),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: Colors.white24),
-                      ),
-                      child: Text('Şu adla giriş yapıldı: $_girisBandi',
-                        style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
-                    )),
-                  ),
+                // ⚠️ Liderlik bandı BURADA DEĞİL — Stack'e overlay olarak
+                // taşındı (aşağıda). Column'un çocuğu olduğunda yer kaplıyor,
+                // band görünüp kaybolurken menü butonları bir tık aşağı inip
+                // geri çıkıyordu. Overlay layout'u hiç etkilemiyor.
                 const Spacer(flex: 3),
                 Center(child: _menuButon('Yeni Oyun', _yeniOyun)),
                 const SizedBox(height: 12),
@@ -671,6 +660,28 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
               ],
             ),
           ),
+          // 🏆 Liderlik girişi bandı — OVERLAY. Column'un içinde olsaydı
+          // yer kaplar, görünüp kaybolurken menü butonlarını aşağı itip
+          // geri çekerdi. Burada layout'a hiç dokunmuyor.
+          if (_girisBandi != null)
+            Positioned(
+              top: 0, left: 0, right: 0,
+              child: SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 10),
+                  child: Center(child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.72),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: Colors.white24),
+                    ),
+                    child: Text('Şu adla giriş yapıldı: $_girisBandi',
+                      style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+                  )),
+                ),
+              ),
+            ),
           if (_yukleniyor) const Center(child: CircularProgressIndicator(color: Color(0xFFFFD700))),
           if (_ayarlarAcik) _buildAyarlarOverlay(),
         ],
@@ -4430,7 +4441,11 @@ class GameState extends ChangeNotifier {
   // slottan ürün çıkarmak yerine sahiplik listesinden düşer.
   String? satistakiAracId;
   Konum? satistakiKonum;
-  bool get _ozelSatisAktif => satistakiAracId != null || satistakiKonum != null;
+
+  /// 🏪 Satılmakta olan dükkan (Emlakçı Necmi ALICI olarak gelir).
+  DukkanSeviye? satistakiDukkan;
+  bool get _ozelSatisAktif =>
+      satistakiAracId != null || satistakiKonum != null || satistakiDukkan != null;
 
   /// Mekânın satış değeri. Mekânlar döşenmiş geliyor (v121), o yüzden
   /// değer sabit — ama piyasa etkisi pazarlıkta zaten uygulanıyor.
@@ -4459,7 +4474,7 @@ class GameState extends ChangeNotifier {
     satistakiKonum = null;
     _aliciKur('Galerici Gürbüz', 'assets/galerici.png', a.item, a.item.basePrice);
     mesaj = 'Duydum ki ${a.item.name} satılıkmış. '
-        'Galeriye ararım abime, ne istiyorsun?';
+        'Galeriye alalım abime, ne istiyorsun?';
   }
 
   /// "Sahip Olunanlar"dan mekân satışı: Emlakçı Necmi alıcı olarak gelir.
@@ -4478,6 +4493,21 @@ class GameState extends ChangeNotifier {
         'Ciddi alıcıyım, fiyatta anlaşalım mı?';
   }
 
+
+  /// 🏪 Sahip olunan dükkanın SATIŞI: Emlakçı Necmi alıcı olarak gelir.
+  /// Fiyat, dükkanın alım bedelidir; pazarlık normal işler.
+  void dukkanSatisiBaslat(DukkanSeviye d) {
+    satistakiDukkan = d;
+    satistakiAracId = null;
+    satistakiKonum = null;
+    final deger = d.satinAlmaFiyati ?? 5000;
+    final urun = GameItem(id: 'satis_dukkan_${d.isim}', name: d.isim,
+        gorsel: d.arkaplan, category: ItemCategory.aksesuar,
+        basePrice: deger, kondisyon: 5);
+    _aliciKur('Emlakçı Necmi', 'assets/emlakci.png', urun, deger);
+    mesaj = '${d.isim} satılıkmış diye duydum. '
+        'Ciddi alıcıyım, fiyatta anlaşalım mı?';
+  }
   /// 🏪 Satılık dükkan ALIMI: Emlakçı Necmi SATICI olarak gelir, dükkan
   /// üzerinden normal pazarlık döner. Anlaşılırsa dükkan sahipliğe geçer
   /// (`_anlasmayiTamamla`nın alım dalı `alinacakDukkan`a bakar).
@@ -4521,6 +4551,7 @@ class GameState extends ChangeNotifier {
   void ozelSatisiTemizle() {
     satistakiAracId = null;
     satistakiKonum = null;
+    satistakiDukkan = null;
     // Anlaşmadan ayrılan dükkan bugünlük kapanır: Necmi aynı gün aynı dükkan
     // için tekrar çağrılamaz, yoksa oyuncu beğenmediği fiyatı reddedip
     // pazarlığı sonsuz kez yeniden başlatırdı.
@@ -5538,6 +5569,28 @@ class GameState extends ChangeNotifier {
     {'gorsel': 'assets/musteri_79.png', 'cinsiyet': 'K', 'yas': 'genc'},     // örgülü, lila kapüşonlu
     {'gorsel': 'assets/musteri_80.png', 'cinsiyet': 'K', 'yas': 'yasli'},    // yeşil geleneksel ceket
     {'gorsel': 'assets/musteri_81.png', 'cinsiyet': 'E', 'yas': 'yetiskin'}, // bere, teal mont, sakallı
+    // ── v122: 20 yeni karakter daha ──
+    // 500×500, doluluk 0.934-0.972 → yeniden ölçeklenmedi. Kadro 81 → 101.
+    {'gorsel': 'assets/musteri_82.png',  'cinsiyet': 'K', 'yas': 'yetiskin'}, // pilot/kaptan üniforması
+    {'gorsel': 'assets/musteri_83.png',  'cinsiyet': 'E', 'yas': 'yetiskin'}, // dövmeli, deri önlüklü usta
+    {'gorsel': 'assets/musteri_84.png',  'cinsiyet': 'E', 'yas': 'yasli'},    // kasap, çizgili önlük
+    {'gorsel': 'assets/musteri_85.png',  'cinsiyet': 'K', 'yas': 'genc'},     // turkuaz saç, mor bomber
+    {'gorsel': 'assets/musteri_86.png',  'cinsiyet': 'E', 'yas': 'yetiskin'}, // kargo görevlisi, çanta
+    {'gorsel': 'assets/musteri_87.png',  'cinsiyet': 'K', 'yas': 'yetiskin'}, // iki renkli takım, şık
+    {'gorsel': 'assets/musteri_88.png',  'cinsiyet': 'K', 'yas': 'yasli'},    // denizci ceket, kasket
+    {'gorsel': 'assets/musteri_89.png',  'cinsiyet': 'E', 'yas': 'genc'},     // gözlüklü, yeşil yelek
+    {'gorsel': 'assets/musteri_90.png',  'cinsiyet': 'E', 'yas': 'yetiskin'}, // desenli hırka, papyon
+    {'gorsel': 'assets/musteri_91.png',  'cinsiyet': 'K', 'yas': 'yasli'},    // bahçıvan tulumu, kır saç
+    {'gorsel': 'assets/musteri_92.png',  'cinsiyet': 'K', 'yas': 'yetiskin'}, // itfaiyeci
+    {'gorsel': 'assets/musteri_93.png',  'cinsiyet': 'E', 'yas': 'yetiskin'}, // mor frak, sihirbaz edası
+    {'gorsel': 'assets/musteri_94.png',  'cinsiyet': 'K', 'yas': 'yasli'},    // hâkim cübbesi
+    {'gorsel': 'assets/musteri_95.png',  'cinsiyet': 'E', 'yas': 'genc'},     // sarı ceket, sneaker
+    {'gorsel': 'assets/musteri_96.png',  'cinsiyet': 'E', 'yas': 'yasli'},    // monokl, kahve yelek
+    {'gorsel': 'assets/musteri_97.png',  'cinsiyet': 'K', 'yas': 'yetiskin'}, // hemşire forması
+    {'gorsel': 'assets/musteri_98.png',  'cinsiyet': 'K', 'yas': 'yetiskin'}, // safari yelek, bot
+    {'gorsel': 'assets/musteri_99.png',  'cinsiyet': 'E', 'yas': 'yasli'},    // kaptan/şoför üniforması
+    {'gorsel': 'assets/musteri_100.png', 'cinsiyet': 'E', 'yas': 'yasli'},    // kırmızı atkı, entelektüel
+    {'gorsel': 'assets/musteri_101.png', 'cinsiyet': 'K', 'yas': 'genc'},     // kırmızı mohawk, punk
   ];
   List<int> _musteriSira = [];
 
@@ -6245,6 +6298,13 @@ class GameState extends ChangeNotifier {
         final k = satistakiKonum!;
         sahipMekanlar.remove(k.name);
         if (aktifKonum == k) aktifKonum = Konum.dukkan;
+      }
+      if (satistakiDukkan != null) {
+        // 🏪 Dükkan satıldı: sahiplikten ve kiradan düşer. Oturulan dükkan
+        // satılamıyor (UI engelliyor), o yüzden taşınma gerekmiyor.
+        sahipDukkanlar.remove(satistakiDukkan!.isim);
+        kirayaVerilenDukkanlar.remove(satistakiDukkan!.isim);
+        sonAnlasmaVarlikti = true;
       }
       ozelSatisiTemizle();
       para += anlasilanFiyat;
@@ -7129,7 +7189,10 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     final kira = _state.aktifDukkan.kira;
     final paraOncesi = _state.para;
     final krediKesinti = _state.aktifKrediVar ? _state.krediTaksitMiktar : 0;
-    final toplamKesinti = kira + krediKesinti;
+    final kiraGeliri = _state.gunlukKiraGeliri;
+    // ⚠️ Kira geliri KESİNTİDEN DÜŞÜLÜR: "Kalan" satırı gerçek bakiyeyi
+    // göstermeli, yoksa gelir görünüp hesaba katılmamış gibi olurdu.
+    final toplamKesinti = kira + krediKesinti - kiraGeliri;
 
     showDialog(
       useRootNavigator: false,
@@ -7148,6 +7211,16 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
               const Text('🏠 Kira: ', style: TextStyle(color: Colors.white54, fontSize: 14)),
               Text('-$kira', style: const TextStyle(color: Colors.redAccent, fontSize: 16, fontWeight: FontWeight.bold)),
             ]),
+            // 🔑 Kiraya verilen dükkanların getirisi — hesaba GİRİYORDU ama
+            // popup'ta hiç görünmüyordu, oyuncu parasının nereden geldiğini
+            // anlayamıyordu.
+            if (kiraGeliri > 0) ...[
+              const SizedBox(height: 6),
+              Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                const Text('🔑 Kira geliri: ', style: TextStyle(color: Colors.white54, fontSize: 14)),
+                Text('+$kiraGeliri', style: const TextStyle(color: Color(0xFF00FF88), fontSize: 16, fontWeight: FontWeight.bold)),
+              ]),
+            ],
             if (krediKesinti > 0) ...[
               const SizedBox(height: 6),
               Row(mainAxisAlignment: MainAxisAlignment.center, children: [
@@ -7574,20 +7647,103 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     }
     final kirada = _state.kirayaVerilenDukkanlar.contains(d.isim);
     final gelir = GameState.kiraGeliriHesapla(d);
-    _satisOnayPopup(
-      baslik: kirada ? '🔑 ${d.isim} kiradan çekilsin mi?'
-                     : '🔑 ${d.isim} kiraya verilsin mi?',
-      gorselYolu: d.arkaplan,
-      aciklama: kirada
-          ? 'Şu an günde $gelir lira getiriyor.\n'
-            'Kiradan çekersen bu gelir durur ama dükkana taşınabilirsin.'
-          : 'Kiraya verirsen her gün kasana $gelir lira girer.\n'
-            'Kirada olduğu sürece oraya taşınamazsın.',
-      onEvet: () {
-        _state.kirayaVerToggle(d);
-        setDlg(() {});
-      },
+    final satisDegeri = d.satinAlmaFiyati ?? 5000;
+    showDialog(
+      useRootNavigator: false,
+      context: _popupCtx,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Panel.zemin,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: Color(0xFF00C2A8), width: 1.5),
+        ),
+        titlePadding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+        title: Column(mainAxisSize: MainAxisSize.min, children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: Image.asset(d.arkaplan, width: 150, height: 84, fit: BoxFit.cover),
+          ),
+          const SizedBox(height: 8),
+          Text(d.isim, textAlign: TextAlign.center,
+            style: const TextStyle(color: Color(0xFF00C2A8), fontSize: 16,
+              fontWeight: FontWeight.bold)),
+        ]),
+        contentPadding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+        content: Text(
+          kirada
+              ? 'Şu an kirada, günde $gelir lira getiriyor.'
+              : 'Boş duruyor. Kiraya verirsen günde $gelir lira getirir.',
+          textAlign: TextAlign.center,
+          style: const TextStyle(color: Panel.yaziSoluk, fontSize: 13, height: 1.35)),
+        actionsPadding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+        actions: [
+          // Solda kiraya ver/çek, sağda sat — ikisi de kendi tutarını yazıyor.
+          Row(children: [
+            Expanded(child: ElevatedButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                _state.kirayaVerToggle(d);
+                setDlg(() {});
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF1E63C8), foregroundColor: Colors.white,
+                minimumSize: const Size(0, 52),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                Text(kirada ? 'Kiradan Çek' : 'Kiraya Ver',
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                Text(kirada ? 'gelir durur' : '$gelir / gün',
+                  style: const TextStyle(fontSize: 11, color: Colors.white70)),
+              ]),
+            )),
+            const SizedBox(width: 10),
+            Expanded(child: ElevatedButton(
+              // Kirada olan dükkan satılamaz: kiracı içeride.
+              onPressed: kirada ? null : () {
+                Navigator.pop(ctx);
+                _emlakciSatisaCagir(d);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF2f8f46), foregroundColor: Colors.white,
+                disabledBackgroundColor: const Color(0xFF2a2a2a),
+                disabledForegroundColor: Colors.white24,
+                minimumSize: const Size(0, 52),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                const Text('Sat', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                Text(kirada ? 'önce kiradan çek' : '~$satisDegeri',
+                  style: const TextStyle(fontSize: 11, color: Colors.white70)),
+              ]),
+            )),
+          ]),
+          const SizedBox(height: 8),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Panel.ikincilZemin, foregroundColor: Colors.white70,
+              minimumSize: const Size(double.infinity, 42),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+                side: const BorderSide(color: Panel.ikincilKenar)),
+            ),
+            child: const Text('Vazgeç', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+          ),
+        ],
+      ),
     );
+  }
+
+  /// Dükkanı satmak için Emlakçı Necmi'yi ALICI olarak kapıya çağırır.
+  void _emlakciSatisaCagir(DukkanSeviye d) {
+    _telefonuKapat();
+    final nav = Navigator.of(context, rootNavigator: true);
+    if (nav.canPop()) nav.pop();
+    _state.dukkanSatisiBaslat(d);
+    setState(() => _pazarlikBekleniyor = true);
+    SesServisi.kapiyiCal();
+    _slideController.forward(from: 0);
   }
 
   void _aracSatOnay(BuildContext browserCtx, Arac a) {
