@@ -372,6 +372,11 @@ List<DukkanSeviye> get butunDukkanlar => [...tumDukkanlar, ...satilikDukkanlar];
 //  Masa görselinin render zinciri (build() içinde birebir aynısı):
 //    Align(bottomCenter) → translate(0, 6) → scale(1.4, bottomCenter) → fitWidth
 //
+
+/// Header'ın TOPLAM yüksekliği: üst padding (8) + kutu yüksekliği (48).
+/// ⚠️ `_buildHeader()` değişirse burası da değişmeli — sahnedeki isim etiketi
+/// ve ürün konumu bu sayıya bağlı.
+const double kHeaderYuksekligi = 56.0;
 class SahneMetrik {
   final double ust; // masa görselinin ekrandaki üst kenarı (dp)
   final double boy; // masa görselinin ekrandaki yüksekliği (dp)
@@ -9434,12 +9439,20 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       final kapiSol = d.kapiSol + (guv ? d.kapiSolGuvFark : 0);
       final kapiUst = d.kapiUst + (guv ? d.kapiUstGuvFark : 0);
       // Kutu = kapı camı. `fill` ile silüet camı boşluksuz doldurur.
+      //
+      // ⚠️ Silüet camdan %5 BÜYÜK çiziliyor ve büyüme merkezden yayılıyor
+      // (her kenardan %2.5). Cam ölçüleri piksel piksel doğru olsa bile
+      // sprite'ın kendi kenarlarındaki saydam pay yüzünden köşelerde ince
+      // boşluklar kalıyordu; taşan kısım kapı çerçevesinin altına giriyor.
+      const tasma = 1.05;
+      final gen = d.kapiGen * dw * tasma;
+      final yuk = d.kapiYuk * dh * tasma;
       return Stack(children: [
         Positioned(
-          left:   sol + kapiSol * dw,
-          top:    ust + kapiUst * dh,
-          width:  d.kapiGen * dw,
-          height: d.kapiYuk * dh,
+          left:   sol + kapiSol * dw - (gen - d.kapiGen * dw) / 2,
+          top:    ust + kapiUst * dh - (yuk - d.kapiYuk * dh) / 2,
+          width:  gen,
+          height: yuk,
           child: Image.asset('assets/kapidaki.png', fit: BoxFit.fill),
         ),
       ]);
@@ -9671,7 +9684,23 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                   onTap: _sahneyeDokunuldu,
                 ),
               ),
-              SafeArea(child: Column(children: [_buildHeader(), Expanded(child: _buildSahne()), _buildAltBar()])),
+              // ⚠️ Sahnenin ekrandaki dikey kayması BURADA, SafeArea'nın
+              // DIŞINDA ölçülüyor. İçeride ölçmek İMKÂNSIZ: SafeArea child'ını
+              // `MediaQuery.removePadding` ile sarıyor ve o metot yalnız
+              // `padding`i değil `viewPadding`i de düşürüyor
+              // (`viewPadding.top - padding.top`), klavye yokken ikisi eşit
+              // olduğu için içeride HER İKİSİ DE 0 dönüyor. Bu yüzden isim
+              // etiketi ve ürün, çentik yüksekliği kadar aşağı kayıp masanın
+              // önüne düşüyordu — iPhone'da (~59dp) gözle görülür kadar.
+              Builder(builder: (c) {
+                _sahneUstKaymasi =
+                    MediaQuery.of(c).padding.top + kHeaderYuksekligi;
+                return SafeArea(child: Column(children: [
+                  _buildHeader(),
+                  Expanded(child: _buildSahne()),
+                  _buildAltBar(),
+                ]));
+              }),
               // Dükkan kiralama butonu — 3. günde bilgisayar gelince görünür.
               //
               // ⚠️ Eskiden `bottom: 300` idi — SABİT PİKSEL. Ekran uzadıkça
@@ -10800,16 +10829,10 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
             builder: (context, _) {
               final mq = MediaQuery.of(context);
               final m = SahneMetrik.hesapla(mq.size);
-              // ⚠️ viewPadding, padding DEĞİL. Bu kod SafeArea'nın İÇİNDE
-              // çalışıyor; SafeArea child'ını MediaQuery.removePadding ile
-              // sardığı için `mq.padding.top` burada HER ZAMAN 0 döner.
-              // Kayma bu yüzden yalnızca 48 sanılıyordu; gerçekte çentik
-              // kadar daha aşağıdan başlıyor. Android emülatöründe status bar
-              // ~24dp olduğu için hata gözden kaçtı, iPhone'un Dynamic
-              // Island'ında (~59dp) isim etiketi ve ürün gözle görülür
-              // biçimde masanın önüne düştü. viewPadding SafeArea tarafından
-              // tüketilmez, gerçek sistem çentiğini verir.
-              final ofs = mq.viewPadding.top + 48.0; // _buildSahne yerel koordinat kayması
+              // ⚠️ Kayma BURADA HESAPLANMAZ — SafeArea içinde hem padding hem
+              // viewPadding 0 döner. Değer `build()` içinde, SafeArea'nın
+              // dışında ölçülüp `_sahneUstKaymasi`ya yazılıyor.
+              final ofs = _sahneUstKaymasi; // SafeArea dışında ölçüldü
               final boy = m.u(kMusteriBoyu);
               final hedef = (mq.size.width - boy) / 2;
               final dx = hedef + (mq.size.width - hedef) * _slideAnim.value;
@@ -10871,8 +10894,8 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
             builder: (context, _) {
               final mq = MediaQuery.of(context);
               final m = SahneMetrik.hesapla(mq.size);
-              // viewPadding — sebebi yukarıdaki müşteri bloğunda açıklandı.
-              final ofs = mq.viewPadding.top + 48.0; // _buildSahne yerel koordinat kayması
+              // Kayma `build()` içinde ölçüldü; sebebi müşteri bloğunda yazılı.
+              final ofs = _sahneUstKaymasi; // SafeArea dışında ölçüldü
               final musteriBoy = m.u(kMusteriBoyu);
               final hedef = (mq.size.width - musteriBoy) / 2;
               final dx = hedef + (mq.size.width - hedef) * _slideAnim.value;
@@ -12426,6 +12449,11 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       if (mounted) cikis();
     });
   }
+
+  /// Sahnenin ekrandaki dikey kayması (SafeArea üst boşluğu + header).
+  /// `build()` içinde, SafeArea'nın DIŞINDA hesaplanır — içeride ölçülemez,
+  /// sebebi orada yazılı.
+  double _sahneUstKaymasi = 0;
 
   Timer? _cikisTimer;
   VoidCallback? _bekleyenCikis;
