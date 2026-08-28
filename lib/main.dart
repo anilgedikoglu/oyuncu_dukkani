@@ -10026,6 +10026,33 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                   onTap: _sahneyeDokunuldu,
                 ),
               ),
+              // 🔊 Masadaki hoparlörler — çalar listesini açar.
+              //
+              // Hoparlörler tezgâhın ÖN YÜZÜNDE, masa yüzeyinin altında
+              // duruyor: görsel içi yatay %22-84, dikey %70-89 (ekrandan
+              // ölçüldü). Masa %140 ölçekli olduğu için orada iri görünüyorlar.
+              //
+              // Hoparlörler tezgâhın ÖN YÜZÜNDE: görsel içi yatay %22-84,
+              // dikey %70-89 (ekrandan ölçüldü). Masa %140 ölçekli olduğu için
+              // orada iri görünüyorlar.
+              //
+              // ⚠️ KATMAN SIRASI: sahneye dokunma katmanından SONRA gelmek
+              // ZORUNDA. O katman `Positioned.fill` + `opaque` ile TÜM ekranı
+              // kaplıyor; hoparlör ondan önce gelseydi dokunuşu o yutardı
+              // (Stack'te sonra gelen çocuk önce hit-test edilir).
+              // Kutu %84'te kesiliyor: alt bar oradan sonra başlıyor.
+              if (_state.hoparlorVar)
+                Positioned(
+                  left: SahneMetrik.hesapla(MediaQuery.of(context).size)
+                          .x(0.22, MediaQuery.of(context).size.width),
+                  top: SahneMetrik.hesapla(MediaQuery.of(context).size).y(0.70),
+                  width: SahneMetrik.hesapla(MediaQuery.of(context).size).gen * 0.62,
+                  height: SahneMetrik.hesapla(MediaQuery.of(context).size).u(0.14),
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () { SesServisi.dokun(); _muzikPopup(); },
+                  ),
+                ),
               // ⚠️ Sahnenin ekrandaki dikey kayması BURADA, SafeArea'nın
               // DIŞINDA ölçülüyor. İçeride ölçmek İMKÂNSIZ: SafeArea child'ını
               // `MediaQuery.removePadding` ile sarıyor ve o metot yalnız
@@ -10060,26 +10087,6 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
               // y %55-63 — ikisini kapsayan tek kutu (ızgarayla ölçüldü).
               // Sol kenar masanın ekran dışına taşan kısmına denk gelebilir,
               // negatif `left` normaldir.
-              // 🔊 Masadaki hoparlörler — çalar listesini açar.
-              //
-              // Hoparlörler tezgâhın ÖN YÜZÜNDE, masa yüzeyinin altında
-              // duruyor: görsel içi yatay %22-84, dikey %70-89 (ekrandan
-              // ölçüldü). Masa %140 ölçekli olduğu için orada iri görünüyorlar.
-              //
-              // ⚠️ Menü katmanından SONRA geliyor: Stack'te sonraki çocuk önce
-              // hit-test edilir, yani hoparlör bölgesi menüye kaptırmaz.
-              if (_state.hoparlorVar)
-                Positioned(
-                  left: SahneMetrik.hesapla(MediaQuery.of(context).size)
-                          .x(0.22, MediaQuery.of(context).size.width),
-                  top: SahneMetrik.hesapla(MediaQuery.of(context).size).y(0.70),
-                  width: SahneMetrik.hesapla(MediaQuery.of(context).size).gen * 0.62,
-                  height: SahneMetrik.hesapla(MediaQuery.of(context).size).u(0.19),
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: () { SesServisi.dokun(); _muzikPopup(); },
-                  ),
-                ),
               // ⚠️ iMac ŞARTI YOK. Düğme tamamen kaldırıldı; masanın bu
               // bölgesi iMac olsa da olmasa da menüyü açıyor. Önce "iMac
               // yokken düğme kalsın" denmişti ama o zaman 1-2. günde düğme
