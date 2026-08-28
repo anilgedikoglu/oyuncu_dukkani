@@ -263,18 +263,15 @@ class DukkanSeviye {
     this.kapiSolGuvFark = 0, this.kapiUstGuvFark = 0,
   });
 
-  /// Günlük müşteri sayısını ağırlıklı random ile belirle
-  /// Alt sınır daha yüksek olasılıklı, üst sınır daha düşük
+  /// Günlük müşteri sayısı — ⚠️ DÜKKAN SEVİYESİNE BAĞLI DEĞİL, 10-20 arası.
+  ///
+  /// Eskiden seviyeyle büyüyordu (10-15 → 30-35). İki sebeple kaldırıldı:
+  /// büyük dükkanın ödülü zaten BÜYÜK ENVANTER, ve gün uzadıkça yeni güne
+  /// geçmek zorlaştığı için gün başı geçiş reklamı seyrekleşiyordu.
+  /// Sayıyı artık hava/gündem belirliyor (`GunOlayi.musteriDelta`).
   int gunlukMusteriSayisiUret() {
     final rng = Random();
-    final min = 10 + (seviye - 1) * 5; // 10, 15, 20, 25, 30
-    final max = min + 5;               // 15, 20, 25, 30, 35
-    // Ağırlıklı dağılım: 0..4 arası random, küçük değer daha olası
-    // Üçgen dağılımı: min(r1,r2)*5 → alt değerlere yığılır
-    final r1 = rng.nextDouble();
-    final r2 = rng.nextDouble();
-    final agirlikli = r1 < r2 ? r1 : r2; // min alarak alt değerlere yığ
-    return min + (agirlikli * (max - min + 1)).floor().clamp(0, max - min);
+    return 10 + rng.nextInt(11); // 10..20
   }
 
   String get yildizlar => '★' * seviye + '☆' * (5 - seviye);
@@ -3225,10 +3222,14 @@ class SesServisi {
   /// ikisi farklı beklentiler: sessiz oynayan biri titreşimi isteyebilir.
   static bool titresimAcik = true;
 
-  /// Buton dokunuşu — SES YOK, sadece çok kısa titreşim.
+  /// Buton dokunuşu — SES YOK, sadece kısa titreşim.
   /// Ana ekrandaki her `_oyunButon` bunu çağırır; ayrı bir ses çalmak
   /// tıklama başına gürültü olurdu.
-  static void dokun() => _titre(HapticFeedback.selectionClick);
+  ///
+  /// ⚠️ `selectionClick` DEĞİL: o kaydırma çarkı için tasarlanmış en zayıf
+  /// titreşim, telefon kılıfının içinde neredeyse hiç hissedilmiyordu.
+  /// `mediumImpact` buton basışında beklenen "tık" hissini veriyor.
+  static void dokun() => _titre(HapticFeedback.mediumImpact);
 
   // ── Mevcut ──
   static void kapiyiCal()  { _oynat('kapi.mp3');       _titre(HapticFeedback.lightImpact); }
@@ -3254,9 +3255,9 @@ class SesServisi {
   /// Hata: yetersiz para, envanter dolu vb.
   static void hata()       { _oynat('hata.mp3');       _titre(HapticFeedback.heavyImpact); }
   /// Envanter açıldı
-  static void envanter()   { _oynat('envanter.mp3');   _titre(HapticFeedback.selectionClick); }
+  static void envanter()   { _oynat('envanter.mp3');   _titre(HapticFeedback.mediumImpact); }
   /// Genel buton dokunuşu (seyrek kullan — her butona koyma)
-  static void tikla()      { _oynat('tik.mp3');        _titre(HapticFeedback.selectionClick); }
+  static void tikla()      { _oynat('tik.mp3');        _titre(HapticFeedback.mediumImpact); }
 
   static void _oynat(String dosya) {
     if (!sesAcik) return;
@@ -3818,10 +3819,10 @@ class GunOlayi {
   static const List<GunOlayi> havuz = [
     GunOlayi(id: 'tiktok', emoji: '📱', baslik: 'Dükkânın Viral Oldu!',
       aciklama: 'Biri dükkânını TikTok\'ta paylaşmış, video patladı. Bugün kapı çalmaktan durmayacak!',
-      musteriDelta: 3),
+      musteriDelta: 5),
     GunOlayi(id: 'elektrik', emoji: '⚡', baslik: 'Elektrik Kesintisi',
       aciklama: 'Mahallede elektrik yok. Karanlık dükkâna kimse girmek istemiyor.',
-      musteriDelta: -2),
+      musteriDelta: -4),
     GunOlayi(id: 'fuar', emoji: '🎪', baslik: 'Retro Oyun Fuarı',
       aciklama: 'Şehirde retro oyun fuarı var. Koleksiyoncular cebi dolu geziyor!',
       piyasaCarpani: 1.20),
@@ -3830,7 +3831,7 @@ class GunOlayi {
       piyasaCarpani: 0.85),
     GunOlayi(id: 'kazi', emoji: '🚧', baslik: 'Kaldırım Kazısı',
       aciklama: 'Belediye dükkânın önünü kazdı. Girişi bulan aferin alsın.',
-      musteriDelta: -2),
+      musteriDelta: -3),
     GunOlayi(id: 'hediye', emoji: '🎁', baslik: 'Sürpriz Zarf',
       aciklama: 'Eski bir müşterin kapının altından teşekkür zarfı bırakmış.',
       paraDelta: 250),
@@ -3842,10 +3843,22 @@ class GunOlayi {
       toptanciIndirim: 0.25),
     GunOlayi(id: 'yagmur', emoji: '☔', baslik: 'Sağanak Yağmur',
       aciklama: 'Dışarısı göl. Az müşteri var ama gelen ıslanmışken pazarlığa üşeniyor.',
-      musteriDelta: -1, piyasaCarpani: 1.15),
+      musteriDelta: -4, piyasaCarpani: 1.15),
     GunOlayi(id: 'gazete', emoji: '📰', baslik: 'Gazetede Övgü',
       aciklama: 'Yerel gazete dükkânını "mahallenin hazinesi" diye yazmış!',
-      musteriDelta: 2, piyasaCarpani: 1.10),
+      musteriDelta: 4, piyasaCarpani: 1.10),
+    // ── Hava durumu ──
+    // Müşteri sayısı artık dükkan seviyesine değil bu tür etkenlere bağlı;
+    // kar ve güneş bilerek en uçtaki iki değer.
+    GunOlayi(id: 'kar', emoji: '❄️', baslik: 'Kar Yağıyor',
+      aciklama: 'Sokaklar bembeyaz, otobüsler bile zor geliyor. Bugün dükkâna uğrayan az olacak.',
+      musteriDelta: -5),
+    GunOlayi(id: 'gunes', emoji: '☀️', baslik: 'Güneşli Gün',
+      aciklama: 'Hava mis gibi, herkes sokakta. Vitrine bakan bir sürü kişi var!',
+      musteriDelta: 4),
+    GunOlayi(id: 'sicak', emoji: '🥵', baslik: 'Bunaltıcı Sıcak',
+      aciklama: 'Asfalt eriyor. Kimse öğlen saatlerinde dışarı çıkmıyor.',
+      musteriDelta: -3, piyasaCarpani: 1.10),
   ];
 
   static GunOlayi? bul(String? id) {
@@ -6286,7 +6299,8 @@ class GameState extends ChangeNotifier {
     if (bugunku != null) {
       piyasaCarpani         = bugunku.piyasaCarpani;
       gunlukToptanciIndirim = bugunku.toptanciIndirim;
-      gunlukMusteriLimiti   = (gunlukMusteriLimiti + bugunku.musteriDelta).clamp(3, 99);
+      // Taban 10-20; kar/elektrik gibi olaylar 5e kadar indirebilir.
+      gunlukMusteriLimiti   = (gunlukMusteriLimiti + bugunku.musteriDelta).clamp(5, 40);
       if (bugunku.paraDelta != 0) para += bugunku.paraDelta;
       if (bugunku.fareIstilasi) _rastgeleUrunuCurut();
     }
@@ -10806,7 +10820,9 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
         // böylece görünmez oldu.)
         if ((_kolonyaGeciciMesaj ?? _state.mesaj).isNotEmpty)
         Positioned(
-          top: 6, left: 6, right: 6,
+          // ⚠️ Yatay kenar boşluğu HEADER İLE AYNI (12) olmalı: 6 iken balon
+          // gün ve para kutularından geniş kalıp taşıyordu.
+          top: 6, left: 12, right: 12,
           child: Container(
             padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
@@ -12530,7 +12546,13 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       _state.para -= om.ilkMiktar;
       SesServisi.paraGirdi();
       _state.musteriKabulBekliyor = false;
-      final fal = Fal.havuz[rng.nextInt(Fal.havuz.length)];
+      // ⚠️ Güvenlik varken "hırsız gelecek" kehaneti ÇEKİLMEZ. Hırsız zaten
+      // dükkana giremiyor (v113); kehanet çıksa Faloya boşa konuşmuş olur,
+      // oyuncu da beklediği hırsızın gelmemesini hata sanardı.
+      final falHavuzu = _state.guvenlikVar
+          ? Fal.havuz.where((f) => f.etki != FalEtki.hirsizGelecek).toList()
+          : Fal.havuz;
+      final fal = falHavuzu[rng.nextInt(falHavuzu.length)];
       final sonuc = _state.falUygula(fal);
       _state.mesaj = 'Bakalım yıldızlar ne diyor...';
       _state.notifyListeners();

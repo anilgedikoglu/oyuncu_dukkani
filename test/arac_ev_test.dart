@@ -400,12 +400,13 @@ void main() {
       expect(s.para, lessThan(5000));
     });
 
-    test('Şeyma ödülü: bakiyenin 2 katı para ya da sahip olunmayan araç', () {
+    test('Şeyma ödülü: bakiyenin beşte biri para ya da sahip olunmayan araç', () {
       final s = GameState()..para = 1000;
       for (int i = 0; i < 20; i++) {
         final (tip, aracId, tutar) = s.seymaOdulSec();
         if (tip == 'para') {
-          expect(tutar, s.para * 2);
+          // ⚠️ v122: 2x bakiye TEK ZİYARETTE serveti üçe katlıyordu, 0.2x oldu.
+          expect(tutar, (s.para * 0.2).round());
         } else {
           expect(s.aracSahibi(aracId), isFalse);
         }
