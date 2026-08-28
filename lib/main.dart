@@ -9954,37 +9954,16 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
               // üstünde duran bir monitöre dokunup menü açmak, yanına ayrıca
               // bir düğme koymaktan doğal.
               //
-              // iMac yokken buton DURUYOR: ortada tıklanacak bir bilgisayar
-              // olmadığı için menüye başka türlü erişilemezdi.
-              if (_state.gun >= 2 && !_state.imacSatinAlindi)
-              Positioned(
-                left: 16,
-                top: SahneMetrik.hesapla(MediaQuery.of(context).size).y(0.67) - 32,
-                child: GestureDetector(
-                  onTap: _browserPopup,
-                  child: Container(
-                    width: 92,
-                    padding: const EdgeInsets.symmetric(vertical: 6),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.65),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: const Color(0xFFFFD700).withValues(alpha: 0.5)),
-                    ),
-                    child: Row(mainAxisAlignment: MainAxisAlignment.center,
-                        mainAxisSize: MainAxisSize.min, children: [
-                      const Text('🖥️', style: TextStyle(fontSize: 18)),
-                      const SizedBox(width: 4),
-                      Text(_state.aktifDukkan.yildizlar, style: const TextStyle(fontSize: 12, color: Color(0xFFFFD700))),
-                    ]),
-                  ),
-                ),
-              ),
               // 🖥️ Bilgisayar + klavye = menü. Görünmez dokunma katmanı;
               // bg2.png'de monitör x %0-40 / y %34-58, klavye x %5-30 /
               // y %55-63 — ikisini kapsayan tek kutu (ızgarayla ölçüldü).
               // Sol kenar masanın ekran dışına taşan kısmına denk gelebilir,
               // negatif `left` normaldir.
-              if (_state.gun >= 2 && _state.imacSatinAlindi)
+              // ⚠️ iMac ŞARTI YOK. Düğme tamamen kaldırıldı; masanın bu
+              // bölgesi iMac olsa da olmasa da menüyü açıyor. Önce "iMac
+              // yokken düğme kalsın" denmişti ama o zaman 1-2. günde düğme
+              // geri geliyordu ve kaldırılmış gibi görünmüyordu.
+              if (_state.gun >= 2)
                 Positioned(
                   left: SahneMetrik.hesapla(MediaQuery.of(context).size)
                           .x(0.0, MediaQuery.of(context).size.width),
