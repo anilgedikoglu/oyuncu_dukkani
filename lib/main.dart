@@ -377,6 +377,11 @@ List<DukkanSeviye> get butunDukkanlar => [...tumDukkanlar, ...satilikDukkanlar];
 /// ⚠️ `_buildHeader()` değişirse burası da değişmeli — sahnedeki isim etiketi
 /// ve ürün konumu bu sayıya bağlı.
 const double kHeaderYuksekligi = 56.0;
+
+/// Masadaki araç maketinin genişliği (masa görselinin boyuna oranla).
+/// Yükseklik bunun yarısı. Eski sabit 92×46 dp'ye karşılık gelen oran
+/// 0.1114 idi; v122'de kullanıcı isteğiyle %100 büyütüldü.
+const double kAracMaketGen = 0.2228;
 class SahneMetrik {
   final double ust; // masa görselinin ekrandaki üst kenarı (dp)
   final double boy; // masa görselinin ekrandaki yüksekliği (dp)
@@ -7280,7 +7285,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       children: [
         const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
           Text('🛒 ', style: TextStyle(fontSize: 20)),
-          Text('MARKET', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Color(0xFFf78166), letterSpacing: 2)),
+          Text('ALIM / SATIM', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Color(0xFFf78166), letterSpacing: 2)),
         ]),
         const SizedBox(height: 12),
         // ── Ana sekmeler: Dükkan / Ev / Araç / Eşya ──
@@ -9727,15 +9732,20 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
               // için masaya göre kayıyordu (iPhone'da tezgâhın alt rafına
               // biniyordu). Artık masa metriğine kilitli: butonun ALT kenarı
               // masa görselinin alt kenarında (%67 — ızgarayla ölçüldü).
-              if (_state.gun >= 2)
+              // ⚠️ iMac ALINDIYSA buton YOK: bilgisayarın/klavyenin kendisine
+              // dokunmak menüyü açıyor (aşağıdaki görünmez katman). Masanın
+              // üstünde duran bir monitöre dokunup menü açmak, yanına ayrıca
+              // bir düğme koymaktan doğal.
+              //
+              // iMac yokken buton DURUYOR: ortada tıklanacak bir bilgisayar
+              // olmadığı için menüye başka türlü erişilemezdi.
+              if (_state.gun >= 2 && !_state.imacSatinAlindi)
               Positioned(
                 left: 16,
                 top: SahneMetrik.hesapla(MediaQuery.of(context).size).y(0.67) - 32,
                 child: GestureDetector(
                   onTap: _browserPopup,
                   child: Container(
-                    // Sabit genişlik: yandaki 🚗 kestirmesiyle aynı boyda
-                    // dursunlar, üst üste binmesinler.
                     width: 92,
                     padding: const EdgeInsets.symmetric(vertical: 6),
                     decoration: BoxDecoration(
@@ -9752,6 +9762,23 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                   ),
                 ),
               ),
+              // 🖥️ Bilgisayar + klavye = menü. Görünmez dokunma katmanı;
+              // bg2.png'de monitör x %0-40 / y %34-58, klavye x %5-30 /
+              // y %55-63 — ikisini kapsayan tek kutu (ızgarayla ölçüldü).
+              // Sol kenar masanın ekran dışına taşan kısmına denk gelebilir,
+              // negatif `left` normaldir.
+              if (_state.gun >= 2 && _state.imacSatinAlindi)
+                Positioned(
+                  left: SahneMetrik.hesapla(MediaQuery.of(context).size)
+                          .x(0.0, MediaQuery.of(context).size.width),
+                  top: SahneMetrik.hesapla(MediaQuery.of(context).size).y(0.34),
+                  width: SahneMetrik.hesapla(MediaQuery.of(context).size).gen * 0.40,
+                  height: SahneMetrik.hesapla(MediaQuery.of(context).size).u(0.29),
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () { SesServisi.dokun(); _browserPopup(); },
+                  ),
+                ),
               // 🚗 Kestirme: menüye girmeden yolculuk. Çerçevesiz/zeminsiz —
               // masanın üstünde duran minyatür bir araç gibi görünüyor;
               // görsel de o an SEÇİLİ olan araç (`_secilenAracId`).
@@ -9761,15 +9788,21 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
               // ⚠️ Burada `Builder` KULLANILAMAZ: Stack'in doğrudan çocuğu
               // Positioned olmak zorunda, araya bir widget girerse
               // "Incorrect use of ParentDataWidget" hatası alınır.
+              // ⚠️ v122: maket %100 büyüdü (92×46 → görsel oranıyla iki katı)
+              // ve kendi boyunun YARISI kadar aşağı indi. Boyut artık sabit
+              // piksel değil, masa metriğine oranlı — masa ölçeklenince maket
+              // de ölçekleniyor.
               if (_state.gun >= 2 && _state.aracVar && !_gecisAktif)
                 Positioned(
                   left: SahneMetrik.hesapla(MediaQuery.of(context).size)
-                          .x(0.43, MediaQuery.of(context).size.width) - 46,
-                  top: SahneMetrik.hesapla(MediaQuery.of(context).size).y(0.495) - 23,
+                          .x(0.43, MediaQuery.of(context).size.width)
+                        - SahneMetrik.hesapla(MediaQuery.of(context).size).u(kAracMaketGen) / 2,
+                  top: SahneMetrik.hesapla(MediaQuery.of(context).size).y(0.495),
                   child: GestureDetector(
                     onTap: () { SesServisi.dokun(); _konumSecPopup(); },
                     child: SizedBox(
-                      width: 92, height: 46,
+                      width: SahneMetrik.hesapla(MediaQuery.of(context).size).u(kAracMaketGen),
+                      height: SahneMetrik.hesapla(MediaQuery.of(context).size).u(kAracMaketGen / 2),
                       child: Image.asset(_aktifAracGorseli, fit: BoxFit.contain),
                     ),
                   ),
@@ -11390,7 +11423,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
             const SizedBox(width: 12),
             Expanded(child: _oyunButon(
               emoji: '📦', label: 'Envanter',
-              onTap: () { SesServisi.envanter(); setState(() => _envanterAcik = true); },
+              onTap: () { SesServisi.envanter(); setState(() { _envanterAcik = true; _envanterSekme = 0; }); },
               gradyan: const [Color(0xFF8c6aff), Color(0xFF311b92)],
               kenar: const Color(0xFFb39ddb),
             )),
@@ -11828,7 +11861,31 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                     boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.6), blurRadius: 20, offset: const Offset(0, 8))],
                   ),
                   child: Column(mainAxisSize: MainAxisSize.min, children: [
-                    Flexible(child: _envanterGovdesi()),
+                    // 📦/📚 İki sekme: envanterle koleksiyon aynı pencerede.
+                    // Koleksiyona ürün taşımak envanterden yapılıyor; iki
+                    // listeyi görmek için browser'a girip çıkmak gerekiyordu.
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+                      child: _ikiliSegment(
+                        solEmoji: '📦', solEtiket: 'Envanter',
+                        sagEmoji: '📚', sagEtiket: 'Koleksiyon',
+                        seciliSag: _envanterSekme == 1,
+                        solRenk: const Color(0xFFFFD700),
+                        sagRenk: const Color(0xFF00C2A8),
+                        onSec: (sag) => setState(() => _envanterSekme = sag ? 1 : 0),
+                      ),
+                    ),
+                    Flexible(
+                      child: _envanterSekme == 0
+                          ? _envanterGovdesi(baslikGoster: false)
+                          : SingleChildScrollView(
+                              padding: const EdgeInsets.fromLTRB(12, 10, 12, 4),
+                              // Koleksiyon gövdesi kendi içinde `setDlg`
+                              // bekliyor; burada pencere `setState` ile
+                              // yeniden çizildiği için onu geçiyoruz.
+                              child: _koleksiyonGovdesi((f) => setState(f)),
+                            ),
+                    ),
                     // Kapat scroll alanının DIŞINDA, hep görünür
                     Container(
                       padding: const EdgeInsets.fromLTRB(14, 8, 14, 12),
@@ -12473,6 +12530,10 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   /// `build()` içinde, SafeArea'nın DIŞINDA hesaplanır — içeride ölçülemez,
   /// sebebi orada yazılı.
   double _sahneUstKaymasi = 0;
+  /// Envanter penceresindeki sekme: 0 = Envanter, 1 = Koleksiyon.
+  /// ⚠️ Widget'ta değil state'te — pencere her karede yeniden çiziliyor.
+  int _envanterSekme = 0;
+
 
   Timer? _cikisTimer;
   VoidCallback? _bekleyenCikis;
