@@ -208,7 +208,24 @@ class OyuncuDukkaniApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       locale: DevicePreview.locale(context),
       builder: DevicePreview.appBuilder,
-      theme: ThemeData.dark().copyWith(scaffoldBackgroundColor: const Color(0xFF1a1008)),
+      // ⚠️ Popup HALESİ tema seviyesinde veriliyor. Toast'taki renkli ışıltı
+      // beğenilince aynısı bütün dialoglara istendi; 40'tan fazla popup'ı tek
+      // tek sarmak yerine `dialogTheme` ile hepsi birden kapsanıyor.
+      //
+      // ⚠️ Renk NÖTR (yumuşak beyaz), altın DEĞİL: Material'ın gölgesi
+      // dialogun altına düşer, mor/mavi/yeşil çerçeveli popup'larda sarı bir
+      // gölge uyumsuz duruyordu. Beyaz ışıltı her çerçeve rengiyle uyuyor.
+      //
+      // Not: bu, toast'taki gibi çepeçevre saran bir hale DEĞİL — Material
+      // elevation gölgesi hep aşağı kaydırmalıdır. Birebir aynı halka için
+      // her popup'ın gövdesini `boxShadow`lu bir Container'a almak gerekir.
+      theme: ThemeData.dark().copyWith(
+        scaffoldBackgroundColor: const Color(0xFF1a1008),
+        dialogTheme: const DialogThemeData(
+          elevation: 18,
+          shadowColor: Color(0x77FFFFFF),
+        ),
+      ),
       home: const SplashScreen(),
     );
   }
@@ -5591,6 +5608,16 @@ class GameState extends ChangeNotifier {
     {'gorsel': 'assets/musteri_99.png',  'cinsiyet': 'E', 'yas': 'yasli'},    // kaptan/şoför üniforması
     {'gorsel': 'assets/musteri_100.png', 'cinsiyet': 'E', 'yas': 'yasli'},    // kırmızı atkı, entelektüel
     {'gorsel': 'assets/musteri_101.png', 'cinsiyet': 'K', 'yas': 'genc'},     // kırmızı mohawk, punk
+    // ── v122: 9 karakter daha — kadro 101 → 110 ──
+    {'gorsel': 'assets/musteri_102.png', 'cinsiyet': 'K', 'yas': 'yetiskin'}, // kızıl kıvırcık, yeşil önlük
+    {'gorsel': 'assets/musteri_103.png', 'cinsiyet': 'E', 'yas': 'yasli'},    // eşofmanlı, beyaz sakal
+    {'gorsel': 'assets/musteri_104.png', 'cinsiyet': 'K', 'yas': 'yetiskin'}, // mavi takım, fular
+    {'gorsel': 'assets/musteri_105.png', 'cinsiyet': 'E', 'yas': 'genc'},     // aşçı ceketi, ekose pantolon
+    {'gorsel': 'assets/musteri_106.png', 'cinsiyet': 'K', 'yas': 'yetiskin'}, // desenli hırka, gözlük
+    {'gorsel': 'assets/musteri_107.png', 'cinsiyet': 'K', 'yas': 'yasli'},    // sarı tulum, çizme
+    {'gorsel': 'assets/musteri_108.png', 'cinsiyet': 'E', 'yas': 'yasli'},    // yeşil hırka, papyon
+    {'gorsel': 'assets/musteri_109.png', 'cinsiyet': 'K', 'yas': 'yetiskin'}, // iki renkli blazer, kır saç
+    {'gorsel': 'assets/musteri_110.png', 'cinsiyet': 'K', 'yas': 'yetiskin'}, // turuncu tulum, dövmeli
   ];
   List<int> _musteriSira = [];
 

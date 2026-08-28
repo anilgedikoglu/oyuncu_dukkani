@@ -2,7 +2,7 @@ name: oyuncu_dukkani
 description: "A new Flutter project."
 publish_to: 'none'
 
-version: 1.1.0+20
+version: 1.2.0+21
 
 environment:
   sdk: ^3.7.2
@@ -234,6 +234,15 @@ flutter:
     - assets/musteri_99.png
     - assets/musteri_100.png
     - assets/musteri_101.png
+    - assets/musteri_102.png
+    - assets/musteri_103.png
+    - assets/musteri_104.png
+    - assets/musteri_105.png
+    - assets/musteri_106.png
+    - assets/musteri_107.png
+    - assets/musteri_108.png
+    - assets/musteri_109.png
+    - assets/musteri_110.png
     - assets/CD_47.png
     - assets/CD_48.png
     - assets/CD_49.png

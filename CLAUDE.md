@@ -39,13 +39,15 @@ assets/                — görseller ve sesler
   bgbos_2/3/4.jpg      — seviye 2/3/4-5 arka planları (JPEG: opak, PNG'de 6.5MB olurdu)
   bgbosmasa.png        — masa (3. günden önce)
   kapidaki.png         — kapıda bekleyen silüet (müşteri yokken; dükkana göre konumlanır)
-  musteri_1..46.png    — müşteri karakterleri (46 adet, yaş/cinsiyet musteriHavuzu içinde)
-                         musteri_43/44/45 SABİT adlı (Recai Carlos, Kahraman Memo, Şakir Oneyıl)
+  musteri_1..110.png   — müşteri karakterleri (110 adet, yaş/cinsiyet musteriHavuzu içinde)
+                         SABİT adlı: musteri_43/44/45 (Recai Carlos, Kahraman Memo,
+                         Şakir Oneyıl), musteri_47 (Kaportacı Demir Demirkan — etikette
+                         kısaca "Demir", bkz. Customer.kisaAd)
   hirsiz/polis/vergici/kurye/toptanci/falci/guvenlik.png — özel müşteri karakterleri
   hande.png            — Rehber Hande (oyunun başındaki tanıtım karakteri)
   dukkan_<ad>.jpg      — dükkan arka planı (bodrum/mahalle/cadde/carsi/avm + satilik1..5)
   dukkan_<ad>_guv.jpg  — aynı dükkanın GÜVENLİKLİ sürümü (kapıda güvenlik durur)
-  CD_1..46.png         — 46 CD ürünü (CD_15/16/17 = KIRGEÇ, İTELE, TISSS: oynanabilir)
+  CD_1..62.png         — 62 CD ürünü (CD_15/16/17 = KIRGEÇ, İTELE, TISSS: oynanabilir)
   konsol_1..19.png     — 19 konsol ürünü (PlayStatyon, Ninetendo, Ateri, El Konsolu ×12,
                          Masaüstü Konsol ×3, son sistem)
   joystick.png         — arcade joystick (v110 aksesuarı)
@@ -77,7 +79,7 @@ SplashScreen (6 sn yasal metin)
 
 ## 👥 KARAKTER HAVUZU (v103)
 
-**46 müşteri görseli** (11 eski + 17 v103 + 6 v110 + 8 v112 + 4 v113). Dağılım: **24 erkek, 22 kadın**.
+**110 müşteri görseli** (v122 sonu). Dağılım: **57 erkek, 53 kadın**.
 
 > ⚠️ **Sabit adlı karakterler**: `musteriHavuzu` satırında `'ad'` alanı doluysa
 > rastgele isim havuzundan isim ÇEKİLMEZ. `musteri_43` = Recai Carlos,
@@ -144,6 +146,208 @@ Toplu iş + kontak sayfası için: `tools/toplu_isle.ps1`
 > göğsünden kesiliyor (`kMusteriUstu` 0.2183 → masa 0.4833), ayaklar hiç görünmüyor.
 
 ---
+---
+
+## 🧭 v122 — HİZALAMA KÖKTEN ÇÖZÜLDÜ + BÜYÜK İÇERİK
+
+### 🐛 En önemlisi: isim etiketi ve ürün masanın önüne düşüyordu
+
+`_buildSahne()` **SafeArea'nın içinde** çalışıyor ve sahnenin ekrandaki
+dikey kaymasını `viewPadding.top + 48` diye **tahmin ediyordu**. İki kez
+yanlış tahmin edildi:
+
+1. Önce `padding.top` kullanılıyordu — SafeArea child'ını
+   `MediaQuery.removePadding` ile sardığı için orada **her zaman 0**.
+2. Sonra `viewPadding.top`a geçildi ama **o da işe yaramadı**, çünkü
+   `removePadding` viewPadding'i DE düşürüyor:
+
+```dart
+viewPadding.top - padding.top   // klavye yokken ikisi eşit → 0
+```
+
+Sonuç: isim ve ürün, çentik yüksekliği kadar aşağı kayıyordu. Android
+emülatöründe 24dp (fark edilmez), iPhone'da ~59dp (gözle görülür).
+
+**Çözüm — tahmin YOK, ölçüm VAR:**
+
+```dart
+// build() içinde, SafeArea'nın DIŞINDA:
+_sahneUstKaymasi = MediaQuery.of(c).padding.top + kHeaderYuksekligi;
+```
+
+`kHeaderYuksekligi = 56` (8 üst padding + 48 kutu). Önceden yanlışlıkla 48
+kullanılıyordu, o da 8px ekliyordu.
+
+> ⚠️ Sahnede yeni bir konum eklerken kaymayı SafeArea içinde ölçmeye
+> çalışma — `_sahneUstKaymasi` alanını kullan.
+
+### 🚪 Kapı silüeti: 10 dükkan, kenar kenar ölçüldü
+
+Otomatik ölçüm bu görsellerde **üç kez** yanıldı (kapı kolundaki yatay
+çubuğu "cam bitti" sanıyor, açık ahşap çerçeveyi cam sanıyor). Yeni araç:
+
+```powershell
+tools/kenarkontrol.ps1 <gorsel> <cikis> <sol> <ust> <gen> <yuk>
+```
+
+Kutunun sol ve sağ kenarını **8x büyütüp yan yana** koyar, kırmızı çizgi
+kutunun kenarıdır. Sekiz dükkanda kutu camdan 3-6 piksel genişti.
+
+> ⚠️ Önceki değerler ölçüm değil **TELAFİYDİ**: "sağda boşluk kalıyordu →
+> %15 uzatıldı" gibi. Telafiler tek bir cihazın oranına gömülüyor, oran
+> değişince açığa çıkıyor. Bir daha telafi ekleme — yeniden ölç.
+
+Silüet ayrıca **%5 büyük** çiziliyor (merkezden yayılarak): sprite'ın
+saydam payı yüzünden köşelerde ince boşluklar kalıyordu.
+
+### 📱 Telefon bir daha açılmıyor + menü/araç butonları ölüyordu (KRİTİK)
+
+Telefon `useRootNavigator: false` ile açılıyor, yani **root Navigator'da
+değil**. Ama onu kapatan beş yer `rootNavigator: true` ile pop ediyordu.
+Yanlış Navigator'dan pop → telefonun route'u kapanmıyor → `.then()` hiç
+çalışmıyor → `_telIcCtx` **yok olmuş bir ağacı** tutuyor. `_popupCtx` o ölü
+context'i döndürdüğü için ondan sonra açılmaya çalışan **her** popup
+sessizce hiçbir şey yapmıyordu.
+
+```dart
+BuildContext get _popupCtx {
+  final c = _telIcCtx;
+  if (c != null && c.mounted) return c;   // ⚠️ mounted ŞART
+  _telIcCtx = null;
+  return context;
+}
+
+void _telefonuKapat();  // telefonun KENDİ route'undan pop + bayrak temizliği
+```
+
+> ⚠️ Telefon içinden bir şey açarken/kapatırken `rootNavigator: true`
+> KULLANMA. `_telefonuKapat()` çağır.
+
+### ⚖️ Denge
+
+| | Eski | Yeni |
+|---|---|---|
+| Günlük müşteri | seviyeye göre 10-15 → 30-35 | **sabit 10-20** |
+| Şeyma para ödülü | 2 × bakiye | **0.2 × bakiye** |
+| İtele bot nişan hatası | ±3 (asla ıskalamaz) | **±9 → ±17, hıza bağlı** |
+| İtele bot hızı | 60 | 50 |
+| Kırgeç top hızı | 52 / 1.5 / 95 | **62.4 / 1.8 / 114** |
+| Tıklama titreşimi | selectionClick | **mediumImpact** |
+
+**Müşteri sayısı neden dükkandan koptu:** büyük dükkanın ödülü zaten
+BÜYÜK ENVANTER, ve gün uzadıkça yeni güne geçmek zorlaştığı için gün başı
+geçiş reklamı seyrekleşiyordu. Sayıyı artık hava/gündem belirliyor
+(`GunOlayi.musteriDelta`; kar -5, güneş +4, sıcak -3 eklendi).
+
+**İtele botu neden yenilemiyordu:** çubuk eni 20, yarısı 10, top
+yarıçapıyla yakalama toleransı 11.7 — ±3'lük hata bunun çeyreği bile
+değil, yani **matematiksel olarak ıskalayamıyordu**.
+
+### 🎨 Arayüz
+
+- **Balon**: yazılmamış harfler silinmiyor, **şeffaf** çiziliyor. Metin
+  ortalandığı için her yeni harf öncekileri sola itiyordu; yerleşim artık
+  ilk kareden itibaren tam metne göre.
+- **Balon dokunuşu iki aşamalı**: yazı sürerken 1. dokunuş metni
+  tamamlar, 2. dokunuş gönderir. Yazı bittiyse tek dokunuş yeter.
+  Dokunulmasa da harf sayısı + 350 ms (taban 1200 ms) sonra kendi gider.
+  ⚠️ `_bekleyenCikis` yalnız gidiş kararı verildiğinde dolu — konuşmanın
+  ortasında dokunmak karakteri kovmaz.
+- **Masa üstü butonlar**: sabit pikselden (`bottom: 300`) masa metriğine.
+  iMac alındıysa menü düğmesi YOK — **bilgisayara/klavyeye dokunmak**
+  menüyü açıyor. iMac yoksa düğme duruyor (başka erişim yok).
+- **Araç maketi** %100 büyüdü, yarım boy aşağı indi (`kAracMaketGen`).
+- **Envanter penceresi iki sekmeli**: 📦 Envanter / 📚 Koleksiyon.
+- **Browser adres çubuğu** ölçeğe bağlandı (`s = genişlik / 306`); sabit
+  `top: 52 / left: 96` yalnız dialog tam 306dp iken oturuyordu.
+- **Market → "Alım / Satım"** (küçük eşya satılıyor gibi duruyordu).
+- **Liderlik bandı** Column'dan çıkıp overlay oldu — yer kaplayınca ana
+  menü butonlarını aşağı itiyordu.
+- **Popup halesi** `dialogTheme` ile tek yerden: `elevation: 18`,
+  `shadowColor: 0x77FFFFFF`. ⚠️ Renk nötr, altın değil — mor/mavi
+  çerçevelerde sarı gölge uyumsuz duruyordu. Not: Material elevation
+  gölgesi aşağı kaydırmalıdır, toast'taki gibi çepeçevre halka DEĞİL.
+
+### 🏪 Dükkan satışı
+
+Sahip Olunanlar > Dükkan kartı **üç seçenekli**: solda Kiraya Ver /
+Kiradan Çek (günlük getirisi yazılı), sağda Sat (değeri yazılı), altta
+Vazgeç. Satışta **Emlakçı Necmi ALICI** olarak gelir
+(`dukkanSatisiBaslat`, `satistakiDukkan`). Kiradaki dükkan satılamaz.
+
+Kira geliri artık **gün sonu popup'ında** görünüyor — hesaba giriyordu ama
+hiçbir yerde yazmıyordu.
+
+> ⚠️ `sonAnlasmaVarlikti` bayrağı: dükkan alınınca `alinacakDukkan` null
+> oluyordu ve masadaki ürün filtresi ona baktığı için dükkan görseli tam
+> anlaşma karesinde **belirip CD gibi aşağı kayıyordu**.
+
+### 🚗 28 araç — hız/fiyat/gün birlikte artar
+
+`AracTip`: mikro → bisiklet → motosiklet → otomobil → hava → **ozel**
+
+| Uç | Araç | sn | fiyat | gün |
+|---|---|---|---|---|
+| en yavaş | Vınzz Scooter | 240 | 1.200 | 1 |
+| en hızlı | 🛸 Işınlama Makinesi | **3** | **400.000** | **60** |
+
+> ⚠️ En ucuz araç **1. günde açık olmalı** — mekâna gitmek araç istiyor,
+> hiçbiri açık değilse konum sistemi kilitlenir. Test bunu koruyor.
+
+### 📦 İçerik
+
+- **62 CD** (9 yeni: ABAN, AYYÜK, CİNCİH, FURDİMONİ, KAYKIL CAKSIN,
+  BEYAZ DÜŞ, ZEKİCE, AYRAN MEN, MİNCİR). Fiyatlar ortalamayı koruyacak
+  şekilde dağıtıldı.
+- **110 karakter** (57 E / 53 K). Üç çizgi film karakteri kullanıcı
+  isteğiyle değiştirildi. Hepsi 500×500 ve doluluk 0.93-0.98 geldiği için
+  **yeniden ölçeklenmedi**.
+- `musteri_47` sabit adlı: **Kaportacı Demir Demirkan**.
+  `Customer.kisaAd` eklendi — tezgâh etiketinde sadece "Demir" yazıyor.
+- Güvenlik varken Falcı **"hırsız gelecek" kehanetini çekmiyor**.
+- Emlakçı Necmi **aynı gün aynı dükkan** için ikinci kez çağrılamaz.
+- Galerici Gürbüz **oyuncu çağırdıysa** aynı gün kendi programıyla gelmez.
+- Mini oyunlarda dokunma alanı **ekranın tamamı** (eskiden yalnız oyun
+  alanı, dar bir şeritti).
+- 🥚 Easter egg artık **10. güne taşıyor** ve o güne kadar açılan her şeyi
+  veriyor. ⚠️ `minGun <= gun` filtresi var — ışınlama makinesi (60. gün)
+  gibi geç hedefler açılmaz.
+
+### 🏆 Liderlik tablosu — mağaza kurulumu TAMAMLANDI
+
+```
+iOS    : enzenginoyuncu           (App Store Connect → Game Center)
+Android: CgkIir3fr50QEAIQAQ       (Play Console → Skor tabloları)
+Cloud  : oyuncu-dukkani / 557640572554  → strings.xml
+```
+
+**iOS Game Center entitlement EKSİKTİ**: `ios/Runner/Runner.entitlements`
+oluşturuldu ve Runner target'ın üç config'ine `CODE_SIGN_ENTITLEMENTS`
+bağlandı. Bu olmadan GameKit çalışmaz ve Game Center capability'li
+profille imzalama patlar.
+
+> ⚠️ Android ID **ekrandan okundu**, panoya kopyalanamıyordu. Google
+> Sans'ta küçük `l` ile büyük `I` ayırt edilemiyor; `CgkI` ile başladığı
+> Play Games biçim kuralından biliniyor. Girişte "leaderboard not found"
+> çıkarsa ÖNCE bu harfleri konsoldan doğrula.
+
+> ⚠️ Play App Signing SHA-1'i için **ikinci bir OAuth client** hâlâ
+> eksik. Olmadan mağazadan indirenlerde giriş sessizce başarısız olur.
+
+### 🧪 Test
+
+`test/guvenlik_test.dart`'taki sabit-ad testi **kararsızdı**. Sebep
+sanıldığı gibi olasılık değil: test kasayı beslemediği için birkaç gün
+sonra kira ödenemeyip **iflas** oluyor ve müşteri akışı duruyordu.
+
+```dart
+s.para = 100000;                      // her adımda besle
+if (s.gunBitmeli) s.gunuBitir();
+```
+
+> `test/widget_test.dart` **eskiden beri kırık** (splash ekranı yüzünden
+> "OYUNCU DÜKKANI" metnini hemen bulamıyor). v122 ile ilgisi yok.
+
 ---
 
 ---
@@ -2475,6 +2679,7 @@ Base ratio hâlâ `_clamp(0.18 - progress * 0.15, 0.02, 0.18)`.
 ## Versiyon Geçmişi (son)
 | Commit | Açıklama |
 |--------|----------|
+| v122 | **🧭 Hizalama kökten çözüldü**: isim etiketi ve ürün masanın önüne düşüyordu — `_buildSahne()` SafeArea içinde olduğu için dikey kaymayı tahmin ediyordu; `padding.top` de `viewPadding.top` da orada 0 döner (`removePadding` ikisini de düşürüyor). Kayma artık `build()` içinde, SafeArea'nın DIŞINDA ölçülüyor (`_sahneUstKaymasi`, `kHeaderYuksekligi = 56`). **10 dükkanın kapı camı** `tools/kenarkontrol.ps1` ile (kenarları 8× büyütüp yan yana koyar) tek tek ölçüldü — önceki değerler ölçüm değil telafiydi; silüet ayrıca %5 büyük çiziliyor. Masa üstü butonlar ve araç maketi de sabit pikselden masa metriğine geçti. **📱 KRİTİK: telefon bir daha açılmıyor, menü/araç butonları ölüyordu** — telefon `useRootNavigator: false` ile açılıyor ama beş yer `rootNavigator: true` ile kapatmaya çalışıyordu; yanlış Navigator'dan pop → `.then()` çalışmıyor → `_telIcCtx` ölü ağacı tutuyor → ondan sonraki HER popup sessizce ölüyordu (`_popupCtx` artık `mounted` kontrol ediyor, `_telefonuKapat()` eklendi). **⚖️ Denge**: günlük müşteri dükkandan koptu (sabit 10-20, hava olayları belirliyor: kar -5/güneş +4/sıcak -3), Şeyma ödülü 2× → 0.2× bakiye, İtele botu artık yenilebiliyor (nişan hatası ±3 iken matematiksel olarak ıskalayamıyordu → hıza bağlı ±9…±17), Kırgeç topu %20 hızlandı, titreşim mediumImpact. **🎨 Arayüz**: balonda yazılmamış harfler şeffaf çiziliyor (harfler artık kaymıyor), balon dokunuşu iki aşamalı (1. dokunuş yazıyı bitirir, 2. gönderir), iMac alındıysa menü düğmesi yok — bilgisayara/klavyeye dokunuluyor, envanter iki sekmeli (Envanter/Koleksiyon), browser adres çubuğu ölçeğe bağlandı, Market → "Alım / Satım", liderlik bandı overlay oldu, popup halesi `dialogTheme` ile. **🏪 Dükkan satışı**: Sahip Olunanlar'da üç seçenek (Kiraya Ver / Sat / Vazgeç), satışta Emlakçı Necmi alıcı gelir; kira geliri gün sonu popup'ında görünüyor. **🚗 28 araç** hız/fiyat/gün üçlüsü baştan dengelendi (Vınzz Scooter 240sn/1.200/1. gün → 🛸 Işınlama Makinesi 3sn/400.000/60. gün). **🏆 Liderlik kurulumu tamamlandı** (iOS `enzenginoyuncu`, Android `CgkIir3fr50QEAIQAQ`, proje 557640572554); iOS Game Center entitlement eksikti, eklendi. **📦 İçerik**: 62 CD, 110 karakter (57 E / 53 K), easter egg 10. güne taşıyor. `guvenlik_test.dart` kararsızlığının sebebi bulundu: test kasayı beslemediği için iflas edip müşteri akışı duruyordu |
 | v121 | **📱 Cep telefonu + mekân mimarisi**: mekânlar döşenmiş görsellerle geliyor (eşya sistemi ve 66 katman SİLİNDİ), 6 mekân (Mütevazı Ev/Yazlık/Dağ Evi/Orman Evi/Rezidans/Tekne; 10.000→65.000, gün 6→25, `konukCarpani` 1.0→2.5). **Oyuncu Pro Max** (Market→Eşya, 7500, 10. gün): mekânlarda "Cep Telefonu" ile açılır, 9 ikon (rehber/sahiplik/market/hedefler/envanter/koleksiyon/banka/araç/oyunlar), mini oyunlar telefonda çalışır, home tuşu ana menüyü sorar. **Telefon Rehberi**: 12 kişi × 6 mekân × 5 senaryo; adım adım diyalog, mekâna özel replik ve ödül/ceza — Şeyma/Sezercik cömert, Polis/Vergici/Hırsız riskli, lüks mekânda ikisi de büyür. **Günlük çağrı hakkı 3** (yoksa sınırsız para kaynağı olurdu). "Aracın hazır!" popup'ı (araç→ok→mekân görseli). **🐛 Tek seferlik popup her "Devam Et"te tekrar çıkıyordu** — bayrak widget'tan `GameState`'e taşındı. İçerik: 17 araç, 57 karakter, 53 CD, 9 yeni hedef. `test/arac_ev_test.dart` 34 test |
 | v120 | **🚙 Araçlar envanterden çıktı**: `sahipAracIdleri` listesi, müşteri araç isteyemiyor, masada araç görseli yok; galerici 3. günden itibaren; araç sayısı 11. **💼 Sahip Olunanlar** (menü en üstü, 3 sekme): araç satışı→Gürbüz alıcı, ev satışı→**Emlakçı Necmi** (`mekanDegeri` = mekân+eşyalar; eşyalar evle gider), iMac→anında 1200. **Market 3 sekme** (Ev/Araç/Eşya) gerçek görsellerle, alınan listeden çıkar; adres `saticisindan_com`. **⛵ Tekne** 4. mekân (9 eşya, .ora tam katman). **5 yeni özel müşteri**: Sezercik (3-6. gün, kasanın 1/5–1/2'si), Şeyma Koko (Sezercik+2 gün; araba/motor/2×bakiye hediye ya da sitem), Deli Bekir (rotasyonda, 30×3 replik), Palyaço (5-10. gün bir kez; CD hediye / envanterden çalar), Büyücü Yakup (3/8/13 + 10'un katları, 110 soru). **🏆 Liderlik** (games_services; ID kurulumları CLAUDE.md v120 notunda) + **Diğer Oyunlar** butonu (mağaza geliştirici sayfaları). Rıza'da 3. sekme Koleksiyon; kestirme 🚗 butonu; kiralıklarda "Büyük dükkan = Büyük envanter". AGP 8.9.1 + Gradle 8.11.1. `test/arac_ev_test.dart` 33 test |
 | v118 | **🚗 Galerici Gürbüz + araçlar + 🏠 ev/yazlık**: yeni özel müşteri Gürbüz 4. günden itibaren 3 günde bir gelir, "Araç Seç" tezgâhından seçilen araç normal pazarlığa dönüşür, alınan araç envantere girer (5 araç, 3000-14000). Browser'da **Konum Değiştir** (araç yoksa kilitli); Market'te **Ev (10000)** ve **Yazlık (12000)**. Yolculukta solda araç + saat yönünün tersine dönen halka, süre aracın niteliğine göre (30-120 sn); bitince müşteri yokken "Eve geçmek istiyor musun?" popup'ı. Ev sahnesi: eşyalar doluev.png'den ölçülen oranlarla (9 eşya), Yazlık: .ora tam tuval katmanları birebir bindirme (12 eşya, tezgâh için kırpılmış ikonlar). `test/arac_ev_test.dart` 20 test. Rotasyon migrasyonuna `_rotasyonDisi` seti (hande sızması da kapandı) |
