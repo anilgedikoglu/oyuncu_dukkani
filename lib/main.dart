@@ -12965,8 +12965,14 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   /// `kHoparlorMasaDusus` kadar aşağı iner. Sabitleri doğrudan kullanma —
   /// bu getter'lardan geç, yoksa hoparlörlü masada tezgâhın üstünde asılı
   /// kalırlar.
+  /// ⚠️ İsim etiketi ürüne göre BİRAZ DAHA aşağı iniyor
+  /// (`kHoparlorMasaDusus`un üçte biri). Ürün tezgâha oturduğunda etiket
+  /// hâlâ yüksek kalıyordu — etiket masanın arka kenarına yaslanıyor, ürün
+  /// ise yüzeyin ortasına oturuyor, ikisinin referans çizgisi aynı değil.
   double get _isimAltiOran =>
-      kIsimAlti + (_state.hoparlorVar ? kHoparlorMasaDusus : 0.0);
+      kIsimAlti + (_state.hoparlorVar
+          ? kHoparlorMasaDusus + kHoparlorMasaDusus / 3
+          : 0.0);
   double get _urunTabaniOran =>
       kUrunTabani + (_state.hoparlorVar ? kHoparlorMasaDusus : 0.0);
 
