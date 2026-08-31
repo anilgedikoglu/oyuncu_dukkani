@@ -45,10 +45,13 @@ void main() {
     test('güvenlik YOKKEN hırsız gelebiliyor (test anlamlı olsun diye)', () {
       final s = GameState();
       var hirsizGeldi = false;
-      for (int i = 0; i < 400 && !hirsizGeldi; i++) {
+      for (int i = 0; i < 1200 && !hirsizGeldi; i++) {
         // ⚠️ Günlük müşteri limiti dolunca yeniMusteriGonder boş döner —
         // gün ilerletilmezse döngü havada dönüyor (içerik büyüdükçe
         // özel müşteri sırası da seyrekleşti, test boş kalıyordu).
+        // ⚠️ Kasa beslenmezse birkaç gün sonra kira ödenemeyip İFLAS oluyor
+        // ve müşteri akışı duruyordu — sabit-ad testiyle aynı tuzak.
+        s.para = 100000;
         if (s.gunBitmeli) s.gunuBitir();
         s.yeniMusteriGonder();
         if (s.aktifOzelMusteri?.tip == OzelMusteriTip.hirsiz) hirsizGeldi = true;
