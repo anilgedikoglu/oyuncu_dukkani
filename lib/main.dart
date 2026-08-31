@@ -4666,6 +4666,8 @@ class GameState extends ChangeNotifier {
   bool hoparlorVar = false;
   static const int hoparlorFiyati = 3500;
   static const int hoparlorMinGun = 4;
+  /// İkinci elde değer kaybeder — alış 3500, satış 1800.
+  static const int hoparlorSatisFiyati = 1800;
 
   bool hoparlorSatinAl() {
     if (hoparlorVar || para < hoparlorFiyati) return false;
@@ -6477,6 +6479,18 @@ class GameState extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// 🔊 Hoparlörü sat. Masa görseli kendiliğinden eski hâline döner
+  /// (`_masaGorseli` bu bayrağa bakıyor). Çalan müzik varsa susturulur —
+  /// hoparlör gittikten sonra dükkanda müzik çalmaya devam etmesi saçma olur.
+  void hoparlorSat(int fiyat) {
+    if (!hoparlorVar) return;
+    hoparlorVar = false;
+    para += fiyat;
+    SesServisi.muzikDurdur();
+    SesServisi.paraGirdi();
+    notifyListeners();
+  }
+
   /// alinanTutar: oyuncuya eklenen para, geriOdeme: faizli toplam geri ödeme
   void krediAl(int alinanTutar, int geriOdeme, int taksitSayisi) {
     krediTaksitMiktar = (geriOdeme / taksitSayisi).ceil();
@@ -7654,14 +7668,13 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                 ikon: '🖥️',
                 onTap: () => _imacSatOnay(ctx),
               ),
-            // 🔊 Hoparlör de bir eşya — satılmıyor, masaya monte.
+            // 🔊 Hoparlör — iMac gibi pazarlıksız, anında satılır.
             if (_sahiplikSekme == 3 && _state.hoparlorVar)
               _sahiplikKart(
                 isim: 'Masa Hoparlörü',
-                altYazi: 'Satılık değil',
+                altYazi: 'Satış: ${GameState.hoparlorSatisFiyati}',
                 gorselYolu: 'assets/hoparlor.png',
-                onTap: () => _dialogBildirim(ctx,
-                    'Hoparlörler masaya monte, sökülmüyor.'),
+                onTap: () => _hoparlorSatOnay(ctx),
               ),
             // 📱 Telefon de bir eşya — alındığı hâlde burada görünmüyordu.
             // ⚠️ SATILMIYOR: mekânlarda tek arayüz o; satılsa oyuncu evde
@@ -7886,6 +7899,24 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   }
 
   /// iMac doğrudan satılır — pazarlık yok, buton fiyatı neyse o.
+
+  /// 🔊 Hoparlör satış onayı — iMac gibi pazarlıksız, anında.
+  void _hoparlorSatOnay(BuildContext browserCtx) {
+    _satisOnayPopup(
+      baslik: '🔊 Masa Hoparlörü satılsın mı?',
+      gorselYolu: 'assets/hoparlor.png',
+      aciklama: '${GameState.hoparlorSatisFiyati} liraya hemen satılır.\n'
+          'Masa eski hâline döner ve müzik çalar kapanır; '
+          'Market\'ten yeniden alabilirsin.',
+      onEvet: () {
+        Navigator.pop(browserCtx);
+        _state.hoparlorSat(GameState.hoparlorSatisFiyati);
+        _toastGoster('Hoparlör satıldı',
+          altYazi: '+${GameState.hoparlorSatisFiyati} lira',
+          emoji: '🔊', renk: const Color(0xFF00C2A8), ms: 2400);
+      },
+    );
+  }
   void _imacSatOnay(BuildContext browserCtx) {
     _satisOnayPopup(
       baslik: '🖥️ iMac satılsın mı?',
@@ -9472,7 +9503,11 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                 child: Row(children: [
                   ClipRRect(
                     borderRadius: BorderRadius.circular(6),
-                    child: Image.asset(d.arkaplan, width: 54, height: 54, fit: BoxFit.cover),
+                    // ⚠️ topCenter: dükkan görselleri DİKEY (719×1080). Ortadan
+                    // kare kesince zemin tahtası çıkıyor, dükkan tanınmıyordu.
+                    // Üstten kesince raflar/kapı görünüyor.
+                    child: Image.asset(d.arkaplan, width: 54, height: 54,
+                      fit: BoxFit.cover, alignment: Alignment.topCenter),
                   ),
                   const SizedBox(width: 10),
                   Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -13543,7 +13578,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
             // tamamen karartıyor. Kilitli kartta gri tonlama matrisi var.
             if (gorsel != null)
               aktif
-                  ? Image.asset(gorsel, fit: BoxFit.cover)
+                  ? Image.asset(gorsel, fit: BoxFit.cover, alignment: Alignment.topCenter)
                   : ColorFiltered(
                       colorFilter: const ColorFilter.matrix(<double>[
                         0.2126, 0.7152, 0.0722, 0, 0,
@@ -13551,7 +13586,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                         0.2126, 0.7152, 0.0722, 0, 0,
                         0, 0, 0, 1, 0,
                       ]),
-                      child: Image.asset(gorsel, fit: BoxFit.cover),
+                      child: Image.asset(gorsel, fit: BoxFit.cover, alignment: Alignment.topCenter),
                     )
             else
               Center(child: Text(ikon,
