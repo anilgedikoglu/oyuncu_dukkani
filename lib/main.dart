@@ -453,6 +453,13 @@ const double kUrunSagKaydir= 0.3828;
 // İsim etiketinin alt kenarı — masa çizgisinin hemen altı
 const double kIsimAlti     = 0.5170;
 // Müşteri görselinin üst kenarı ve boyu
+
+/// 🔊 Hoparlörlü masa daha ALÇAK: tezgâh yüzeyi normal masadan bir isim
+/// etiketi boyu kadar aşağıda kalıyor. İsim ve ürün o durumda bu kadar
+/// aşağı iner — değer, etiketin kendi yüksekliğinin masa boyuna oranı
+/// (4+4 padding + ~14dp metin ≈ 22dp), yani `kIsimAlti`ya v122'de eklenen
+/// miktarın aynısı.
+const double kHoparlorMasaDusus = 0.025;
 const double kMusteriUstu  = 0.2183;
 const double kMusteriBoyu  = 0.6519;
 
@@ -11198,7 +11205,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
               final hedef = (mq.size.width - boy) / 2;
               final dx = hedef + (mq.size.width - hedef) * _slideAnim.value;
               // İsmin alt kenarı masa çizgisine kilitli → kutunun altından uzaklığı:
-              final isimBottom = boy - (m.y(kIsimAlti) - m.y(kMusteriUstu));
+              final isimBottom = boy - (m.y(_isimAltiOran) - m.y(kMusteriUstu));
               return Positioned(
                 left: dx, top: m.y(kMusteriUstu) - ofs,
                 width: boy, height: boy,
@@ -11301,7 +11308,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                              + (gorsel == 'assets/konsol_3.png'          ? 0.0058 : 0.0);
               final productLeft = dx + m.u(kUrunSagKaydir + ekKaydir);
               // Alt kenarı masa çizgisine kilitli → üst kenar = taban - boy
-              final normalTop = m.y(kUrunTabani) - productSize - ofs;
+              final normalTop = m.y(_urunTabaniOran) - productSize - ofs;
               // ⚠️ left/top burada DOĞRUDAN _slideAnim'den okunuyor (Positioned,
               // animasyonsuz) — müşteriyle aynı karede, aynı anda hareket eder.
               // Anlaşma sonrası "masadan aşağı kayıp gitme" efekti, konumdan
@@ -12952,6 +12959,16 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       ),
     );
   }
+
+  /// İsim etiketinin ve masadaki ürünün dikey konumu.
+  /// ⚠️ Hoparlörlü masa daha alçak olduğu için ikisi de o durumda
+  /// `kHoparlorMasaDusus` kadar aşağı iner. Sabitleri doğrudan kullanma —
+  /// bu getter'lardan geç, yoksa hoparlörlü masada tezgâhın üstünde asılı
+  /// kalırlar.
+  double get _isimAltiOran =>
+      kIsimAlti + (_state.hoparlorVar ? kHoparlorMasaDusus : 0.0);
+  double get _urunTabaniOran =>
+      kUrunTabani + (_state.hoparlorVar ? kHoparlorMasaDusus : 0.0);
 
   /// Masa görseli. Hoparlör alındıysa hoparlörlü sürüm çizilir.
   ///
