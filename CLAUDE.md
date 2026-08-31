@@ -21,7 +21,7 @@ Flutter ile geliştirilmiş bir mobil oyun. Oyuncu bir oyun dükkanı yönetir: 
 ## Teknik Yığın
 - **Flutter** (Dart) — tek dosya mimarisi: `lib/main.dart`
 - **Android** — paket adı: `com.oyuncudukkani.app`
-- **pubspec.yaml** — versiyon: `1.0.2+13`
+- **pubspec.yaml** — versiyon: `1.4.0+30` (kimlikler: "🔑 KİMLİKLER" bölümü)
 - Paketler: `audioplayers`, `shared_preferences`, `google_mobile_ads`, `device_info_plus`, `app_tracking_transparency`, `device_preview` (dev), `flutter_launcher_icons` (dev)
 - **Kotlin**: 2.1.0 (Android `settings.gradle.kts`)
 - **App Store**: YAYINDA → https://apps.apple.com/us/app/oyuncu-dükkanı/id6778437262
@@ -39,7 +39,7 @@ assets/                — görseller ve sesler
   bgbos_2/3/4.jpg      — seviye 2/3/4-5 arka planları (JPEG: opak, PNG'de 6.5MB olurdu)
   bgbosmasa.png        — masa (3. günden önce)
   kapidaki.png         — kapıda bekleyen silüet (müşteri yokken; dükkana göre konumlanır)
-  musteri_1..110.png   — müşteri karakterleri (110 adet, yaş/cinsiyet musteriHavuzu içinde)
+  musteri_1..147.png   — müşteri karakterleri (147 adet, yaş/cinsiyet musteriHavuzu içinde)
                          SABİT adlı: musteri_43/44/45 (Recai Carlos, Kahraman Memo,
                          Şakir Oneyıl), musteri_47 (Kaportacı Demir Demirkan — etikette
                          kısaca "Demir", bkz. Customer.kisaAd)
@@ -47,7 +47,7 @@ assets/                — görseller ve sesler
   hande.png            — Rehber Hande (oyunun başındaki tanıtım karakteri)
   dukkan_<ad>.jpg      — dükkan arka planı (bodrum/mahalle/cadde/carsi/avm + satilik1..5)
   dukkan_<ad>_guv.jpg  — aynı dükkanın GÜVENLİKLİ sürümü (kapıda güvenlik durur)
-  CD_1..62.png         — 62 CD ürünü (CD_15/16/17 = KIRGEÇ, İTELE, TISSS: oynanabilir)
+  CD_1..64.png         — 64 CD ürünü (CD_15/16/17 = KIRGEÇ, İTELE, TISSS: oynanabilir)
   konsol_1..19.png     — 19 konsol ürünü (PlayStatyon, Ninetendo, Ateri, El Konsolu ×12,
                          Masaüstü Konsol ×3, son sistem)
   joystick.png         — arcade joystick (v110 aksesuarı)
@@ -79,7 +79,8 @@ SplashScreen (6 sn yasal metin)
 
 ## 👥 KARAKTER HAVUZU (v103)
 
-**110 müşteri görseli** (v122 sonu). Dağılım: **57 erkek, 53 kadın**.
+**147 müşteri görseli** (v123 sonu). Dağılım: **73 erkek, 74 kadın**.
+⚠️ Gelişleri torba + gün kilidi ile yönetiliyor — bkz. v123 bölümü.
 
 > ⚠️ **Sabit adlı karakterler**: `musteriHavuzu` satırında `'ad'` alanı doluysa
 > rastgele isim havuzundan isim ÇEKİLMEZ. `musteri_43` = Recai Carlos,
@@ -146,6 +147,200 @@ Toplu iş + kontak sayfası için: `tools/toplu_isle.ps1`
 > göğsünden kesiliyor (`kMusteriUstu` 0.2183 → masa 0.4833), ayaklar hiç görünmüyor.
 
 ---
+---
+
+## 🔑 KİMLİKLER VE HESAPLAR — TEK KAYNAK
+
+> ⚠️ **BU DEPO HERKESE AÇIK (public).** Buraya **ŞİFRE, TOKEN, PRIVATE KEY
+> ASLA YAZILMAZ**. Aşağıdakiler zaten mağaza/istemci tarafında görünen,
+> tek başına işe yaramayan tanımlayıcılardır. Sırlar nerede duruyor:
+>
+> | Sır | Yeri | Depoda? |
+> |---|---|---|
+> | Keystore şifresi + alias | `android/key.properties` | ❌ `.gitignore`'da |
+> | Keystore dosyası | `C:\src\oyuncu_dukkani\oyuncu_dukkani.jks` | ❌ `*.jks` ignore |
+> | iOS cert private key | Codemagic env `CERTIFICATE_PRIVATE_KEY` (Secret) | ❌ |
+> | App Store Connect API key (.p8) | Codemagic → Integrations | ❌ |
+>
+> `android/key.properties` ve `oyuncu_dukkani.jks` **yedeklenmeli** — kaybolursa
+> Play'e bir daha güncelleme gönderilemez (uygulama imzası değişemez).
+
+### Uygulama kimliği
+```
+Paket / Bundle ID : com.oyuncudukkani.app        (Android + iOS aynı)
+Görünen ad        : Oyuncu Dükkanı
+Apple Team ID     : SN5Y726ZKF
+App Store App ID  : 6778437262                   (numerik)
+App Store URL     : https://apps.apple.com/us/app/oyuncu-dükkanı/id6778437262
+SKU               : OYUNCUDUKKANI001
+```
+
+### AdMob (hepsi PROD — test ID'si asla girmeyecek)
+```
+Publisher ID          : pub-6470338276121414
+Android App ID        : ca-app-pub-6470338276121414~9391747814
+Android Interstitial  : ca-app-pub-6470338276121414/4138047986
+iOS App ID            : ca-app-pub-6470338276121414~7413384913
+iOS Interstitial      : ca-app-pub-6470338276121414/1436676062
+iOS Ödüllü (Rewarded) : ca-app-pub-6470338276121414/2648809677   (oluşturuldu, KULLANILMIYOR)
+app-ads.txt           : anilgedikoglu.github.io KÖKÜNDE (ayrı repo)
+```
+> ⚠️ **Market build'inden önce** `3940256099942544` (Google test ID) aranır;
+> bulunursa build YAPILMAZ.
+
+### Liderlik tablosu
+```
+iOS  (Game Center) : enzenginoyuncu
+Android (Play)     : CgkIir3fr50QEAIQAQ
+Cloud projesi      : oyuncu-dukkani  ·  proje no 557640572554
+                     → android/app/src/main/res/values/strings.xml
+OAuth client (Android, upload cert):
+  557640572554-ecdrhrv3o4hbsv949n4mbemub6j271vg.apps.googleusercontent.com
+Upload keystore SHA-1:
+  62:8A:68:DA:EF:98:98:10:60:F6:33:B9:AB:76:A2:B6:A3:60:B0:ED
+```
+> ⚠️ Android ID **ekrandan okundu** (panoya kopyalanamıyordu). Google Sans'ta
+> küçük `l` ile büyük `I` ayırt edilemiyor; `CgkI` ile başladığı Play Games
+> biçim kuralından biliniyor. Girişte "leaderboard not found" çıkarsa ÖNCE
+> bu harfleri konsoldan doğrula.
+>
+> ⚠️ **EKSİK İŞ:** Play App Signing sertifikasının SHA-1'i için **ikinci bir
+> OAuth client** hâlâ açılmadı. Olmadan mağazadan indirenlerde giriş sessizce
+> başarısız olur (kendi `adb install` kopyanda çalışır, seni yanıltır).
+> SHA-1: Play Console → Play uygulama imzalamayı yönet → "Uygulama imzalama
+> anahtarı sertifikası".
+
+### iOS imzalama / Codemagic
+```
+Codemagic integration adı : Codemagic
+App Store API Key ID      : 2M84B256CL          (Magnus ile paylaşımlı)
+Cert reference name       : ios_distribution
+Env var                   : CERTIFICATE_PRIVATE_KEY (base64, Secret,
+                            group: signing_credentials)
+Workflow                  : ios-testflight  ·  tetikleyici: git tag `v*`
+Entitlement               : ios/Runner/Runner.entitlements
+                            (com.apple.developer.game-center)
+```
+> ⚠️ Game Center capability App ID'ye eklendiği için ESKİ provisioning profile
+> geçersiz. `fetch-signing-files --create` yenisini üretir; "profile doesn't
+> match entitlements" hatası gelirse Apple portalından App Store profilini
+> SİL, build'i tekrar başlat.
+
+### Sürüm kuralları
+```
+pubspec.yaml : 1.4.0+30
+```
+- **Android**: `+NN` = versionCode. Play'e her yüklemede ARTTIR. `23` daha önce
+  kullanıldığı için `30`'a atlandı. Play **AAB** ister, APK kabul etmez.
+- **iOS**: build number Codemagic'te `date +%s` (timestamp) — pubspec'teki
+  sayıyla ilgisi yok, asla çakışmaz. `--build-name` codemagic.yaml'da elle
+  güncellenir; App Store Connect'te aynı sürüm açılmalı.
+
+### Yayın adresleri
+```
+Gizlilik : https://anilgedikoglu.github.io/oyuncu_dukkani/privacy-policy.html
+Destek   : https://anilgedikoglu.github.io/oyuncu_dukkani/support.html
+Tanıtım  : https://anilgedikoglu.github.io/oyuncu_dukkani/marketing.html
+Depo     : https://github.com/anilgedikoglu/oyuncu_dukkani  (PUBLIC)
+```
+
+---
+
+## 🎲 v123 — GÜN KİLİDİ, MÜZİK ÇALAR, 147 KARAKTER
+
+### Karakter geliş algoritması: torba + gün kilidi
+
+İki mekanizma birlikte çalışıyor:
+
+**1. Torba (tekrar engelleme)** — zaten vardı. `_musteriSira` karıştırılmış
+bir indeks listesi; her müşteride bir tane çekilir, liste boşalınca yenilenir.
+Yani bir karakter, torbadaki herkes gelmeden ikinci kez gelmez.
+
+**2. Gün kilidi (v123)** — kadronun bir kısmı ileri günlerde açılır:
+
+```dart
+static const int _acikBaslangicSayisi = 50;
+static int musteriMinGun(int idx) {
+  if (idx < _acikBaslangicSayisi) return 1;
+  return 1 + ((idx - _acikBaslangicSayisi) ~/ 3) * 2;
+}
+```
+
+| Aralık | Açılış |
+|---|---|
+| ilk 50 karakter | 1. gün |
+| kalan 97 | her 3 karakterde 2 gün → son karakter ~65. gün |
+
+Torba **her dolduğunda o günkü açık karakterlerle** doluyor; gün ilerledikçe
+yeni yüzler katılıyor.
+
+> ⚠️ Torba gün başında ZORLA yenilenmiyor — o zaman tekrar engellemesi
+> bozulurdu. Torba ~50 kişilik olduğu için birkaç günde kendiliğinden döner.
+
+> ⚠️ Kilit havuzdaki **SIRAYA** bağlı. Yeni karakterleri hep **SONA** ekle;
+> başa eklersen sonraki herkesin açılış günü kayar.
+
+`musteriHavuzu` **static** yapıldı — her `GameState` 147 satırlık kendi
+kopyasını oluşturuyordu.
+
+### 🎵 Müzik çalar (masa hoparlörü)
+
+Market → Eşya, **3500 lira, 4. gün**. Satın alınca masa görseli hoparlörlü
+sürüme geçer; hoparlörlere dokununca çalar liste açılır.
+
+```
+assets/masa_hoparlor1.png  — bilgisayarsız  (bgbosmasa yerine)
+assets/masa_hoparlor2.png  — ilk bilgisayar (bg1 yerine)
+assets/masa_hoparlor3.png  — iMac           (bg2 yerine)
+```
+Kaynaklar 407×612 geldi, 719×1080'e ölçeklendi — aynı en-boy oranı (0.665),
+sahne metriği hiç değişmedi. Seçim `_masaGorseli` getter'ında.
+
+**8 parça** (`assets/sounds/muzik_*.mp3`, 96 kbps, toplam ~7 MB):
+Dükkan Havası · Rüzgar · Nordik · Tazyik · Yol · Diyar · Guru · Yakarış
+
+- Tek düğme: çalıyorsa **kırmızı Durdur**, çalmıyorsa **yeşil Çal**.
+- Sıralı çalma: parça bitince sonrakine geçer, liste bitince başa döner.
+- Popup kapansa da müzik devam eder.
+- Hoparlör **Sahip Olunanlar**'dan 1800'e satılır; satılınca masa eski hâline
+  döner ve müzik susturulur.
+
+> ⚠️ **SFX'ten AYRI player.** Efektler her seferinde yeni `AudioPlayer` açıp
+> bitince kapatıyor; müzik uzun sürüyor ve durdurulabilmeli. Aynı player
+> paylaşılsaydı bir kapı sesi müziği keserdi.
+
+> ⚠️ `SesServisi._elleDurduruldu` bayrağı ŞART: `stop()` de
+> `onPlayerComplete` tetikliyor. Bayrak olmadan elle durdurunca liste
+> kendiliğinden bir sonraki parçaya geçiyordu.
+
+### 🚗 Gürbüz'ün uğurlaması
+
+Galerici Gürbüz'den araç alınınca `GameState._galericiUgurlama` içindeki 13
+replikten biri gelir ("Hayırlı uğurlu olsun, iyi günlerde kullan." vb.).
+Sıradan kabul replikleri bir CD'ye uygundu, araba teslim eden galericiye
+değil. Koşul: `m.musteriSatiyor && m.item.category == ItemCategory.arac`.
+
+### 📦 İçerik
+
+- **147 karakter** (73 E / 74 K) — `musteri_1..147.png`
+- **64 CD** — v123'te EKSÜMÜK, PARENDE eklendi
+- Ekipmandaki sarı mouse görseli kutu tarzı yenisiyle değişti; ona özel
+  konmuş iki küçültme istisnası (masada %50, balonda %30) kaldırıldı.
+
+### 🧪 Test
+
+`test/guvenlik_test.dart`'taki **iki** test kararsızdı. Sebep olasılık değil:
+test kasayı beslemediği için birkaç gün sonra kira ödenemeyip **iflas**
+oluyor ve müşteri akışı duruyordu.
+
+```dart
+s.para = 100000;                      // döngünün HER adımında
+if (s.gunBitmeli) s.gunuBitir();
+```
+
+`test/arac_ev_test.dart`'a 3 test eklendi: torba turu içinde tekrar yok,
+gün kilidi asla azalmıyor, ilk gün yeterli çeşitlilik var.
+
 ---
 
 ## 🧭 v122 — HİZALAMA KÖKTEN ÇÖZÜLDÜ + BÜYÜK İÇERİK
@@ -2405,7 +2600,7 @@ App Store Connect → Oyuncu Dükkanı → **App Privacy** → Get Started:
 ⚠️ Form doldurulunca **"Publish"** butonuna tıklamak ZORUNLU (Save yetmiyor).
 
 ### Versiyon Kontrolü
-- pubspec.yaml: `1.0.2+13`
+- pubspec.yaml: `1.4.0+30` — Android versionCode; Play'e her yuklemede ARTTIR
 - iOS build number Codemagic tarafından OTOMATİK timestamp ile atanıyor, pubspec'teki +13 ile çakışmaz
 - Android AAB: pubspec'teki versionCode kullanılır → Play'e her yüklemede ARTTIR (12→13→14...)
 - Yeni release için: `pubspec.yaml` version arttır → commit + push → Codemagic UI'dan manuel build başlat veya `git tag v1.0.x-iosN`
@@ -2679,6 +2874,7 @@ Base ratio hâlâ `_clamp(0.18 - progress * 0.15, 0.02, 0.18)`.
 ## Versiyon Geçmişi (son)
 | Commit | Açıklama |
 |--------|----------|
+| v123 | **🎲 Karakter geliş algoritması**: torba (tekrar engelleme) zaten vardı; **GÜN KİLİDİ** eklendi — `musteriMinGun(idx)`: ilk 50 karakter 1. günden, kalan 97 her 3 karakterde 2 gün (son ~65. gün). Torba her dolduğunda O GÜNKÜ açık karakterlerle doluyor, gün ilerledikçe yeni yüzler katılıyor. ⚠️ Torba gün başında zorla yenilenmiyor (tekrar engellemesi bozulurdu) ve ⚠️ yeni karakterler hep havuzun SONUNA eklenmeli. `musteriHavuzu` static yapıldı (her GameState 147 satırlık kopya oluşturuyordu). **🔊 Masa hoparlörü + müzik çalar** (Market→Eşya, 3500, 4. gün): masa görseli hoparlörlü sürüme geçiyor (bilgisayarsız/ilk bilgisayar/iMac için üç görsel, 407×612 → 719×1080, oran aynı), hoparlörlere dokununca 8 parçalık çalar liste açılıyor; tek düğme (çalıyorsa kırmızı Durdur / yoksa yeşil Çal), sıralı çalma + otomatik geçiş, popup kapansa da devam. ⚠️ SFX'ten AYRI player (aynı player olsa kapı sesi müziği keserdi) ve ⚠️ `_elleDurduruldu` bayrağı şart — `stop()` de `onPlayerComplete` tetikliyor, bayraksız elle durdurunca liste ilerliyordu. Hoparlör Sahip Olunanlar'dan 1800'e satılıyor, masa eski hâline dönüyor. **🚗 Gürbüz** araç satışını tamamlayınca 13 uğurlama repliğinden biri geliyor. **📦 İçerik**: 147 karakter (73E/74K), 64 CD (EKSÜMÜK, PARENDE); sarı mouse görseli kutu tarzıyla değişti, ona özel iki küçültme istisnası kalktı. **🧪 Test**: `guvenlik_test.dart`'taki İKİ kararsız testin sebebi bulundu — test kasayı beslemediği için iflas edip müşteri akışı duruyordu; `arac_ev_test.dart`'a torba/gün kilidi için 3 test eklendi. **🔑 CLAUDE.md'ye "KİMLİKLER VE HESAPLAR" bölümü** eklendi (AdMob, liderlik, Codemagic, sürüm kuralları tek yerde). Sürüm 1.4.0+30 — Play'de versionCode 23 kullanılmış olduğu için 30'a atlandı |
 | v122 | **🧭 Hizalama kökten çözüldü**: isim etiketi ve ürün masanın önüne düşüyordu — `_buildSahne()` SafeArea içinde olduğu için dikey kaymayı tahmin ediyordu; `padding.top` de `viewPadding.top` da orada 0 döner (`removePadding` ikisini de düşürüyor). Kayma artık `build()` içinde, SafeArea'nın DIŞINDA ölçülüyor (`_sahneUstKaymasi`, `kHeaderYuksekligi = 56`). **10 dükkanın kapı camı** `tools/kenarkontrol.ps1` ile (kenarları 8× büyütüp yan yana koyar) tek tek ölçüldü — önceki değerler ölçüm değil telafiydi; silüet ayrıca %5 büyük çiziliyor. Masa üstü butonlar ve araç maketi de sabit pikselden masa metriğine geçti. **📱 KRİTİK: telefon bir daha açılmıyor, menü/araç butonları ölüyordu** — telefon `useRootNavigator: false` ile açılıyor ama beş yer `rootNavigator: true` ile kapatmaya çalışıyordu; yanlış Navigator'dan pop → `.then()` çalışmıyor → `_telIcCtx` ölü ağacı tutuyor → ondan sonraki HER popup sessizce ölüyordu (`_popupCtx` artık `mounted` kontrol ediyor, `_telefonuKapat()` eklendi). **⚖️ Denge**: günlük müşteri dükkandan koptu (sabit 10-20, hava olayları belirliyor: kar -5/güneş +4/sıcak -3), Şeyma ödülü 2× → 0.2× bakiye, İtele botu artık yenilebiliyor (nişan hatası ±3 iken matematiksel olarak ıskalayamıyordu → hıza bağlı ±9…±17), Kırgeç topu %20 hızlandı, titreşim mediumImpact. **🎨 Arayüz**: balonda yazılmamış harfler şeffaf çiziliyor (harfler artık kaymıyor), balon dokunuşu iki aşamalı (1. dokunuş yazıyı bitirir, 2. gönderir), iMac alındıysa menü düğmesi yok — bilgisayara/klavyeye dokunuluyor, envanter iki sekmeli (Envanter/Koleksiyon), browser adres çubuğu ölçeğe bağlandı, Market → "Alım / Satım", liderlik bandı overlay oldu, popup halesi `dialogTheme` ile. **🏪 Dükkan satışı**: Sahip Olunanlar'da üç seçenek (Kiraya Ver / Sat / Vazgeç), satışta Emlakçı Necmi alıcı gelir; kira geliri gün sonu popup'ında görünüyor. **🚗 28 araç** hız/fiyat/gün üçlüsü baştan dengelendi (Vınzz Scooter 240sn/1.200/1. gün → 🛸 Işınlama Makinesi 3sn/400.000/60. gün). **🏆 Liderlik kurulumu tamamlandı** (iOS `enzenginoyuncu`, Android `CgkIir3fr50QEAIQAQ`, proje 557640572554); iOS Game Center entitlement eksikti, eklendi. **📦 İçerik**: 62 CD, 110 karakter (57 E / 53 K), easter egg 10. güne taşıyor. `guvenlik_test.dart` kararsızlığının sebebi bulundu: test kasayı beslemediği için iflas edip müşteri akışı duruyordu |
 | v121 | **📱 Cep telefonu + mekân mimarisi**: mekânlar döşenmiş görsellerle geliyor (eşya sistemi ve 66 katman SİLİNDİ), 6 mekân (Mütevazı Ev/Yazlık/Dağ Evi/Orman Evi/Rezidans/Tekne; 10.000→65.000, gün 6→25, `konukCarpani` 1.0→2.5). **Oyuncu Pro Max** (Market→Eşya, 7500, 10. gün): mekânlarda "Cep Telefonu" ile açılır, 9 ikon (rehber/sahiplik/market/hedefler/envanter/koleksiyon/banka/araç/oyunlar), mini oyunlar telefonda çalışır, home tuşu ana menüyü sorar. **Telefon Rehberi**: 12 kişi × 6 mekân × 5 senaryo; adım adım diyalog, mekâna özel replik ve ödül/ceza — Şeyma/Sezercik cömert, Polis/Vergici/Hırsız riskli, lüks mekânda ikisi de büyür. **Günlük çağrı hakkı 3** (yoksa sınırsız para kaynağı olurdu). "Aracın hazır!" popup'ı (araç→ok→mekân görseli). **🐛 Tek seferlik popup her "Devam Et"te tekrar çıkıyordu** — bayrak widget'tan `GameState`'e taşındı. İçerik: 17 araç, 57 karakter, 53 CD, 9 yeni hedef. `test/arac_ev_test.dart` 34 test |
 | v120 | **🚙 Araçlar envanterden çıktı**: `sahipAracIdleri` listesi, müşteri araç isteyemiyor, masada araç görseli yok; galerici 3. günden itibaren; araç sayısı 11. **💼 Sahip Olunanlar** (menü en üstü, 3 sekme): araç satışı→Gürbüz alıcı, ev satışı→**Emlakçı Necmi** (`mekanDegeri` = mekân+eşyalar; eşyalar evle gider), iMac→anında 1200. **Market 3 sekme** (Ev/Araç/Eşya) gerçek görsellerle, alınan listeden çıkar; adres `saticisindan_com`. **⛵ Tekne** 4. mekân (9 eşya, .ora tam katman). **5 yeni özel müşteri**: Sezercik (3-6. gün, kasanın 1/5–1/2'si), Şeyma Koko (Sezercik+2 gün; araba/motor/2×bakiye hediye ya da sitem), Deli Bekir (rotasyonda, 30×3 replik), Palyaço (5-10. gün bir kez; CD hediye / envanterden çalar), Büyücü Yakup (3/8/13 + 10'un katları, 110 soru). **🏆 Liderlik** (games_services; ID kurulumları CLAUDE.md v120 notunda) + **Diğer Oyunlar** butonu (mağaza geliştirici sayfaları). Rıza'da 3. sekme Koleksiyon; kestirme 🚗 butonu; kiralıklarda "Büyük dükkan = Büyük envanter". AGP 8.9.1 + Gradle 8.11.1. `test/arac_ev_test.dart` 33 test |
