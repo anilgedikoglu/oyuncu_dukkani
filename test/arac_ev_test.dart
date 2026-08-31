@@ -419,4 +419,48 @@ void main() {
       expect(om.ilkMesaj.contains('250'), isTrue);
     });
   });
+
+  group('Müşteri torbası + gün kilidi (v123)', () {
+    test('1. günde açık karakter sayısı makul, son karakter geç açılıyor', () {
+      final acik1 = List.generate(GameState.musteriHavuzu.length, (i) => i)
+          .where((i) => GameState.musteriMinGun(i) <= 1).length;
+      expect(acik1, greaterThanOrEqualTo(40),
+          reason: 'ilk gün çok az yüz olursa tekrar hissi doğar');
+      // Havuzun sonundaki karakter belirgin biçimde geç açılmalı.
+      final son = GameState.musteriHavuzu.length - 1;
+      expect(GameState.musteriMinGun(son), greaterThan(30),
+          reason: 'son karakterler yenilik hissi için ileri günlerde açılmalı');
+    });
+
+    test('gün kilidi ASLA azalmaz (sıra ilerledikçe artar)', () {
+      for (int i = 1; i < GameState.musteriHavuzu.length; i++) {
+        expect(GameState.musteriMinGun(i),
+            greaterThanOrEqualTo(GameState.musteriMinGun(i - 1)));
+      }
+    });
+
+    test('aynı karakter, torba bitmeden İKİNCİ KEZ gelmiyor', () {
+      final s = GameState()..para = 100000;
+      final gorulen = <String>{};
+      var tekrar = false;
+      // Torbanın bir turu: 1. günde açık olan karakter sayısı kadar müşteri.
+      final torbaBoyu = List.generate(GameState.musteriHavuzu.length, (i) => i)
+          .where((i) => GameState.musteriMinGun(i) <= 1).length;
+      var sayac = 0;
+      for (int i = 0; i < 2000 && sayac < torbaBoyu; i++) {
+        s.para = 100000;
+        if (s.gunBitmeli) s.gunuBitir();
+        if (s.gun > 1) break; // gün ilerlerse torba büyür, tur bozulur
+        s.yeniMusteriGonder();
+        final m = s.aktifMusteri;
+        if (m != null) {
+          if (!gorulen.add(m.gorsel)) tekrar = true;
+          sayac++;
+        }
+        s.musteriAnimasyonBitti();
+      }
+      expect(tekrar, isFalse,
+          reason: 'torba turu bitmeden aynı karakter tekrar geldi');
+    });
+  });
 }

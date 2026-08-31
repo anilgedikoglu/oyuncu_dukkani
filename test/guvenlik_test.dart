@@ -307,8 +307,7 @@ void main() {
 
   group('sabit adlı karakterler', () {
     test('ad alanı olanlar rastgele isim almaz', () {
-      final s = GameState();
-      final sabitler = s.musteriHavuzu.where((m) => m['ad'] != null).toList();
+      final sabitler = GameState.musteriHavuzu.where((m) => m['ad'] != null).toList();
       expect(sabitler.length, greaterThanOrEqualTo(3));
       final adlar = sabitler.map((m) => m['ad']!).toSet();
       expect(adlar.containsAll({'Recai Carlos', 'Kahraman Memo', 'Şakir Oneyıl'}), isTrue);
@@ -316,7 +315,7 @@ void main() {
 
     test('sabit adlı karakter geldiğinde hep aynı adı taşır', () {
       final s = GameState();
-      final hedef = s.musteriHavuzu.firstWhere((m) => m['ad'] == 'Kahraman Memo');
+      final hedef = GameState.musteriHavuzu.firstWhere((m) => m['ad'] == 'Kahraman Memo');
       final gorsel = hedef['gorsel'];
       var goruldu = 0;
       // ⚠️ Kadro büyüdükçe (v122: 65 karakter) belirli birinin gelme olasılığı

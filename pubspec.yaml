@@ -2,7 +2,7 @@ name: oyuncu_dukkani
 description: "A new Flutter project."
 publish_to: 'none'
 
-version: 1.3.0+22
+version: 1.4.0+23
 
 environment:
   sdk: ^3.7.2
@@ -247,6 +247,43 @@ flutter:
     - assets/musteri_108.png
     - assets/musteri_109.png
     - assets/musteri_110.png
+    - assets/musteri_111.png
+    - assets/musteri_112.png
+    - assets/musteri_113.png
+    - assets/musteri_114.png
+    - assets/musteri_115.png
+    - assets/musteri_116.png
+    - assets/musteri_117.png
+    - assets/musteri_118.png
+    - assets/musteri_119.png
+    - assets/musteri_120.png
+    - assets/musteri_121.png
+    - assets/musteri_122.png
+    - assets/musteri_123.png
+    - assets/musteri_124.png
+    - assets/musteri_125.png
+    - assets/musteri_126.png
+    - assets/musteri_127.png
+    - assets/musteri_128.png
+    - assets/musteri_129.png
+    - assets/musteri_130.png
+    - assets/musteri_131.png
+    - assets/musteri_132.png
+    - assets/musteri_133.png
+    - assets/musteri_134.png
+    - assets/musteri_135.png
+    - assets/musteri_136.png
+    - assets/musteri_137.png
+    - assets/musteri_138.png
+    - assets/musteri_139.png
+    - assets/musteri_140.png
+    - assets/musteri_141.png
+    - assets/musteri_142.png
+    - assets/musteri_143.png
+    - assets/musteri_144.png
+    - assets/musteri_145.png
+    - assets/musteri_146.png
+    - assets/musteri_147.png
     - assets/CD_47.png
     - assets/CD_48.png
     - assets/CD_49.png
@@ -263,6 +300,8 @@ flutter:
     - assets/CD_60.png
     - assets/CD_61.png
     - assets/CD_62.png
+    - assets/CD_63.png
+    - assets/CD_64.png
     - assets/musteri_47.png
     - assets/musteri_48.png
     - assets/hande.png

@@ -3345,22 +3345,43 @@ class SesServisi {
   /// Parça değişince UI'ın kendini yenilemesi için — popup buna abone olur.
   static final ValueNotifier<int> muzikDurumu = ValueNotifier(0);
 
+  /// Çalar listenin dosya sırası. `muzikCal` bittiğinde bir SONRAKİNE geçmek
+  /// için gerekiyor; UI'daki liste bunu `calarListesiniAyarla` ile veriyor.
+  static List<String> _calarSirasi = const [];
+  static void calarListesiniAyarla(List<String> dosyalar) {
+    _calarSirasi = dosyalar;
+  }
+
+  /// Kullanıcı elle durdurduysa "parça bitti" olayında sıradakine GEÇME.
+  /// Bu bayrak olmadan `stop()` de tamamlanma sayılıp listeyi ilerletiyordu.
+  static bool _elleDurduruldu = false;
+
   static Future<void> muzikCal(String dosya) async {
     try {
-      await muzikDurdur();
+      _elleDurduruldu = false;
+      await _sadeceDurdur();
       final p = AudioPlayer();
       _muzikPlayer = p;
       calanMuzik = dosya;
       muzikDurumu.value++;
       await p.play(AssetSource('sounds/$dosya'));
-      // Parça bitince listede "çalıyor" işareti kalmasın.
       p.onPlayerComplete.first.then((_) {
-        if (_muzikPlayer == p) {
+        if (_muzikPlayer != p) return;
+        p.dispose();
+        _muzikPlayer = null;
+        if (_elleDurduruldu) {
           calanMuzik = null;
           muzikDurumu.value++;
-          p.dispose();
-          _muzikPlayer = null;
+          return;
         }
+        // ▶️ Sıradaki parçaya geç; liste bitince başa dön.
+        final i = _calarSirasi.indexOf(dosya);
+        if (i < 0 || _calarSirasi.isEmpty) {
+          calanMuzik = null;
+          muzikDurumu.value++;
+          return;
+        }
+        muzikCal(_calarSirasi[(i + 1) % _calarSirasi.length]);
       });
     } catch (_) {
       calanMuzik = null;
@@ -3368,13 +3389,24 @@ class SesServisi {
     }
   }
 
-  static Future<void> muzikDurdur() async {
+  /// Baştan başlat: seçili parça yoksa listenin ilkinden.
+  static Future<void> muzikBaslat() async {
+    if (_calarSirasi.isEmpty) return;
+    await muzikCal(calanMuzik ?? _calarSirasi.first);
+  }
+
+  static Future<void> _sadeceDurdur() async {
     final p = _muzikPlayer;
     _muzikPlayer = null;
-    calanMuzik = null;
-    muzikDurumu.value++;
     if (p == null) return;
     try { await p.stop(); await p.dispose(); } catch (_) {}
+  }
+
+  static Future<void> muzikDurdur() async {
+    _elleDurduruldu = true;
+    await _sadeceDurdur();
+    calanMuzik = null;
+    muzikDurumu.value++;
   }
 }
 
@@ -5221,6 +5253,9 @@ class GameState extends ChangeNotifier {
     GameItem(id: 'cd60',     name: 'ZEKİCE',             gorsel: 'assets/CD_60.png',               category: ItemCategory.cd,      basePrice: 150,  kondisyon: 3),
     GameItem(id: 'cd61',     name: 'AYRAN MEN',          gorsel: 'assets/CD_61.png',               category: ItemCategory.cd,      basePrice: 175,  kondisyon: 3),
     GameItem(id: 'cd62',     name: 'MİNCİR',             gorsel: 'assets/CD_62.png',               category: ItemCategory.cd,      basePrice: 90,   kondisyon: 3),
+    // v123: 2 yeni CD. Fiyatlar ortalamayı koruyor.
+    GameItem(id: 'cd63',     name: 'EKSÜMÜK',            gorsel: 'assets/CD_63.png',               category: ItemCategory.cd,      basePrice: 135,  kondisyon: 3),
+    GameItem(id: 'cd64',     name: 'PARENDE',            gorsel: 'assets/CD_64.png',               category: ItemCategory.cd,      basePrice: 115,  kondisyon: 3),
     GameItem(id: 'konsol1',  name: 'PlayStatyon',          gorsel: 'assets/konsol_1.png',          category: ItemCategory.konsol,  basePrice: 900,  kondisyon: 4),
     GameItem(id: 'konsol2',  name: 'Ninetendo',            gorsel: 'assets/konsol_2.png',          category: ItemCategory.konsol,  basePrice: 750,  kondisyon: 3),
     GameItem(id: 'konsol3',  name: 'Ateri',                gorsel: 'assets/konsol_3.png',          category: ItemCategory.konsol,  basePrice: 500,  kondisyon: 2),
@@ -5562,7 +5597,9 @@ class GameState extends ChangeNotifier {
   /// 28 karakter. `yas` alanı görsellerden okundu (kontak sayfası ile ölçüldü)
   /// ve repliklerin filtresi bu — "anneme sormadan" repliği artık ak sakallı
   /// amcaya düşmüyor. Kabul edilen değerler: cocuk / genc / yetiskin / yasli.
-  final List<Map<String, String>> musteriHavuzu = [
+  // ⚠️ STATIC: her GameState kendi kopyasını oluşturuyordu (147 satır),
+  // oysa içerik sabit. Test de gün kilidini buradan okuyor.
+  static final List<Map<String, String>> musteriHavuzu = [
     {'gorsel': 'assets/musteri_1.png',  'cinsiyet': 'E', 'yas': 'genc'},     // kıvırcık saçlı genç, yeşil ceket
     {'gorsel': 'assets/musteri_2.png',  'cinsiyet': 'K', 'yas': 'genc'},     // mor mohawk punk, deri ceket
     {'gorsel': 'assets/musteri_3.png',  'cinsiyet': 'E', 'yas': 'yasli'},    // gri saçlı sakallı bey
@@ -5696,8 +5733,63 @@ class GameState extends ChangeNotifier {
     {'gorsel': 'assets/musteri_108.png', 'cinsiyet': 'E', 'yas': 'yasli'},    // yeşil hırka, papyon
     {'gorsel': 'assets/musteri_109.png', 'cinsiyet': 'K', 'yas': 'yetiskin'}, // iki renkli blazer, kır saç
     {'gorsel': 'assets/musteri_110.png', 'cinsiyet': 'K', 'yas': 'yetiskin'}, // turuncu tulum, dövmeli
+    // ── v123: 37 yeni karakter — kadro 110 → 147 ──
+    // Hepsi 500×500 geldi, yeniden ölçeklenmedi.
+    {'gorsel': 'assets/musteri_111.png', 'cinsiyet': 'E', 'yas': 'yasli'},    // bordo süveter, bıyıklı
+    {'gorsel': 'assets/musteri_112.png', 'cinsiyet': 'E', 'yas': 'yetiskin'}, // avcı yeleği, uzun saç
+    {'gorsel': 'assets/musteri_113.png', 'cinsiyet': 'K', 'yas': 'genc'},     // bale kıyafeti, topuz
+    {'gorsel': 'assets/musteri_114.png', 'cinsiyet': 'E', 'yas': 'yetiskin'}, // hardal takım, fötr
+    {'gorsel': 'assets/musteri_115.png', 'cinsiyet': 'K', 'yas': 'yasli'},    // arıcı, sarı çizme
+    {'gorsel': 'assets/musteri_116.png', 'cinsiyet': 'K', 'yas': 'genc'},     // mor saç, renkli hoodie
+    {'gorsel': 'assets/musteri_117.png', 'cinsiyet': 'K', 'yas': 'yetiskin'}, // kiremit blazer, gözlük
+    {'gorsel': 'assets/musteri_118.png', 'cinsiyet': 'E', 'yas': 'yasli'},    // bordo cüppe, keşiş
+    {'gorsel': 'assets/musteri_119.png', 'cinsiyet': 'K', 'yas': 'genc'},     // paten, mavi saç
+    {'gorsel': 'assets/musteri_120.png', 'cinsiyet': 'K', 'yas': 'yasli'},    // zümrüt kadife elbise
+    {'gorsel': 'assets/musteri_121.png', 'cinsiyet': 'K', 'yas': 'yetiskin'}, // bisikletçi forması
+    {'gorsel': 'assets/musteri_122.png', 'cinsiyet': 'K', 'yas': 'yetiskin'}, // sirk müdürü, silindir şapka
+    {'gorsel': 'assets/musteri_123.png', 'cinsiyet': 'E', 'yas': 'yasli'},    // baklava süveter, ak saç
+    {'gorsel': 'assets/musteri_124.png', 'cinsiyet': 'K', 'yas': 'yetiskin'}, // baretli saha mühendisi
+    {'gorsel': 'assets/musteri_125.png', 'cinsiyet': 'E', 'yas': 'genc'},     // gümüş ceket, idol tarzı
+    {'gorsel': 'assets/musteri_126.png', 'cinsiyet': 'K', 'yas': 'yasli'},    // pastacı, lila önlük
+    {'gorsel': 'assets/musteri_127.png', 'cinsiyet': 'K', 'yas': 'yetiskin'}, // judocu, kırmızı kuşak
+    {'gorsel': 'assets/musteri_128.png', 'cinsiyet': 'E', 'yas': 'yasli'},    // kaptan montu, beyaz sakal
+    {'gorsel': 'assets/musteri_129.png', 'cinsiyet': 'E', 'yas': 'genc'},     // siyah uzun palto, gotik
+    {'gorsel': 'assets/musteri_130.png', 'cinsiyet': 'K', 'yas': 'yetiskin'}, // teknisyen, reflektörlü
+    {'gorsel': 'assets/musteri_131.png', 'cinsiyet': 'K', 'yas': 'yasli'},    // yeşil payetli ceket
+    {'gorsel': 'assets/musteri_132.png', 'cinsiyet': 'K', 'yas': 'genc'},     // hardal tulum, yeşil saç
+    {'gorsel': 'assets/musteri_133.png', 'cinsiyet': 'E', 'yas': 'genc'},     // basketbolcu, atlet
+    {'gorsel': 'assets/musteri_134.png', 'cinsiyet': 'E', 'yas': 'yetiskin'}, // desenli yelek, bıyık
+    {'gorsel': 'assets/musteri_135.png', 'cinsiyet': 'K', 'yas': 'yetiskin'}, // beyaz önlük, bilim insanı
+    {'gorsel': 'assets/musteri_136.png', 'cinsiyet': 'K', 'yas': 'yasli'},    // lila tunik, örgü saç
+    {'gorsel': 'assets/musteri_137.png', 'cinsiyet': 'E', 'yas': 'yetiskin'}, // güreşçi, mayo
+    {'gorsel': 'assets/musteri_138.png', 'cinsiyet': 'E', 'yas': 'yetiskin'}, // kasap önlüğü, kasket
+    {'gorsel': 'assets/musteri_139.png', 'cinsiyet': 'K', 'yas': 'genc'},     // kayak montu, pembe saç
+    {'gorsel': 'assets/musteri_140.png', 'cinsiyet': 'E', 'yas': 'yasli'},    // smokin, papyon
+    {'gorsel': 'assets/musteri_141.png', 'cinsiyet': 'K', 'yas': 'genc'},     // çiçekli tulum, örgüler
+    {'gorsel': 'assets/musteri_142.png', 'cinsiyet': 'E', 'yas': 'genc'},     // deri önlük, zanaatkâr
+    {'gorsel': 'assets/musteri_143.png', 'cinsiyet': 'E', 'yas': 'genc'},     // kızıl saç, yeşil hırka
+    {'gorsel': 'assets/musteri_144.png', 'cinsiyet': 'K', 'yas': 'yetiskin'}, // sağlık personeli
+    {'gorsel': 'assets/musteri_145.png', 'cinsiyet': 'K', 'yas': 'genc'},     // mavi saç, holografik ceket
+    {'gorsel': 'assets/musteri_146.png', 'cinsiyet': 'E', 'yas': 'yetiskin'}, // kahve tulum, sakallı
+    {'gorsel': 'assets/musteri_147.png', 'cinsiyet': 'K', 'yas': 'genc'},     // başörtülü, patchwork ceket
   ];
   List<int> _musteriSira = [];
+
+  /// Bir karakterin havuzda açılacağı gün. Havuzdaki SIRAYA bağlı:
+  /// ilk [_acikBaslangicSayisi] karakter 1. günden itibaren gelir, kalanlar
+  /// kademeli açılır (her 3 karakterde 2 gün).
+  ///
+  /// Neden sıraya göre: 147 karaktere tek tek gün yazmak hem hataya açık hem
+  /// bakımı zor. Havuzun başındakiler oyunun ilk kadrosu, sonra eklenenler
+  /// doğal olarak "yeni" karakterler — sıra zaten kronolojik.
+  ///
+  /// ⚠️ Havuzun BAŞINA karakter eklersen sonrakilerin açılış günü kayar.
+  /// Yeni karakterleri hep SONA ekle.
+  static const int _acikBaslangicSayisi = 50;
+  static int musteriMinGun(int idx) {
+    if (idx < _acikBaslangicSayisi) return 1;
+    return 1 + ((idx - _acikBaslangicSayisi) ~/ 3) * 2;
+  }
 
   GameState() {
     gunlukMusteriLimiti = aktifDukkan.gunlukMusteriSayisiUret();
@@ -6192,8 +6284,22 @@ class GameState extends ChangeNotifier {
       return;
     }
     final rng = Random();
+    // 🎲 TORBA + GÜN KİLİDİ
+    //
+    // Torba boşalınca O GÜNKÜ AÇIK karakterlerle yeniden doluyor. İki şey
+    // birden sağlanıyor:
+    //  • Aynı sıradan karakter, torbadaki herkes gelmeden tekrar gelmiyor.
+    //  • Kadronun bir kısmı ileri günlerde açılıyor; oyun ilerledikçe
+    //    tanımadığın yüzler gelmeye başlıyor (bkz. `musteriMinGun`).
+    //
+    // ⚠️ Torba gün başında ZORLA yenilenmiyor: o zaman tekrar engellemesi
+    // bozulurdu. Yeni açılan karakterler bir sonraki dolumda katılıyor —
+    // torba ~50 kişilik olduğu için birkaç gün içinde kendiliğinden döner.
     if (_musteriSira.isEmpty) {
-      _musteriSira = List.generate(musteriHavuzu.length, (i) => i)..shuffle(rng);
+      _musteriSira = [
+        for (int i = 0; i < musteriHavuzu.length; i++)
+          if (musteriMinGun(i) <= gun) i,
+      ]..shuffle(rng);
     }
     final musteriIndex = _musteriSira.removeLast();
     final secilen = musteriHavuzu[musteriIndex];
@@ -6431,9 +6537,31 @@ class GameState extends ChangeNotifier {
     _komboArtir();
     SesServisi.anlasma();
     // Kabul mesajını göster, göndermeyi UI'daki gecikme yönetir
-    mesaj = p.mesaj;
+    // 🚗 Galerici Gürbüz'den ARAÇ alındıysa kendi uğurlama repliğini söyler.
+    // Sıradan kabul replikleri ("güle güle kullan" gibi) bir CD'ye uygundu,
+    // araba teslim eden galericiye değil.
+    mesaj = (m.musteriSatiyor && m.item.category == ItemCategory.arac)
+        ? _galericiUgurlama[Random().nextInt(_galericiUgurlama.length)]
+        : p.mesaj;
     notifyListeners();
   }
+
+  /// Gürbüz araç satışını tamamlayınca söylediği uğurlama repliği.
+  static const List<String> _galericiUgurlama = [
+    'Hayırlı uğurlu olsun, iyi günlerde kullan.',
+    'Aracınla güzel günler göresin, hayırlı olsun.',
+    'Üstadım hayrını gör, iyi günlerde kullan.',
+    'Aracınla hayırlı yolculuklar dilerim.',
+    'Aracın sana hayır ve uğur getirsin, selametle...',
+    'Yeni aracını kazasız belasız kullan. İyi günler...',
+    'Güzel araç aldın. Hayrını gör. Kazasız belasız...',
+    'Fevkalade bir araç aldın. Hız yapma. Sağlıklı günler.',
+    'Muazzam bir araç aldın. Güzel günlerde kullan.',
+    'Yılan gibi bir araç aldın. Hayırlı uğurlu olsun.',
+    'Tazı gibi bir araç aldın. Dikkatli kullan. Görüşürüz...',
+    'Hayırlı olsun. Aldığın yavruya iyi bak. Selametle...',
+    'Hayırlara vesile bir araç aldın. Kaportasına taş değmesin. Kaçtım ben...',
+  ];
 
   void musteriReddet() {
     if (aktifMusteri == null) return;
@@ -11314,7 +11442,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                 'assets/konsol_6.png', 'assets/oyuncudireksiyonu.png', 'assets/joypad.png',
                 'assets/konsol_8.png', 'assets/konsol_9.png', 'assets/konsol_10.png',
                 'assets/vrgozluk.png', 'assets/kulaklik_1.png', 'assets/kulaklik_2.png',
-                'assets/kumanda_2.png', 'assets/direksiyon_2.png', 'assets/oyuncumausu.png',
+                'assets/kumanda_2.png', 'assets/direksiyon_2.png',
                 // v110 — aynı 0.90 doluluk ile üretildiler, aynı gruba girerler
                 'assets/konsol_11.png', 'assets/konsol_12.png', 'assets/konsol_13.png',
                 'assets/konsol_14.png', 'assets/konsol_15.png', 'assets/konsol_16.png',
@@ -11330,7 +11458,8 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
               // Tek tek ince ayar gereken ürünler: gruptaki %85 onlara oturmuyor.
               // Değerler grup oranıyla çarpılmış hâlleri (0.85 × istenen).
               const urunOzelOran = {
-                'assets/oyuncumausu.png':   0.425,  // %50 küçült
+                // (Sarı mouse görseli v123'te kutu tarzı bir görselle değişti;
+                //  ona konan %50 küçültme artık gereksiz.)
                 'assets/direksiyon_2.png':  1.105,  // %30 büyüt
               };
               // Ürüne özel küçültmeler (oranlar korunur)
@@ -11427,10 +11556,11 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
               final urunGoster = m != null && !m.musteriSatiyor &&
                   (_state.musteriKabulBekliyor ||
                    (_state.aktifPazarlik != null && _state.aktifPazarlik!.turSayisi == 0));
-              // Sarı mouse (oyuncumausu.png) balonda orantısız büyük duruyordu
-              // — %30 küçültüldü. Diğer ürünler etkilenmez.
+              // (Balondaki ürün görseli tek boy. Eski sarı mouse burada
+              //  orantısız duruyordu ve %30 küçültülüyordu; v123'te görsel
+              //  kutu tarzıyla değişince o istisna gereksizleşti.)
               final urunGorsel = m?.item.gorsel;
-              final balonBoy = urunGorsel == 'assets/oyuncumausu.png' ? 70.0 : 100.0;
+              const balonBoy = 100.0;
               return Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
@@ -12889,14 +13019,21 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   /// üstüne tekrar dokunmak durdurur. Popup kapansa da müzik devam eder —
   /// oyuncu dükkanda çalışırken müzik dinleyebilsin.
   static const List<(String dosya, String ad)> _calarListe = [
-    ('muzik_oyun1.mp3', 'Dükkan Havası'),
-    ('muzik_oyun2.mp3', 'Tezgâh Ritmi'),
-    ('muzik_oyun3.mp3', 'Retro Rüzgâr'),
-    ('muzik_oyun4.mp3', 'Gece Vardiyası'),
-    ('muzik_yol.mp3',   'Yol'),
+    ('muzik_oyun1.mp3',   'Dükkan Havası'),
+    ('muzik_oyun2.mp3',   'Rüzgar'),
+    ('muzik_oyun3.mp3',   'Nordik'),
+    ('muzik_oyun4.mp3',   'Tazyik'),
+    ('muzik_yol.mp3',     'Yol'),
+    ('muzik_diyar.mp3',   'Diyar'),
+    ('muzik_guru.mp3',    'Guru'),
+    ('muzik_yakaris.mp3', 'Yakarış'),
   ];
 
   void _muzikPopup() {
+    // Sirali calma icin servis listeyi bilmek zorunda: bir parca bitince
+    // sonrakine gecmesi buradan geliyor.
+    SesServisi.calarListesiniAyarla(
+        _calarListe.map((e) => e.$1).toList());
     showDialog(
       useRootNavigator: false,
       context: _popupCtx,
@@ -12968,14 +13105,32 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
         actionsPadding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
         actions: [
           Row(children: [
-            Expanded(child: ElevatedButton(
-              onPressed: () { SesServisi.muzikDurdur(); },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF7f2a2a), foregroundColor: Colors.white,
-                minimumSize: const Size(0, 44),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-              ),
-              child: const Text('Durdur', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+            // ▶️/⏹️ Tek düğme: bir şey çalıyorsa KIRMIZI "Durdur", çalmıyorsa
+            // YEŞİL "Çal". Hiç parça seçilmemişse listenin ilkinden başlar.
+            Expanded(child: ValueListenableBuilder<int>(
+              valueListenable: SesServisi.muzikDurumu,
+              builder: (c, _, __) {
+                final caliyor = SesServisi.calanMuzik != null;
+                return ElevatedButton(
+                  onPressed: () {
+                    SesServisi.dokun();
+                    if (caliyor) {
+                      SesServisi.muzikDurdur();
+                    } else {
+                      SesServisi.muzikBaslat();
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: caliyor
+                        ? const Color(0xFF7f2a2a) : const Color(0xFF2f8f46),
+                    foregroundColor: Colors.white,
+                    minimumSize: const Size(0, 44),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  child: Text(caliyor ? '⏹️  Durdur' : '▶️  Çal',
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                );
+              },
             )),
             const SizedBox(width: 10),
             Expanded(child: ElevatedButton(
@@ -13004,10 +13159,20 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   /// (`kHoparlorMasaDusus`un üçte biri). Ürün tezgâha oturduğunda etiket
   /// hâlâ yüksek kalıyordu — etiket masanın arka kenarına yaslanıyor, ürün
   /// ise yüzeyin ortasına oturuyor, ikisinin referans çizgisi aynı değil.
-  double get _isimAltiOran =>
-      kIsimAlti + (_state.hoparlorVar
-          ? kHoparlorMasaDusus + kHoparlorMasaDusus / 3
-          : 0.0);
+  double get _isimAltiOran {
+    var oran = kIsimAlti;
+    if (_state.hoparlorVar) {
+      oran += kHoparlorMasaDusus + kHoparlorMasaDusus / 3;
+    }
+    // ⚠️ bg1 / masa_hoparlor2 (iMac ALINMAMIŞ, gün ≥ 2): bu masanın arka
+    // kenarı iMac'li sürümden yarım etiket boyu YUKARIDA. iMac'li masada
+    // her şey yerli yerindeyken burada isim kutusu aşağı kaçıyordu.
+    // ⚠️ Ürüne uygulanmıyor — o zaten doğru oturuyor.
+    if (!_state.imacSatinAlindi && _state.gun >= 2) {
+      oran -= kHoparlorMasaDusus / 2;
+    }
+    return oran;
+  }
   double get _urunTabaniOran =>
       kUrunTabani + (_state.hoparlorVar ? kHoparlorMasaDusus : 0.0);
 
