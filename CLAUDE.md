@@ -236,6 +236,53 @@ pubspec.yaml : 1.4.0+30
   sayıyla ilgisi yok, asla çakışmaz. `--build-name` codemagic.yaml'da elle
   güncellenir; App Store Connect'te aynı sürüm açılmalı.
 
+### 🎯 Play hedef API düzeyi (yıllık zorunluluk)
+
+| Tarih | Zorunluluk |
+|---|---|
+| 31 Ağu 2026'dan itibaren | Yeni uygulama + **tüm güncellemeler** → **API 36** (Android 16) |
+| 1 Kas 2026 | Ek süre alınmışsa son tarih. Geçilirse **güncelleme yayınlanamaz** |
+
+Kural: hedef API, en son Android sürümünden **en fazla 1 yıl** geride olabilir.
+Her yıl Ağustos'ta bir seviye artar — Kasım'da panik olmamak için yaz sonunda
+`flutter upgrade` + yeniden build yeterli.
+
+`android/app/build.gradle.kts` değer yazmıyor; `flutter.targetSdkVersion`'dan
+geliyor. Yani **hedef API'yi Flutter SDK sürümü belirler**
+(`C:\src\flutter\packages\flutter_tools\gradle\src\main\kotlin\FlutterExtension.kt`).
+Flutter 3.41.5 → compileSdk/targetSdk **36**. Elle sayı yazma, Flutter'ı yükselt.
+
+> ⚠️ **TUZAK — asıl engel üretim sürümü değildi.** 30 Eki 2026'da Play
+> "hedef API düzeyinizi güncelleyin" uyarısı verdi; oysa üretimdeki
+> **30 (1.4.0) zaten API 36**'ydı. Suçlu, 1 Nisan'dan kalma
+> **10 (1.0.0, API 35)** paketiydi: **Kapalı test - Alpha** ve **Dahili test**
+> kanallarında hâlâ "etkin" duruyordu. Play kontrolü ÜRETİMİ değil,
+> **etkin tüm kanalları** tarar.
+>
+> Teşhis yolu: Politika durumu → sorun → **"Uygulama paketlerini göster"** →
+> hangi sürüm kodu, hangi kanal, hangi hedef SDK olduğu satır satır yazıyor.
+> Çözüm: o kanallarda **"Kanalı duraklat"**. Dahili test anında etkili olur;
+> kapalı test **Yayın özeti**'ne düşer, "İncelemeye gönder" demek şart
+> (yoksa hiç uygulanmaz).
+
+**AAB'nin gerçekten ne hedeflediğini ölçmek** (Play'e güvenmeden):
+```bash
+unzip -o -q build/app/outputs/bundle/release/app-release.aab \
+  base/manifest/AndroidManifest.xml -d "$TEMP/aabman"
+# protobuf; targetSdkVersion anahtarından sonra ASCII olarak "36" yazar
+```
+
+### 📏 16 KB sayfa boyutu (aynı 1 Kas 2026 tarihi)
+
+Android 15+ hedefleyen uygulamalar Play'e 16 KB sayfa desteğiyle gitmek
+zorunda. **Durum: UYGUN** — NDK 27 + AGP 8.9.1 ile tüm 64-bit `.so`'lar
+hizalı (`libapp`/`libflutter` 0x10000, `libdatastore_shared_counter` 0x4000).
+
+```bash
+RE="$ANDROID_SDK/ndk/27.0.12077973/toolchains/llvm/prebuilt/windows-x86_64/bin/llvm-readelf.exe"
+"$RE" -l lib/arm64-v8a/libflutter.so | awk '/LOAD/{print $NF}'   # >= 0x4000 olmalı
+```
+
 ### Yayın adresleri
 ```
 Gizlilik : https://anilgedikoglu.github.io/oyuncu_dukkani/privacy-policy.html
