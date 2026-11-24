@@ -199,6 +199,7 @@ class ReklamServisi {
         onClosed();
       },
       onAdFailedToShowFullScreenContent: (ad, err) {
+        _son = null;
         ad.dispose();
         _interstitial = null;
         yukle();
