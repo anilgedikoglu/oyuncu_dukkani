@@ -1,4 +1,4 @@
-﻿---
+---
 # Oyuncu Dükkanı — Claude Bağlamı
 
 ## 🚨 MARKET BUILD ÖNCESİ ZORUNLU KONTROL (KULLANICI KURALI)
@@ -285,11 +285,21 @@ RE="$ANDROID_SDK/ndk/27.0.12077973/toolchains/llvm/prebuilt/windows-x86_64/bin/l
 
 ### Yayın adresleri
 ```
-Gizlilik : https://anilgedikoglu.github.io/oyuncu_dukkani/privacy-policy.html
-Destek   : https://anilgedikoglu.github.io/oyuncu_dukkani/support.html
-Tanıtım  : https://anilgedikoglu.github.io/oyuncu_dukkani/marketing.html
+Gizlilik : https://futurastictech.github.io/oyuncu-dukkani/privacy-policy.html
+Destek   : https://futurastictech.github.io/oyuncu-dukkani/support.html
+Tanıtım  : https://futurastictech.github.io/app/#oyuncu-dukkani
 Depo     : https://github.com/anilgedikoglu/oyuncu_dukkani  (PUBLIC)
 ```
+> 24 Kas 2026: eski anilgedikoglu.github.io adresleri kişisel ad içerdiği için bırakıldı.
+
+### iOS derleme (24 Kas 2026'dan itibaren)
+Codemagic hesabı ödenmemiş fatura yüzünden derlemiyor. iOS → GitHub Actions
+`.github/workflows/ios-testflight.yml` (elle tetiklenir, build no = zaman damgası).
+Profil `oyuncudukkani_appstore` (KY9LLR4LW6), dosyası `C:\src\oyuncu_dukkani_keys\` (repoda yok).
+İncelemeye gönderme: asc CLI (`asc versions create` + `asc review submit`).
+
+## Mağaza durumu
+- 24 Kas 2026: Play'de ÜCRETSİZ yapıldı (geri dönülemez). 1.4.1+31 Android + iOS incelemeye gönderildi.
 
 ---
 
