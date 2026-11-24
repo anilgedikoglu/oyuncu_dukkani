@@ -3011,3 +3011,5 @@ Eski kayıtlar için güvenli yükleme:
 
 ## Reklam düzeltmesi (24 Kas 2026) — BUILD BEKLİYOR
 Geçiş reklamı yükleme hatasında 3 kez artan aralıkla tekrar dener. Commit 09c1c7c. Kod main'de; mağazaya çıkması için "test çık" onayı + build gerekir.
+
+- 24 Kas 2026: Google Play fiyatı ücretli (₺15,99) → ÜCRETSİZ yapıldı (geri ücretliye dönülemez). Gelir artık reklamdan; reklamlar iOS ile aynı (aynı kod, Android birimi 4138047986).
