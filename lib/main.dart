@@ -149,6 +149,8 @@ class ReklamServisi {
     }
   }
 
+  static const Duration _minAralik = Duration(seconds: 90); // iki geçiş reklamı arası en az
+  static DateTime? _son;
   static int _hata = 0; // ust uste yukleme hatasi (24 Kas: 30/60/90 sn sonra tekrar dene)
 
   static void yukle() {
@@ -181,11 +183,14 @@ class ReklamServisi {
   static void goster({required VoidCallback onClosed}) {
     if (emulator) { onClosed(); return; }
     final ad = _interstitial;
-    if (ad == null) {
-      yukle();
+    final simdi = DateTime.now();
+    final cokYakin = _son != null && simdi.difference(_son!) < _minAralik;
+    if (ad == null || cokYakin) {
+      if (ad == null) yukle();
       onClosed();
       return;
     }
+    _son = simdi;
     ad.fullScreenContentCallback = FullScreenContentCallback(
       onAdDismissedFullScreenContent: (ad) {
         ad.dispose();
