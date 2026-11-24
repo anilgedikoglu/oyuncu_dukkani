@@ -149,6 +149,8 @@ class ReklamServisi {
     }
   }
 
+  static int _hata = 0; // ust uste yukleme hatasi (24 Kas: 30/60/90 sn sonra tekrar dene)
+
   static void yukle() {
     if (emulator) return;
     if (_yukleniyor || _interstitial != null) return;
@@ -160,11 +162,15 @@ class ReklamServisi {
         onAdLoaded: (ad) {
           _interstitial = ad;
           _yukleniyor = false;
+          _hata = 0;
         },
         onAdFailedToLoad: (err) {
           _interstitial = null;
           _yukleniyor = false;
-          // Sessizce başarısız ol — sonraki gün tekrar denenir
+          if (_hata < 3) {
+            _hata++;
+            Future.delayed(Duration(seconds: 30 * _hata), yukle);
+          }
         },
       ),
     );
