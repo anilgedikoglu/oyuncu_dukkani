@@ -228,7 +228,7 @@ Entitlement               : ios/Runner/Runner.entitlements
 
 ### Sürüm kuralları
 ```
-pubspec.yaml : 1.4.0+30
+pubspec.yaml : 1.4.1+31
 ```
 - **Android**: `+NN` = versionCode. Play'e her yüklemede ARTTIR. `23` daha önce
   kullanıldığı için `30`'a atlandı. Play **AAB** ister, APK kabul etmez.

@@ -22,31 +22,33 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await AyarServisi.yukle(); // ses/titreşim tercihleri açılışta geri gelsin
   await ReklamServisi.emulatorAlgila();
-  if (!ReklamServisi.emulator) {
-    // iOS: AdMob initialize'tan ÖNCE ATT izni iste (Apple zorunluyor — Guideline 2.1)
-    // - notDetermined ise sistem dialog gösterir
-    // - Daha önce reddedildiyse/onaylandıysa direkt geçer
-    if (Platform.isIOS) {
-      try {
-        final status = await AppTrackingTransparency.trackingAuthorizationStatus;
-        if (status == TrackingStatus.notDetermined) {
-          // Apple bilgi mesajı için ufak bekleme önerir, ardından sistem dialog'u tetiklenir
-          await Future.delayed(const Duration(milliseconds: 200));
-          await AppTrackingTransparency.requestTrackingAuthorization();
-        }
-      } catch (_) {
-        // iOS 14 altı veya hata — sessizce devam et, AdMob non-personalized çalışır
-      }
-    }
-    MobileAds.instance.initialize();
-    ReklamServisi.yukle(); // ilk interstitial'i yukle
-  }
   runApp(
     DevicePreview(
       enabled: false,
       builder: (context) => const OyuncuDukkaniApp(),
     ),
   );
+  // ATT izni ilk kare çizildikten SONRA istenir: runApp'ten önce sorulursa
+  // iOS uygulama aktif olmadığı için pencereyi göstermez, reklamlar
+  // kişiselleştirilmemiş (düşük eBGBM) kalır.
+  WidgetsBinding.instance.addPostFrameCallback((_) => _reklamBaslat());
+}
+
+Future<void> _reklamBaslat() async {
+  if (ReklamServisi.emulator) return;
+  if (Platform.isIOS) {
+    try {
+      final status = await AppTrackingTransparency.trackingAuthorizationStatus;
+      if (status == TrackingStatus.notDetermined) {
+        await Future.delayed(const Duration(milliseconds: 500));
+        await AppTrackingTransparency.requestTrackingAuthorization();
+      }
+    } catch (_) {
+      // iOS 14 altı veya hata — sessizce devam et
+    }
+  }
+  await MobileAds.instance.initialize();
+  ReklamServisi.yukle(); // ilk interstitial'i yukle
 }
 
 // ─── 🏆 LİDERLİK TABLOSU (Game Center / Play Games) ──────────────────────────
