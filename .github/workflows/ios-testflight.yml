@@ -1,0 +1,106 @@
+# iOS → App Store Connect, GitHub Actions (Codemagic'in yedek yolu; açık depoda macOS dakikası ücretsiz).
+# Elle tetiklenir: gh workflow run "iOS TestFlight" --repo anilgedikoglu/oyuncu_dukkani --ref main
+# Yalnız YÜKLER; incelemeye gönderme asc CLI ile ayrıca yapılır.
+# Build numarası Unix zaman damgası (Codemagic ile aynı kural, asla çakışmaz); sürüm adı pubspec.yaml'dan.
+#
+# Secrets (değerler repoda YOK; ortak Futurastic imzası, kaynak C:/src/gogola_keys/github-secrets/):
+#   IOS_CERTIFICATE_P12_BASE64, IOS_CERTIFICATE_PASSWORD, ASC_PRIVATE_KEY
+#   IOS_PROFILE_BASE64  oyuncudukkani_appstore.mobileprovision (C:/src/oyuncu_dukkani_keys/)
+name: iOS TestFlight
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: ios-testflight
+  cancel-in-progress: false
+
+env:
+  ASC_KEY_ID: G796KF2KD3
+  ASC_ISSUER_ID: 8c4687a8-9df9-4d95-8516-3fa3b7576e44
+
+jobs:
+  ipa:
+    name: Flutter → IPA → App Store Connect
+    runs-on: macos-26
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Xcode 26 seç
+        run: |
+          X=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
+          [ -n "$X" ] || X=$(ls -d /Applications/Xcode*.app | sort -V | tail -1)
+          sudo xcode-select -s "$X"
+          xcodebuild -version
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.41.5
+          channel: stable
+          cache: true
+
+      - name: Flutter ayarları
+        run: |
+          set -e
+          flutter config --no-enable-swift-package-manager
+          grep "^version:" pubspec.yaml
+          flutter pub get
+
+      - name: İmza (sertifika + profil)
+        env:
+          P12_BASE64: ${{ secrets.IOS_CERTIFICATE_P12_BASE64 }}
+          P12_PASSWORD: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
+          PROFILE_BASE64: ${{ secrets.IOS_PROFILE_BASE64 }}
+        run: |
+          set -e
+          printf '%s' "$P12_BASE64" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          printf '%s' "$PROFILE_BASE64" | base64 --decode > "$RUNNER_TEMP/profile.mobileprovision"
+          KC="$RUNNER_TEMP/build.keychain-db"
+          security create-keychain -p ci "$KC"
+          security set-keychain-settings -lut 3600 "$KC"
+          security unlock-keychain -p ci "$KC"
+          security import "$RUNNER_TEMP/cert.p12" -k "$KC" -P "$P12_PASSWORD" -T /usr/bin/codesign -T /usr/bin/security
+          security set-key-partition-list -S apple-tool:,apple: -s -k ci "$KC" > /dev/null
+          security list-keychains -d user -s "$KC" $(security list-keychains -d user | tr -d '"')
+          security default-keychain -s "$KC"
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          UUID=$(/usr/libexec/PlistBuddy -c 'Print UUID' /dev/stdin <<< "$(security cms -D -i "$RUNNER_TEMP/profile.mobileprovision")")
+          cp "$RUNNER_TEMP/profile.mobileprovision" ~/Library/MobileDevice/Provisioning\ Profiles/$UUID.mobileprovision
+          echo "Profil yüklendi: $UUID"
+
+      - name: Runner hedefini elle imzaya çevir (yalnız CI'da)
+        run: |
+          python3 - <<'PY'
+          p = 'ios/Runner.xcodeproj/project.pbxproj'
+          s = open(p).read()
+          key = 'CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements;'
+          add = key + '\n\t\t\t\tCODE_SIGN_STYLE = Manual;\n\t\t\t\tDEVELOPMENT_TEAM = SN5Y726ZKF;\n\t\t\t\tPROVISIONING_PROFILE_SPECIFIER = oyuncudukkani_appstore;\n\t\t\t\t"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "Apple Distribution";'
+          n = s.count(key)
+          s = s.replace(key, add)
+          open(p, 'w').write(s)
+          print('Runner yapılandırması:', n)
+          PY
+
+      - name: IPA derle
+        run: |
+          set -e
+          BN=$(date +%s)
+          flutter build ipa --release --build-number=$BN --export-options-plist=ios/ExportOptions.plist
+
+      - name: App Store Connect'e yükle
+        env:
+          ASC_PRIVATE_KEY: ${{ secrets.ASC_PRIVATE_KEY }}
+        run: |
+          set -e
+          mkdir -p ~/.appstoreconnect/private_keys
+          printf '%s\n' "$ASC_PRIVATE_KEY" > ~/.appstoreconnect/private_keys/AuthKey_$ASC_KEY_ID.p8
+          IPA=$(ls build/ios/ipa/*.ipa | head -1)
+          ls -la "$IPA"
+          xcrun altool --upload-app -f "$IPA" -t ios --apiKey "$ASC_KEY_ID" --apiIssuer "$ASC_ISSUER_ID"
+
+      - name: Temizlik
+        if: always()
+        run: |
+          security delete-keychain "$RUNNER_TEMP/build.keychain-db" 2>/dev/null || true
+          rm -f "$RUNNER_TEMP/cert.p12" "$RUNNER_TEMP/profile.mobileprovision" ~/.appstoreconnect/private_keys/*.p8
